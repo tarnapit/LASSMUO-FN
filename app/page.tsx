@@ -3,7 +3,7 @@ import { Rocket, Users, BookOpen, Gamepad2 } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       {/* Navigation */}
       <nav className="flex items-center justify-between px-8 py-6">
         <div className="text-2xl font-bold text-white tracking-wider">
