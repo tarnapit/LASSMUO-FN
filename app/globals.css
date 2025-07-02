@@ -39,6 +39,16 @@ body {
   width: calc(var(--progress, 0) * 1%);
 }
 
+/* Planet Color Styles */
+.planet-color[data-planet-color="#8C7853"] { background-color: #8C7853; }
+.planet-color[data-planet-color="#FFC649"] { background-color: #FFC649; }
+.planet-color[data-planet-color="#6B93D6"] { background-color: #6B93D6; }
+.planet-color[data-planet-color="#C1440E"] { background-color: #C1440E; }
+.planet-color[data-planet-color="#D8CA9D"] { background-color: #D8CA9D; }
+.planet-color[data-planet-color="#FAD5A5"] { background-color: #FAD5A5; }
+.planet-color[data-planet-color="#4FD0E3"] { background-color: #4FD0E3; }
+.planet-color[data-planet-color="#4B70DD"] { background-color: #4B70DD; }
+
 /* Line clamp utility */
 .line-clamp-2 {
   display: -webkit-box;

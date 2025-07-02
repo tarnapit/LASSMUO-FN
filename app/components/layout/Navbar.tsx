@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
 import { learningModules } from "../../data/learning-modules";
+import { miniGames } from "../../data/mini-games";
 
 interface DropdownItem {
   name: string;
@@ -37,11 +38,12 @@ const navigation: NavigationItem[] = [
     name: "มินิเกม",
     href: "/mini-game",
     hasDropdown: true,
-    dropdownItems: [
-      { name: "จับคู่ดาวเคราะห์", href: "/mini-game/planet-match" },
-      { name: "วาดกลุ่มดาว", href: "/mini-game/constellation-draw" },
-      { name: "สร้างระบบสุริยะ", href: "/mini-game/solar-system-builder" },
-    ],
+    dropdownItems: miniGames.map(game => ({
+      name: game.title,
+      href: `/mini-game/${game.id}`,
+      description: game.description,
+      level: game.difficulty
+    })),
   },
 ];
 
