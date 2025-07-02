@@ -70,12 +70,12 @@ export default function StagePage() {
         </div>
 
         {/* Stage Map - Duolingo Style */}
-        <div className="relative max-w-lg mx-auto px-8" onClick={handleBackgroundClick}>
+        <div className="relative max-w-4xl mx-auto px-4 sm:px-8" onClick={handleBackgroundClick}>
           {/* Background Path */}
           <svg 
             className="absolute inset-0 w-full h-full pointer-events-none z-0"
             viewBox="0 0 400 800"
-            style={{ height: `${stages.length * 160}px` }}
+            style={{ height: `${stages.length * 180}px` }}
           >
             <path
               d="M200 50 Q300 150 200 250 Q100 350 200 450 Q300 550 200 650 Q100 750 200 850"
@@ -99,33 +99,10 @@ export default function StagePage() {
             const isEven = index % 2 === 0;
             const translateX = isEven ? 'translate-x-0' : index % 4 === 1 ? 'translate-x-16' : '-translate-x-16';
             
-            // Calculate popup position to avoid overlap
-            const isLastStage = index === stages.length - 1;
-            const isSecondLastStage = index === stages.length - 2;
-            const isFirstStage = index === 0;
-            const isSecondStage = index === 1;
-            
-            // Determine popup position based on stage position
-            let popupPosition = 'top-0';
-            let popupDirection = 'left-1/2 sm:left-28';
-            let popupTransform = '-translate-x-1/2 sm:translate-x-0';
-            
-            if (isLastStage || isSecondLastStage) {
-              popupPosition = 'top-[-20rem] sm:top-[-15rem]';
-            } else if (isFirstStage || isSecondStage) {
-              popupPosition = 'top-0 sm:top-4';
-            }
-            
-            // Adjust horizontal position for zigzag layout
-            if (!isEven) {
-              popupDirection = 'right-1/2 sm:right-28';
-              popupTransform = 'translate-x-1/2 sm:translate-x-0';
-            }
-            
             return (
               <div
                 key={stage.id}
-                className={`relative flex justify-center mb-16 ${translateX} transition-all duration-500 z-10`}
+                className={`relative flex justify-center mb-20 sm:mb-24 ${translateX} transition-all duration-500 z-10`}
                 style={{ 
                   animationDelay: `${index * 0.1}s`,
                 }}
@@ -218,153 +195,6 @@ export default function StagePage() {
                       {stage.title}
                     </div>
                   </div>
-
-                  {/* Stage Info Popup */}
-                  {selectedStage === stage.id && stage.isUnlocked && (
-                    <div 
-                      className={`absolute ${popupDirection} ${popupPosition} bg-slate-800 rounded-lg p-4 sm:p-6 w-72 sm:w-80 md:w-96 shadow-xl border border-slate-700 z-50 max-w-[90vw] transform ${popupTransform}`}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* Close Button */}
-                      <button
-                        onClick={() => setSelectedStage(null)}
-                        className="absolute top-2 right-2 w-6 h-6 bg-gray-600 hover:bg-gray-500 rounded-full flex items-center justify-center text-white text-sm font-bold transition-colors"
-                      >
-                        ×
-                      </button>
-                      
-                      <div className="flex items-center justify-between mb-3 pr-8">
-                        <h3 className="text-lg sm:text-xl font-bold text-white">
-                          {stage.title}
-                        </h3>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          stage.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                          stage.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {stage.difficulty === 'easy' ? 'ง่าย' : 
-                           stage.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'}
-                        </span>
-                      </div>
-                      
-                      <p className="text-gray-300 text-xs sm:text-sm mb-4 leading-relaxed">
-                        {stage.description}
-                      </p>
-                      
-                      {/* Stage Info */}
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center justify-between text-xs sm:text-sm">
-                          <span className="text-gray-400 flex items-center">
-                            <Clock size={12} className="mr-1 sm:mr-2" />
-                            <span className="hidden sm:inline">เวลาโดยประมาณ:</span>
-                            <span className="sm:hidden">เวลา:</span>
-                          </span>
-                          <span className="text-white">{stage.estimatedTime}</span>
-                        </div>
-                        
-                        {stage.prerequisites.length > 0 && (
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-gray-400">
-                              <span className="hidden sm:inline">ต้องผ่านด่าน:</span>
-                              <span className="sm:hidden">ต้องผ่าน:</span>
-                            </span>
-                            <span className="text-white">
-                              {stage.prerequisites.join(', ')}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {stage.attempts > 0 && (
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-gray-400">
-                              <span className="hidden sm:inline">จำนวนครั้งที่เล่น:</span>
-                              <span className="sm:hidden">ครั้งที่เล่น:</span>
-                            </span>
-                            <span className="text-white">{stage.attempts}</span>
-                          </div>
-                        )}
-                        
-                        {stage.bestScore > 0 && (
-                          <div className="flex items-center justify-between text-xs sm:text-sm">
-                            <span className="text-gray-400">
-                              <span className="hidden sm:inline">คะแนนสูงสุด:</span>
-                              <span className="sm:hidden">คะแนน:</span>
-                            </span>
-                            <span className="text-white">{stage.bestScore}</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Stars */}
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-gray-400 text-xs sm:text-sm">
-                          <span className="hidden sm:inline">ดาวที่ได้รับ:</span>
-                          <span className="sm:hidden">ดาว:</span>
-                        </span>
-                        <div className="flex items-center space-x-1">
-                          {[1, 2, 3].map((star) => (
-                            <Star
-                              key={star}
-                              size={14}
-                              className={
-                                star <= stage.stars
-                                  ? "text-yellow-400 fill-current"
-                                  : "text-gray-500"
-                              }
-                            />
-                          ))}
-                          <span className="text-white text-xs sm:text-sm ml-2">
-                            ({stage.stars}/{stage.totalStars})
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Rewards Preview */}
-                      {stage.rewards && (
-                        <div className="mb-4 p-2 sm:p-3 bg-slate-700 rounded-lg">
-                          <h4 className="text-xs sm:text-sm font-semibold text-white mb-2">
-                            <span className="hidden sm:inline">รางวัลที่จะได้รับ:</span>
-                            <span className="sm:hidden">รางวัล:</span>
-                          </h4>
-                          <div className="text-xs text-gray-300 space-y-1">
-                            <div className="flex items-center">
-                              <span className="mr-1">⭐</span>
-                              <span>{stage.rewards.stars} ดาว</span>
-                            </div>
-                            <div className="flex items-center">
-                              <span className="mr-1">🏆</span>
-                              <span>{stage.rewards.points} คะแนน</span>
-                            </div>
-                            {stage.rewards.badges && stage.rewards.badges.length > 0 && (
-                              <div className="flex items-start">
-                                <span className="mr-1">🏅</span>
-                                <span className="break-words">เหรียญ: {stage.rewards.badges.join(', ')}</span>
-                              </div>
-                            )}
-                            {stage.rewards.unlocksStages && stage.rewards.unlocksStages.length > 0 && (
-                              <div className="flex items-start">
-                                <span className="mr-1">🔓</span>
-                                <span className="break-words">
-                                  <span className="hidden sm:inline">ปลดล็อกด่าน: </span>
-                                  <span className="sm:hidden">ปลดล็อก: </span>
-                                  {stage.rewards.unlocksStages.join(', ')}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Play Button */}
-                      <button 
-                        onClick={() => router.push(`/stage/${stage.id}`)}
-                        className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-2 sm:py-3 px-3 sm:px-4 rounded-lg hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg text-sm sm:text-base"
-                      >
-                        <Play size={16} className="sm:w-5 sm:h-5" />
-                        <span>{stage.isCompleted ? 'เล่นอีกครั้ง' : 'เริ่มเล่น'}</span>
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -380,6 +210,154 @@ export default function StagePage() {
           </div>
         </div>
       </div>
+
+      {/* Stage Info Modal */}
+      {selectedStage && (
+        <>
+          {/* Full Screen Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" 
+            onClick={() => setSelectedStage(null)}
+          ></div>
+          
+          {/* Centered Modal Popup */}
+          <div 
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-800 rounded-lg p-6 w-[90vw] max-w-md shadow-2xl border border-slate-700 z-50 max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const stage = stages.find(s => s.id === selectedStage);
+              if (!stage) return null;
+              
+              return (
+                <>
+                  {/* Close Button */}
+                  <button
+                    onClick={() => setSelectedStage(null)}
+                    className="absolute top-3 right-3 w-8 h-8 bg-gray-700 hover:bg-gray-600 rounded-full flex items-center justify-center text-white text-lg font-bold transition-colors shadow-lg hover:shadow-xl"
+                  >
+                    ×
+                  </button>
+                  
+                  {/* Header */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-xl font-bold text-white pr-8">
+                        {stage.title}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        stage.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+                        stage.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {stage.difficulty === 'easy' ? 'ง่าย' : 
+                         stage.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'}
+                      </span>
+                    </div>
+                    
+                    <p className="text-gray-300 text-sm mb-4 leading-relaxed">
+                      {stage.description}
+                    </p>
+                  </div>
+                  
+                  {/* Stage Info */}
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400 flex items-center">
+                        <Clock size={16} className="mr-2" />
+                        เวลาโดยประมาณ:
+                      </span>
+                      <span className="text-white font-medium">{stage.estimatedTime}</span>
+                    </div>
+                    
+                    {stage.prerequisites.length > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">ต้องผ่านด่าน:</span>
+                        <span className="text-white font-medium">
+                          {stage.prerequisites.join(', ')}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {stage.attempts > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">จำนวนครั้งที่เล่น:</span>
+                        <span className="text-white font-medium">{stage.attempts}</span>
+                      </div>
+                    )}
+                    
+                    {stage.bestScore > 0 && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-400">คะแนนสูงสุด:</span>
+                        <span className="text-white font-medium">{stage.bestScore}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Stars */}
+                  <div className="flex items-center justify-between mb-6 p-3 bg-slate-700 rounded-lg">
+                    <span className="text-gray-300 text-sm font-medium">ดาวที่ได้รับ:</span>
+                    <div className="flex items-center space-x-2">
+                      {[1, 2, 3].map((star) => (
+                        <Star
+                          key={star}
+                          size={16}
+                          className={
+                            star <= stage.stars
+                              ? "text-yellow-400 fill-current"
+                              : "text-gray-500"
+                          }
+                        />
+                      ))}
+                      <span className="text-white text-sm ml-2 font-medium">
+                        ({stage.stars}/{stage.totalStars})
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Rewards Preview */}
+                  {stage.rewards && (
+                    <div className="mb-6 p-4 bg-slate-700 rounded-lg">
+                      <h4 className="text-sm font-semibold text-white mb-3">รางวัลที่จะได้รับ:</h4>
+                      <div className="text-sm text-gray-300 space-y-2">
+                        <div className="flex items-center">
+                          <span className="mr-2">⭐</span>
+                          <span>{stage.rewards.stars} ดาว</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="mr-2">🏆</span>
+                          <span>{stage.rewards.points} คะแนน</span>
+                        </div>
+                        {stage.rewards.badges && stage.rewards.badges.length > 0 && (
+                          <div className="flex items-start">
+                            <span className="mr-2">🏅</span>
+                            <span className="break-words">เหรียญ: {stage.rewards.badges.join(', ')}</span>
+                          </div>
+                        )}
+                        {stage.rewards.unlocksStages && stage.rewards.unlocksStages.length > 0 && (
+                          <div className="flex items-start">
+                            <span className="mr-2">🔓</span>
+                            <span className="break-words">ปลดล็อกด่าน: {stage.rewards.unlocksStages.join(', ')}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Play Button */}
+                  <button 
+                    onClick={() => router.push(`/stage/${stage.id}`)}
+                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-3 px-4 rounded-lg hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
+                  >
+                    <Play size={18} />
+                    <span>{stage.isCompleted ? 'เล่นอีกครั้ง' : 'เริ่มเล่น'}</span>
+                  </button>
+                </>
+              );
+            })()}
+          </div>
+        </>
+      )}
 
       {/* Background Stars Effect */}
       <div className="fixed inset-0 pointer-events-none">
