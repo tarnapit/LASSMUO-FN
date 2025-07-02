@@ -5,27 +5,27 @@ import { useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
 
 const navigation = [
-  { name: "Stage", href: "/stage" },
+  { name: "ด่าน", href: "/stage" },
   {
-    name: "Learning",
+    name: "บทเรียน",
     href: "/learning",
     hasDropdown: true,
     dropdownItems: [
-      { name: "Solar System", href: "/learning/solar-system" },
-      { name: "Stars & Galaxies", href: "/learning/stars" },
-      { name: "Constellations", href: "/learning/constellations" },
-      { name: "Space Exploration", href: "/learning/space-exploration" },
+      { name: "ระบบสุริยะ", href: "/learning/solar-system" },
+      { name: "ดาวและกาแล็กซี", href: "/learning/stars" },
+      { name: "กลุ่มดาว", href: "/learning/constellations" },
+      { name: "การสำรวจอวกาศ", href: "/learning/space-exploration" },
     ],
   },
-  { name: "With Friends", href: "/friends" },
+  { name: "กับเพื่อน", href: "/friends" },
   {
-    name: "Mini Game",
+    name: "มินิเกม",
     href: "/mini-game",
     hasDropdown: true,
     dropdownItems: [
-      { name: "Planet Match", href: "/mini-game/planet-match" },
-      { name: "Constellation Draw", href: "/mini-game/constellation-draw" },
-      { name: "Solar System Builder", href: "/mini-game/solar-system-builder" },
+      { name: "จับคู่ดาวเคราะห์", href: "/mini-game/planet-match" },
+      { name: "วาดกลุ่มดาว", href: "/mini-game/constellation-draw" },
+      { name: "สร้างระบบสุริยะ", href: "/mini-game/solar-system-builder" },
     ],
   },
 ];
@@ -89,7 +89,7 @@ export default function Navbar() {
 
         {/* Auth Button */}
         <div className="hidden md:block">
-          <button className="btn-secondary">LOG IN</button>
+          <button className="btn-secondary">เข้าสู่ระบบ</button>
         </div>
 
         {/* Mobile menu button */}
@@ -156,7 +156,7 @@ export default function Navbar() {
                 className="w-full btn-secondary"
                 onClick={() => setIsOpen(false)}
               >
-                LOG IN
+                เข้าสู่ระบบ
               </button>
             </div>
           </div>

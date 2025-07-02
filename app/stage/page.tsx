@@ -1,93 +1,154 @@
 "use client";
-import Link from "next/link";
-import { Rocket, Users, BookOpen, Gamepad2 } from "lucide-react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Lock, Star, Play } from "lucide-react";
+import Navbar from "../components/layout/Navbar";
 
-export default function HomePage() {
-  // ข้อความภาษาไทย
-  const text = {
-    explore: "สำรวจอวกาศ",
-    learning: "เรียนรู้ดาราศาสตร์",
-    forFun: "เพื่อความสนุก",
-    getStart: "เริ่มต้น",
-    stage: "ด่าน",
-    learningMenu: "บทเรียน",
-    withFriends: "กับเพื่อน",
-    miniGame: "มินิเกม",
-    login: "เข้าสู่ระบบ",
-  };
+export default function StagePage() {
+  const router = useRouter();
+  const [selectedStage, setSelectedStage] = useState<number | null>(null);
+
+  // ข้อมูลด่านต่างๆ
+  const stages = [
+    {
+      id: 1,
+      title: "ระบบสุริยะ",
+      description: "เรียนรู้เกี่ยวกับดวงอาทิตย์และดาวเคราะห์",
+      isUnlocked: true,
+      stars: 3,
+      isCompleted: true,
+    },
+    {
+      id: 2,
+      title: "ดาวเคราะห์ใน",
+      description: "สำรวจดาวพุธ ดาวศุกร์ โลก และดาวอังคาร",
+      isUnlocked: true,
+      stars: 2,
+      isCompleted: false,
+    },
+    {
+      id: 3,
+      title: "ดาวเคราะห์นอก",
+      description: "ค้นพบดาวพฤหัสบดี ดาวเสาร์ ดาวยูเรนัส และดาวเนปจูน",
+      isUnlocked: true,
+      stars: 0,
+      isCompleted: false,
+    },
+    {
+      id: 4,
+      title: "ดวงจันทร์และดาวเทียม",
+      description: "เรียนรู้เกี่ยวกับดวงจันทร์และดาวเทียมของดาวเคราะห์",
+      isUnlocked: false,
+      stars: 0,
+      isCompleted: false,
+    },
+    {
+      id: 5,
+      title: "ดาวหาง",
+      description: "สำรวจดาวหางและวัตถุในระบบสุริยะ",
+      isUnlocked: false,
+      stars: 0,
+      isCompleted: false,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6">
-        <div className="text-2xl font-bold text-white tracking-wider">
-          LASSMUOO
-        </div>
+      <Navbar />
 
-        <div className="hidden md:flex items-center space-x-8">
-          <Link
-            href="/stage"
-            className="text-white hover:text-yellow-300 transition-colors"
-          >
-            {text.stage}
-          </Link>
-          <div className="relative group">
-            <button className="text-white hover:text-yellow-300 transition-colors flex items-center">
-              {text.learningMenu} <span className="ml-1">{">"}</span>
-            </button>
-          </div>
-          <Link
-            href="/friends"
-            className="text-white hover:text-yellow-300 transition-colors"
-          >
-            {text.withFriends}
-          </Link>
-          <div className="relative group">
-            <button className="text-white hover:text-yellow-300 transition-colors flex items-center">
-              {text.miniGame} <span className="ml-1">{">"}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <button className="border-2 border-white text-white px-6 py-2 rounded-lg hover:bg-white hover:text-slate-900 transition-all duration-300">
-            {text.login}
-          </button>
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <div className="flex flex-col items-center justify-center px-8 py-20">
-        <div className="text-center max-w-4xl">
-          <p className="text-yellow-300 text-lg mb-4 tracking-wide">
-            {text.explore}
-          </p>
-
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-8 leading-tight">
-            {text.learning}
+      {/* Main Content */}
+      <div className="container mx-auto px-8 py-12">
+        {/* Title */}
+        <div className="text-center mb-12">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+            Solar System
           </h1>
-
-          <h2 className="text-5xl md:text-6xl font-bold text-white mb-12">
-            {text.forFun}
-          </h2>
-
-          <button className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-12 py-4 rounded-lg text-xl hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-2xl">
-            {text.getStart}
-          </button>
+          <p className="text-xl text-gray-300">
+            เลือกด่านที่ต้องการเรียนรู้
+          </p>
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-20 left-10 text-white/20">
-          <Rocket size={48} />
+        {/* Stage Map */}
+        <div className="flex flex-col items-center space-y-8 max-w-md mx-auto">
+          {stages.map((stage, index) => (
+            <div
+              key={stage.id}
+              className="relative"
+              onClick={() => stage.isUnlocked && setSelectedStage(stage.id)}
+            >
+              {/* Stage Circle */}
+              <div
+                className={`
+                  w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold cursor-pointer transition-all duration-300
+                  ${
+                    stage.isUnlocked
+                      ? stage.isCompleted
+                        ? "bg-orange-500 text-white hover:bg-orange-400"
+                        : "bg-white text-black hover:bg-gray-100"
+                      : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                  }
+                  ${selectedStage === stage.id ? "scale-110 shadow-lg" : ""}
+                `}
+              >
+                {stage.isUnlocked ? (
+                  stage.id
+                ) : (
+                  <Lock size={24} />
+                )}
+              </div>
+
+              {/* Stage Info Popup */}
+              {selectedStage === stage.id && stage.isUnlocked && (
+                <div className="absolute left-24 top-0 bg-slate-800 rounded-lg p-4 w-72 shadow-xl border border-slate-700 z-10">
+                  <h3 className="text-lg font-bold text-white mb-2">
+                    {stage.title}
+                  </h3>
+                  <p className="text-gray-300 text-sm mb-3">
+                    {stage.description}
+                  </p>
+                  
+                  {/* Stars */}
+                  <div className="flex items-center space-x-1 mb-3">
+                    {[1, 2, 3].map((star) => (
+                      <Star
+                        key={star}
+                        size={16}
+                        className={
+                          star <= stage.stars
+                            ? "text-yellow-400 fill-current"
+                            : "text-gray-500"
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  {/* Play Button */}
+                  <button 
+                    onClick={() => router.push(`/stage/${stage.id}`)}
+                    className="w-full bg-yellow-500 text-black font-semibold py-2 px-4 rounded-lg hover:bg-yellow-400 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Play size={16} />
+                    <span>เริ่มเล่น</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Connection Line */}
+              {index < stages.length - 1 && (
+                <div className="absolute top-20 left-1/2 transform -translate-x-1/2 w-0.5 h-8 bg-gray-600"></div>
+              )}
+            </div>
+          ))}
         </div>
-        <div className="absolute top-40 right-20 text-white/20">
-          <BookOpen size={40} />
-        </div>
-        <div className="absolute bottom-40 left-20 text-white/20">
-          <Users size={44} />
-        </div>
-        <div className="absolute bottom-20 right-10 text-white/20">
-          <Gamepad2 size={42} />
+
+        {/* Bottom Text */}
+        <div className="text-center mt-16">
+          <div className="w-full max-w-2xl mx-auto">
+            <div className="h-px bg-gray-600 mb-4"></div>
+            <p className="text-white text-lg">New Place</p>
+            <div className="h-px bg-gray-600 mt-4"></div>
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Rocket, Users, BookOpen, Gamepad2 } from "lucide-react";
+import Navbar from "./components/layout/Navbar";
 
 export default function HomePage() {
   // ข้อความภาษาไทย
@@ -9,52 +10,12 @@ export default function HomePage() {
     learning: "เรียนรู้ดาราศาสตร์",
     forFun: "เพื่อความสนุก",
     getStart: "เริ่มต้น",
-    stage: "ด่าน",
-    learningMenu: "บทเรียน",
-    withFriends: "กับเพื่อน",
-    miniGame: "มินิเกม",
-    login: "เข้าสู่ระบบ",
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       {/* Navigation */}
-      <nav className="flex items-center justify-between px-8 py-6">
-        <div className="text-2xl font-bold text-white tracking-wider">
-          LASSMUOO
-        </div>
-
-        <div className="hidden md:flex items-center space-x-8">
-          <Link
-            href="/stage"
-            className="text-white hover:text-yellow-300 transition-colors"
-          >
-            {text.stage}
-          </Link>
-          <div className="relative group">
-            <button className="text-white hover:text-yellow-300 transition-colors flex items-center">
-              {text.learningMenu} <span className="ml-1">{">"}</span>
-            </button>
-          </div>
-          <Link
-            href="/friends"
-            className="text-white hover:text-yellow-300 transition-colors"
-          >
-            {text.withFriends}
-          </Link>
-          <div className="relative group">
-            <button className="text-white hover:text-yellow-300 transition-colors flex items-center">
-              {text.miniGame} <span className="ml-1">{">"}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-4">
-          <button className="border-2 border-white text-white px-6 py-2 rounded-lg hover:bg-white hover:text-slate-900 transition-all duration-300">
-            {text.login}
-          </button>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <div className="flex flex-col items-center justify-center px-8 py-20">
