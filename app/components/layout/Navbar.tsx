@@ -3,19 +3,34 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Menu, X, ChevronDown } from "lucide-react";
+import { learningModules } from "../../data/learning-modules";
 
-const navigation = [
+interface DropdownItem {
+  name: string;
+  href: string;
+  description?: string;
+  level?: string;
+}
+
+interface NavigationItem {
+  name: string;
+  href: string;
+  hasDropdown?: boolean;
+  dropdownItems?: DropdownItem[];
+}
+
+const navigation: NavigationItem[] = [
   { name: "ด่าน", href: "/stage" },
   {
     name: "บทเรียน",
     href: "/learning",
     hasDropdown: true,
-    dropdownItems: [
-      { name: "ระบบสุริยะ", href: "/learning/solar-system" },
-      { name: "ดาวและกาแล็กซี", href: "/learning/stars" },
-      { name: "กลุ่มดาว", href: "/learning/constellations" },
-      { name: "การสำรวจอวกาศ", href: "/learning/space-exploration" },
-    ],
+    dropdownItems: learningModules.map(module => ({
+      name: module.title,
+      href: `/learning/${module.id}`,
+      description: module.description,
+      level: module.level
+    })),
   },
   { name: "กับเพื่อน", href: "/friends" },
   {
@@ -36,6 +51,24 @@ export default function Navbar() {
 
   const toggleDropdown = (name: string) => {
     setActiveDropdown(activeDropdown === name ? null : name);
+  };
+
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case 'Fundamental': return 'text-green-400';
+      case 'Intermediate': return 'text-yellow-400';
+      case 'Advanced': return 'text-red-400';
+      default: return 'text-green-400';
+    }
+  };
+
+  const getLevelText = (level: string) => {
+    switch (level) {
+      case 'Fundamental': return 'พื้นฐาน';
+      case 'Intermediate': return 'ปานกลาง';
+      case 'Advanced': return 'ขั้นสูง';
+      default: return 'พื้นฐาน';
+    }
   };
 
   return (
@@ -64,15 +97,40 @@ export default function Navbar() {
                   </button>
 
                   {activeDropdown === item.name && (
-                    <div className="absolute top-full left-0 mt-2 w-48 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-2">
+                    <div className="absolute top-full left-0 mt-2 w-80 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-2">
+                      <div className="px-4 py-2 border-b border-slate-700">
+                        <Link
+                          href={item.href}
+                          className="text-yellow-400 hover:text-yellow-300 font-semibold"
+                          onClick={() => setActiveDropdown(null)}
+                        >
+                          ดูบทเรียนทั้งหมด →
+                        </Link>
+                      </div>
                       {item.dropdownItems?.map((dropdownItem) => (
                         <Link
                           key={dropdownItem.name}
                           href={dropdownItem.href}
-                          className="block px-4 py-2 text-white hover:bg-slate-700 hover:text-yellow-300 transition-colors"
+                          className="block px-4 py-3 text-white hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-b-0"
                           onClick={() => setActiveDropdown(null)}
                         >
-                          {dropdownItem.name}
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-white hover:text-yellow-300 transition-colors">
+                                {dropdownItem.name}
+                              </div>
+                              {dropdownItem.description && (
+                                <div className="text-sm text-gray-400 mt-1 line-clamp-2">
+                                  {dropdownItem.description}
+                                </div>
+                              )}
+                            </div>
+                            {dropdownItem.level && (
+                              <div className={`text-xs px-2 py-1 rounded ml-2 ${getLevelColor(dropdownItem.level)} bg-current/10`}>
+                                {getLevelText(dropdownItem.level)}
+                              </div>
+                            )}
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -122,18 +180,40 @@ export default function Navbar() {
                     </button>
 
                     {activeDropdown === item.name && (
-                      <div className="pl-4 mt-2 space-y-2">
+                      <div className="pl-4 mt-2 space-y-3">
+                        <Link
+                          href={item.href}
+                          className="block text-yellow-400 hover:text-yellow-300 transition-colors py-1 font-semibold"
+                          onClick={() => {
+                            setIsOpen(false);
+                            setActiveDropdown(null);
+                          }}
+                        >
+                          ดูบทเรียนทั้งหมด →
+                        </Link>
                         {item.dropdownItems?.map((dropdownItem) => (
                           <Link
                             key={dropdownItem.name}
                             href={dropdownItem.href}
-                            className="block text-white/80 hover:text-yellow-300 transition-colors py-1"
+                            className="block text-white/80 hover:text-yellow-300 transition-colors py-2 border-b border-slate-700/30 last:border-b-0"
                             onClick={() => {
                               setIsOpen(false);
                               setActiveDropdown(null);
                             }}
                           >
-                            {dropdownItem.name}
+                            <div>
+                              <div className="font-medium">{dropdownItem.name}</div>
+                              {dropdownItem.description && (
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {dropdownItem.description}
+                                </div>
+                              )}
+                              {dropdownItem.level && (
+                                <div className={`text-xs mt-1 ${getLevelColor(dropdownItem.level)}`}>
+                                  ระดับ: {getLevelText(dropdownItem.level)}
+                                </div>
+                              )}
+                            </div>
                           </Link>
                         ))}
                       </div>
