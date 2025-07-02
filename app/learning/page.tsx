@@ -1,0 +1,107 @@
+"use client";
+import Link from "next/link";
+import { learningModules } from "../data/learning-modules";
+import Navbar from "../components/layout/Navbar";
+import { BookOpen, Clock, Star } from "lucide-react";
+
+export default function LearningPage() {
+  const text = {
+    lesson: "บทเรียน",
+    level: "ระดับ:",
+    time: "เวลา:",
+    fundamental: "พื้นฐาน",
+    intermediate: "ปานกลาง",
+    advanced: "ขั้นสูง"
+  };
+
+  const getLevelColor = (level: string) => {
+    switch (level) {
+      case 'Fundamental': return 'text-green-400';
+      case 'Intermediate': return 'text-yellow-400';
+      case 'Advanced': return 'text-red-400';
+      default: return 'text-green-400';
+    }
+  };
+
+  const getLevelText = (level: string) => {
+    switch (level) {
+      case 'Fundamental': return text.fundamental;
+      case 'Intermediate': return text.intermediate;
+      case 'Advanced': return text.advanced;
+      default: return text.fundamental;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+      <Navbar />
+      
+      <div className="container mx-auto px-6 py-20">
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-white mb-4">{text.lesson}</h1>
+          <p className="text-gray-300 text-lg">เลือกบทเรียนที่คุณสนใจเพื่อเริ่มการเรียนรู้</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {learningModules.map((module) => (
+            <Link 
+              key={module.id} 
+              href={`/learning/${module.id}`}
+              className="group"
+            >
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full">
+                <div className="flex items-center justify-between mb-4">
+                  <BookOpen className="text-yellow-400" size={32} />
+                  <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
+                </div>
+                
+                <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors">
+                  {module.title}
+                </h3>
+                
+                <p className="text-gray-300 mb-6 leading-relaxed">
+                  {module.description}
+                </p>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm">
+                    <span className="text-gray-400 mr-2">{text.level}</span>
+                    <span className={`font-semibold ${getLevelColor(module.level)}`}>
+                      {getLevelText(module.level)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm">
+                    <Clock size={16} className="text-gray-400 mr-2" />
+                    <span className="text-gray-300">{module.estimatedTime}</span>
+                  </div>
+                </div>
+                
+                <div className="mt-6 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">
+                      {module.chapters.length} บท
+                    </span>
+                    <div className="text-yellow-400 group-hover:translate-x-1 transition-transform">
+                      →
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      {/* Background Stars Effect */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-pulse"></div>
+        <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-100"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-200"></div>
+        <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
+        <div className="absolute top-1/2 left-1/6 w-1 h-1 bg-white rounded-full animate-pulse delay-500"></div>
+        <div className="absolute top-3/4 right-1/6 w-1 h-1 bg-white rounded-full animate-pulse delay-700"></div>
+      </div>
+    </div>
+  );
+}

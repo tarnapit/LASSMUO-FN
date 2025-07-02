@@ -46,7 +46,7 @@ export default function Navbar() {
           href="/"
           className="text-2xl font-bold text-white tracking-wider hover:text-yellow-300 transition-colors"
         >
-          LASSMUDO
+          LASSMUOO
         </Link>
 
         {/* Desktop Navigation */}

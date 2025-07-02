@@ -33,3 +33,8 @@ body {
 .btn-secondary {
   @apply border-2 border-white text-white px-6 py-2 rounded-lg hover:bg-white hover:text-slate-900 transition-all duration-300;
 }
+
+/* Progress Bar Styles */
+[data-progress] {
+  width: calc(var(--progress, 0) * 1%);
+}

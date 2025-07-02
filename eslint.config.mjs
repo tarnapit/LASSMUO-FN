@@ -11,6 +11,12 @@ const compat = new FlatCompat({
 
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
+  {
+    rules: {
+      "@next/next/no-css-tags": "off",
+      "react/no-unknown-property": "off"
+    }
+  }
 ];
 
 export default eslintConfig;
