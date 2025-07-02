@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../components/layout/Navbar";
-import { stageData } from "../../data/stages";
+import { stageData, updatePlayerProgress } from "../../data/stages";
 import { StageData, Question } from "../../types/stage";
 
 // Character Introduction Component
@@ -17,18 +17,43 @@ const CharacterIntro = ({
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
       <Navbar />
       <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <h1 className="text-4xl font-bold text-white mb-12">Character</h1>
-        
-        <div className="text-center space-y-6 max-w-2xl">
-          <p className="text-white text-lg">{stageInfo.character.introduction}</p>
-          <p className="text-white text-lg">{stageInfo.character.learningContent}</p>
+        <div className="text-center space-y-8 max-w-3xl">
+          {/* Character Avatar */}
+          <div className="text-8xl mb-6">{stageInfo.character.avatar}</div>
+          
+          {/* Character Name */}
+          <h1 className="text-4xl font-bold text-white">พบกับ {stageInfo.character.name}</h1>
+          
+          {/* Introduction */}
+          <div className="bg-slate-800/50 rounded-xl p-6 backdrop-blur-sm">
+            <p className="text-white text-lg leading-relaxed">{stageInfo.character.introduction}</p>
+          </div>
+          
+          {/* Stage Info */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+            <div className="bg-blue-900/30 rounded-lg p-4">
+              <h3 className="text-blue-300 font-semibold mb-2">ระดับความยาก</h3>
+              <p className="text-white capitalize">{
+                stageInfo.difficulty === 'easy' ? 'ง่าย' :
+                stageInfo.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'
+              }</p>
+            </div>
+            <div className="bg-green-900/30 rounded-lg p-4">
+              <h3 className="text-green-300 font-semibold mb-2">เวลาโดยประมาณ</h3>
+              <p className="text-white">{stageInfo.estimatedTime}</p>
+            </div>
+            <div className="bg-yellow-900/30 rounded-lg p-4">
+              <h3 className="text-yellow-300 font-semibold mb-2">รางวัลที่จะได้</h3>
+              <p className="text-white">{stageInfo.rewards.points} คะแนน</p>
+            </div>
+          </div>
         </div>
         
         <button 
           onClick={onContinue}
-          className="mt-12 bg-yellow-500 text-black font-semibold px-8 py-3 rounded-lg hover:bg-yellow-400 transition-colors"
+          className="mt-12 bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold px-8 py-4 rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 transform hover:scale-105"
         >
-          continue
+          เริ่มการเรียนรู้
         </button>
       </div>
     </div>
@@ -47,21 +72,37 @@ const LearningContent = ({
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
       <Navbar />
       <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <h1 className="text-3xl font-bold text-white mb-8 text-center">{stageInfo.title}</h1>
-        <p className="text-white text-lg mb-8 text-center max-w-2xl">{stageInfo.description}</p>
-        
-        <div className="mb-12">
-          <div className="w-80 h-40 bg-gray-800 rounded-lg flex items-center justify-center border-2 border-gray-600">
-            <p className="text-white text-lg">Image or Animation</p>
+        <div className="max-w-4xl w-full">
+          {/* Header */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-white mb-4">{stageInfo.title}</h1>
+            <p className="text-xl text-gray-300">{stageInfo.description}</p>
           </div>
-          <p className="text-white text-sm mt-2 text-center">แบบจำเป็น animation ต่อยหิน</p>
+          
+          {/* Learning Content */}
+          <div className="bg-slate-800/50 rounded-2xl p-8 backdrop-blur-sm mb-8">
+            <div className="flex items-start space-x-6">
+              <div className="text-6xl">{stageInfo.character.avatar}</div>
+              <div className="flex-1">
+                <h3 className="text-xl font-semibold text-white mb-4">{stageInfo.character.name} บอกว่า:</h3>
+                <p className="text-white text-lg leading-relaxed">{stageInfo.character.learningContent}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Visual Content Placeholder */}
+          <div className="bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-2xl p-12 text-center mb-8">
+            <div className="text-6xl mb-6">{stageInfo.thumbnail}</div>
+            <h3 className="text-2xl font-bold text-white mb-4">เนื้อหาการเรียนรู้</h3>
+            <p className="text-gray-300">ที่นี่จะมีภาพประกอบ วิดีโอ หรือแอนิเมชั่นเกี่ยวกับ{stageInfo.title}</p>
+          </div>
         </div>
         
         <button 
           onClick={onContinue}
-          className="bg-yellow-500 text-black font-semibold px-8 py-3 rounded-lg hover:bg-yellow-400 transition-colors"
+          className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold px-8 py-4 rounded-xl hover:from-blue-400 hover:to-purple-400 transition-all duration-300 transform hover:scale-105"
         >
-          Continue to Quiz
+          ไปทำแบบทดสอบ
         </button>
       </div>
     </div>
@@ -200,48 +241,133 @@ const QuizComponent = ({
 
 // Results Component
 const ResultsComponent = ({ 
+  stageInfo,
   score, 
   totalQuestions,
   time, 
   onFinish 
 }: { 
+  stageInfo: StageData;
   score: number;
   totalQuestions: number;
   time: string; 
   onFinish: () => void;
 }) => {
+  // คำนวณดาวที่ได้รับ
+  const percentage = (score / totalQuestions) * 100;
+  const starsEarned = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
+  const isPassed = starsEarned > 0;
+  
+  // คำนวณคะแนนที่ได้รับ
+  const pointsEarned = Math.floor((percentage / 100) * stageInfo.rewards.points);
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
       <Navbar />
       <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <div className="text-center space-y-6">
-          <h1 className="text-4xl font-bold">
-            <span className="text-green-500">Good Job</span>{" "}
-            <span className="text-white">Guys</span>
-          </h1>
-          
-          <p className="text-white text-xl">
-            You understand astronomy more than Your own
-          </p>
-          
-          <div className="flex justify-center space-x-16 mt-12">
-            <div className="text-center">
-              <h3 className="text-orange-500 text-2xl font-bold mb-4">Time</h3>
-              <p className="text-white text-xl">{time}</p>
-            </div>
+        <div className="text-center space-y-8 max-w-4xl">
+          {/* Character Message */}
+          <div className="flex flex-col items-center space-y-4">
+            <div className="text-8xl">{stageInfo.character.avatar}</div>
+            <h1 className="text-4xl font-bold">
+              <span className={isPassed ? "text-green-400" : "text-orange-400"}>
+                {isPassed ? "ยอดเยี่ยม!" : "เกือบได้แล้ว!"}
+              </span>
+            </h1>
             
-            <div className="text-center">
-              <h3 className="text-orange-500 text-2xl font-bold mb-4">Score</h3>
-              <p className="text-white text-xl">{score}/{totalQuestions}</p>
+            <div className="bg-slate-800/50 rounded-xl p-6 backdrop-blur-sm">
+              <p className="text-white text-lg">
+                {isPassed ? stageInfo.character.completionMessage : "อย่าท้อใจ! ลองอีกครั้งคุณจะทำได้ดีกว่านี้แน่นอน"}
+              </p>
             </div>
           </div>
           
-          <button 
-            onClick={onFinish}
-            className="mt-12 bg-yellow-500 text-black font-semibold px-8 py-3 rounded-lg hover:bg-yellow-400 transition-colors"
-          >
-            Finish
-          </button>
+          {/* Results Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
+            {/* Score */}
+            <div className="bg-blue-900/30 rounded-xl p-6 text-center">
+              <h3 className="text-blue-300 text-lg font-bold mb-2">คะแนน</h3>
+              <p className="text-white text-3xl font-bold">{score}/{totalQuestions}</p>
+              <p className="text-gray-300 text-sm">{percentage.toFixed(0)}%</p>
+            </div>
+            
+            {/* Time */}
+            <div className="bg-purple-900/30 rounded-xl p-6 text-center">
+              <h3 className="text-purple-300 text-lg font-bold mb-2">เวลาที่ใช้</h3>
+              <p className="text-white text-3xl font-bold">{time}</p>
+            </div>
+            
+            {/* Stars */}
+            <div className="bg-yellow-900/30 rounded-xl p-6 text-center">
+              <h3 className="text-yellow-300 text-lg font-bold mb-2">ดาวที่ได้รับ</h3>
+              <div className="flex justify-center space-x-1 mb-2">
+                {[1, 2, 3].map((star) => (
+                  <div
+                    key={star}
+                    className={`text-2xl ${
+                      star <= starsEarned ? "text-yellow-400" : "text-gray-600"
+                    }`}
+                  >
+                    ⭐
+                  </div>
+                ))}
+              </div>
+              <p className="text-white text-lg">{starsEarned}/3</p>
+            </div>
+            
+            {/* Points */}
+            <div className="bg-green-900/30 rounded-xl p-6 text-center">
+              <h3 className="text-green-300 text-lg font-bold mb-2">คะแนนที่ได้</h3>
+              <p className="text-white text-3xl font-bold">+{pointsEarned}</p>
+            </div>
+          </div>
+          
+          {/* Rewards Section */}
+          {isPassed && (
+            <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-xl p-6 mt-8">
+              <h3 className="text-2xl font-bold text-white mb-4">🎉 รางวัลที่ได้รับ!</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-white">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">🏆</span>
+                  <span>คะแนน: +{pointsEarned}</span>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">⭐</span>
+                  <span>ดาว: +{starsEarned}</span>
+                </div>
+                {stageInfo.rewards.badges && stageInfo.rewards.badges.length > 0 && (
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">🏅</span>
+                    <span>เหรียญ: {stageInfo.rewards.badges.join(', ')}</span>
+                  </div>
+                )}
+                {stageInfo.rewards.unlocksStages && stageInfo.rewards.unlocksStages.length > 0 && (
+                  <div className="flex items-center space-x-3">
+                    <span className="text-2xl">🔓</span>
+                    <span>ปลดล็อกด่าน: {stageInfo.rewards.unlocksStages.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
+            {!isPassed && (
+              <button 
+                onClick={() => window.location.reload()}
+                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold px-8 py-3 rounded-xl hover:from-blue-400 hover:to-purple-400 transition-all duration-300"
+              >
+                ลองอีกครั้ง
+              </button>
+            )}
+            
+            <button 
+              onClick={onFinish}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold px-8 py-3 rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all duration-300"
+            >
+              กลับสู่แผนที่ด่าน
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -280,6 +406,10 @@ export default function StageLevelPage() {
 
   const handleQuizComplete = (finalScore: number) => {
     setScore(finalScore);
+    
+    // อัปเดตความคืบหน้าของผู้เล่น
+    updatePlayerProgress(level, finalScore, stageInfo.questions.length);
+    
     setCurrentStep(3);
   };
 
@@ -307,6 +437,7 @@ export default function StageLevelPage() {
     case 3:
       return (
         <ResultsComponent 
+          stageInfo={stageInfo}
           score={score} 
           totalQuestions={stageInfo.questions.length}
           time={getElapsedTime()} 
