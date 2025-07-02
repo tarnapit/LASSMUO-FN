@@ -106,7 +106,7 @@ export default function Navbar() {
                           className="text-yellow-400 hover:text-yellow-300 font-semibold"
                           onClick={() => setActiveDropdown(null)}
                         >
-                          ดูบทเรียนทั้งหมด →
+                          ดูเนื้อหาทั้งหมด →
                         </Link>
                       </div>
                       {item.dropdownItems?.map((dropdownItem) => (
@@ -191,7 +191,7 @@ export default function Navbar() {
                             setActiveDropdown(null);
                           }}
                         >
-                          ดูบทเรียนทั้งหมด →
+                          ดูเนื้อหาทั้งหมด →
                         </Link>
                         {item.dropdownItems?.map((dropdownItem) => (
                           <Link
