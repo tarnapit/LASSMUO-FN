@@ -188,13 +188,6 @@ export default function StagePage() {
                       ))}
                     </div>
                   )}
-
-                  {/* Stage Title on Hover */}
-                  <div className="absolute top-24 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                    <div className="bg-slate-800/90 backdrop-blur-sm text-white text-sm px-3 py-1 rounded-lg border border-slate-600 shadow-lg">
-                      {stage.title}
-                    </div>
-                  </div>
                 </div>
               </div>
             );
