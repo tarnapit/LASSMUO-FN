@@ -71,28 +71,6 @@ export default function StagePage() {
 
         {/* Stage Map - Duolingo Style */}
         <div className="relative max-w-4xl mx-auto px-4 sm:px-8" onClick={handleBackgroundClick}>
-          {/* Background Path */}
-          <svg 
-            className="absolute inset-0 w-full h-full pointer-events-none z-0"
-            viewBox="0 0 400 800"
-            style={{ height: `${stages.length * 180}px` }}
-          >
-            <path
-              d="M200 50 Q300 150 200 250 Q100 350 200 450 Q300 550 200 650 Q100 750 200 850"
-              stroke="url(#pathGradient)"
-              strokeWidth="6"
-              fill="none"
-              strokeDasharray="10,5"
-              className="animate-pulse"
-            />
-            <defs>
-              <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#10b981" />
-                <stop offset="50%" stopColor="#3b82f6" />
-                <stop offset="100%" stopColor="#6b7280" />
-              </linearGradient>
-            </defs>
-          </svg>
 
           {stages.map((stage, index) => {
             // Duolingo-style zigzag positioning
