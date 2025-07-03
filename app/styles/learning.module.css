@@ -1,0 +1,27 @@
+.progressBar {
+  transition: width 0.3s ease;
+  width: var(--progress-width);
+}
+
+.progressFill {
+  background: linear-gradient(90deg, #60a5fa, #3b82f6);
+}
+
+.moduleCard {
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.moduleCard:hover {
+  transform: scale(1.05);
+}
+
+.quizProgress {
+  width: var(--progress-width);
+}
+
+@media (max-width: 768px) {
+  .moduleCard:hover {
+    transform: none;
+  }
+}

@@ -1,13 +1,18 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { learningModules } from "../data/learning-modules";
+import { getQuizByModuleId } from "../data/quizzes";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
-import { BookOpen, Clock, Star, CheckCircle, PlayCircle, BarChart3 } from "lucide-react";
+import QuizCard from "../components/ui/QuizCard";
+import { BookOpen, Clock, Star, CheckCircle, PlayCircle, BarChart3, Brain } from "lucide-react";
+import styles from "../styles/learning.module.css";
 
 export default function LearningPage() {
   const [moduleProgresses, setModuleProgresses] = useState<Record<string, any>>({});
+  const [showQuizCard, setShowQuizCard] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // โหลด progress ของทุก module
@@ -96,87 +101,115 @@ export default function LearningPage() {
       <div className="container mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-white mb-4">{text.lesson}</h1>
-          <p className="text-gray-300 text-lg">เลือกบทเรียนที่คุณสนใจเพื่อเริ่มการเรียนรู้</p>
+          <p className="text-gray-300 text-lg mb-6">เลือกบทเรียนที่คุณสนใจเพื่อเริ่มการเรียนรู้</p>
+          
+          {/* Quick Actions */}
+          <div className="flex justify-center space-x-4 mb-8">
+            <Link 
+              href="/quiz"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
+            >
+              <Brain size={20} className="mr-2" />
+              ดูแบบทดสอบทั้งหมด
+            </Link>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          {learningModules.map((module) => (
-            <Link 
-              key={module.id} 
-              href={`/learning/${module.id}`}
-              className="group h-full"
-            >
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full flex flex-col min-h-[420px]">
-                <div className="flex items-center justify-between mb-4">
-                  {getModuleStatusIcon(module.id)}
-                  <div className="flex items-center space-x-2">
-                    {moduleProgresses[module.id]?.isStarted && (
-                      <BarChart3 className="text-blue-400" size={20} />
-                    )}
-                    <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
-                  </div>
-                </div>
-                
-                <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors">
-                  {module.title}
-                </h3>
-                
-                <div className="flex-grow mb-4 h-20 flex items-start">
-                  <p className="text-gray-300 leading-relaxed text-sm">
-                    {module.description.length > 120 
-                      ? module.description.substring(0, 120) + "..." 
-                      : module.description}
-                  </p>
-                </div>
-
-                {/* Progress Bar */}
-                {moduleProgresses[module.id]?.isStarted && (
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-400">ความคืบหน้า</span>
-                      <span className="text-blue-400">{moduleProgresses[module.id].completionPercentage}%</span>
+          {learningModules.map((module) => {
+            const quiz = getQuizByModuleId(module.id);
+            const progress = moduleProgresses[module.id];
+            const isCompleted = progress?.isCompleted;
+            
+            return (
+              <div key={module.id} className="group h-full">
+                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full flex flex-col min-h-[420px]">
+                  <div className="flex items-center justify-between mb-4">
+                    {getModuleStatusIcon(module.id)}
+                    <div className="flex items-center space-x-2">
+                      {moduleProgresses[module.id]?.isStarted && (
+                        <BarChart3 className="text-blue-400" size={20} />
+                      )}
+                      <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
                     </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
-                      <div 
-                        className={`bg-blue-400 h-2 rounded-full transition-all duration-300 absolute left-0 top-0`}
-                        style={{ width: `${Math.min(moduleProgresses[module.id].completionPercentage, 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm">
-                    <span className="text-gray-400 mr-2">{text.level}</span>
-                    <span className={`font-semibold ${getLevelColor(module.level)}`}>
-                      {getLevelText(module.level)}
-                    </span>
                   </div>
                   
-                  <div className="flex items-center text-sm">
-                    <Clock size={16} className="text-gray-400 mr-2" />
-                    <span className="text-gray-300">{module.estimatedTime}</span>
-                  </div>
-                </div>
-                
-                <div className="mt-auto pt-4 border-t border-white/10">
-                  <div className="flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-gray-400">
-                        {module.chapters.length} บท
-                      </span>
-                      <span className={`text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
-                        {getModuleStatusText(module.id)}
-                      </span>
+                  <Link 
+                    href={`/learning/${module.id}`}
+                    className="flex-1 flex flex-col"
+                  >
+                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors">
+                      {module.title}
+                    </h3>
+                    
+                    <div className="flex-grow mb-4 h-20 flex items-start">
+                      <p className="text-gray-300 leading-relaxed text-sm">
+                        {module.description.length > 120 
+                          ? module.description.substring(0, 120) + "..." 
+                          : module.description}
+                      </p>
                     </div>
-                    <div className="text-yellow-400 group-hover:translate-x-1 transition-transform">
-                      →
+
+                    {/* Progress Bar */}
+                    {moduleProgresses[module.id]?.isStarted && (
+                      <div className="mb-4">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-gray-400">ความคืบหน้า</span>
+                          <span className="text-blue-400">{moduleProgresses[module.id].completionPercentage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
+                          <div 
+                            className={`bg-blue-400 h-2 rounded-full transition-all duration-300 absolute left-0 top-0`}
+                            style={{width: `${Math.min(moduleProgresses[module.id].completionPercentage, 100)}%`}}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-2 mb-4">
+                      <div className="flex items-center text-sm">
+                        <span className="text-gray-400 mr-2">{text.level}</span>
+                        <span className={`font-semibold ${getLevelColor(module.level)}`}>
+                          {getLevelText(module.level)}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center text-sm">
+                        <Clock size={16} className="text-gray-400 mr-2" />
+                        <span className="text-gray-300">{module.estimatedTime}</span>
+                      </div>
                     </div>
-                  </div>
+                    
+                    <div className="mt-auto pt-4 border-t border-white/10">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-gray-400">
+                            {module.chapters.length} บท
+                          </span>
+                          <span className={`text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
+                            {getModuleStatusText(module.id)}
+                          </span>
+                        </div>
+                        <div className="text-yellow-400 group-hover:translate-x-1 transition-transform">
+                          →
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Quiz Section - Show when module is completed */}
+                  {isCompleted && quiz && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <QuizCard 
+                        quiz={quiz} 
+                        moduleTitle={module.title}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
-            </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
 

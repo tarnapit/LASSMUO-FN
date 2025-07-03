@@ -2,29 +2,39 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getLearningModuleById } from "../../data/learning-modules";
+import { getQuizByModuleId } from "../../data/quizzes";
 import { LearningModule, Chapter } from "../../types/learning";
 import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import ProgressBar from "../../components/ui/ProgressBar";
-import { ChevronLeft, ChevronRight, BookOpen, Clock, ArrowLeft, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Clock, ArrowLeft, CheckCircle, Brain, Trophy } from "lucide-react";
 import Link from "next/link";
 
 export default function LearningTopicPage() {
   const params = useParams();
   const router = useRouter();
   const [module, setModule] = useState<LearningModule | null>(null);
+  const [quiz, setQuiz] = useState<any>(null);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [currentContentIndex, setCurrentContentIndex] = useState(0);
   const [startTime, setStartTime] = useState<Date>(new Date());
   const [chapterProgress, setChapterProgress] = useState<Record<string, any>>({});
+  const [moduleCompleted, setModuleCompleted] = useState(false);
 
   useEffect(() => {
     if (params.topic) {
       const foundModule = getLearningModuleById(params.topic as string);
+      const foundQuiz = getQuizByModuleId(params.topic as string);
+      
       if (foundModule) {
         setModule(foundModule);
+        setQuiz(foundQuiz);
         // เริ่มการเรียน module
         progressManager.startLearningModule(params.topic as string);
+        
+        // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยัง
+        const moduleProgress = progressManager.getModuleProgress(params.topic as string);
+        setModuleCompleted(moduleProgress?.isCompleted || false);
         
         // โหลด progress ของแต่ละ chapter
         const progresses: Record<string, any> = {};
@@ -115,14 +125,13 @@ export default function LearningTopicPage() {
     if (!module) return;
     
     progressManager.completeModule(module.id);
-    
-    // แสดงข้อความยินดี หรือไปหน้าอื่น
-    alert(`ยินดีด้วย! คุณเรียนจบ ${module.title} แล้ว`);
-    router.push('/learning');
+    setModuleCompleted(true);
   };
 
   const goToExercise = () => {
-    router.push(`/quiz?topic=${module.id}`);
+    if (quiz) {
+      router.push(`/quiz/${quiz.id}`);
+    }
   };
 
   const renderContent = () => {
@@ -160,15 +169,35 @@ export default function LearningTopicPage() {
       
       case 'interactive':
         return (
-          <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg p-8 text-center">
-            <h3 className="text-2xl font-bold text-yellow-400 mb-4">แบบฝึกหัด</h3>
-            <p className="text-gray-200 mb-6">{currentContent.content}</p>
+          <div className="bg-gradient-to-br from-orange-500/30 to-red-500/20 rounded-xl p-8 text-center border-2 border-orange-500/40">
+            <h3 className="text-3xl font-bold text-orange-400 mb-4">แบบฝึกหัด</h3>
+            <p className="text-white text-lg mb-2">{currentContent.content}</p>
+            <p className="text-gray-300 text-sm mb-6">ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้</p>
+            
             <button 
               onClick={goToExercise}
-              className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-3 rounded-lg font-semibold hover:from-orange-400 hover:to-red-400 transition-all"
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
             >
+              <Brain size={24} className="mr-3" />
               ไปทำแบบฝึกหัด
             </button>
+            
+            {quiz && (
+              <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
+                <div className="flex items-center">
+                  <Brain size={16} className="mr-1 text-orange-400" />
+                  {quiz.questions.length} ข้อ
+                </div>
+                <div className="flex items-center">
+                  <Clock size={16} className="mr-1 text-orange-400" />
+                  {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
+                </div>
+                <div className="flex items-center">
+                  <Trophy size={16} className="mr-1 text-orange-400" />
+                  ผ่าน {quiz.passingScore}%
+                </div>
+              </div>
+            )}
           </div>
         );
       
@@ -248,47 +277,151 @@ export default function LearningTopicPage() {
 
         {/* Content */}
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/10">
-            {renderContent()}
-          </div>
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between items-center">
-            <button
-              onClick={prevContent}
-              disabled={isFirstChapter && isFirstContent}
-              className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
-                isFirstChapter && isFirstContent
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-700 text-white hover:bg-gray-600'
-              }`}
-            >
-              <ChevronLeft size={20} className="mr-2" />
-              ย้อนกลับ
-            </button>
-
-            <div className="text-center">
-              <div className="text-sm text-gray-400 mb-1">
-                บทที่ {currentChapterIndex + 1} จาก {module.chapters.length}
+          {moduleCompleted ? (
+            // Module Completed Screen
+            <div className="bg-gradient-to-br from-green-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-green-500/30 text-center">
+              <div className="mb-6">
+                <Trophy className="mx-auto text-yellow-400 mb-4" size={80} />
+                <h2 className="text-4xl font-bold text-white mb-4">ยินดีด้วย!</h2>
+                <p className="text-xl text-gray-300 mb-2">คุณเรียนจบ</p>
+                <h3 className="text-3xl font-bold text-yellow-400 mb-6">{module.title}</h3>
+                <p className="text-gray-300">แล้วเสร็จเรียบร้อย</p>
               </div>
-              <div className="text-lg font-semibold text-white">
-                {currentChapter.title}
+
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-white/10 rounded-lg p-6">
+                  <BookOpen className="mx-auto text-blue-400 mb-2" size={32} />
+                  <div className="text-2xl font-bold text-white">{module.chapters.length}</div>
+                  <div className="text-gray-400">บทเรียนที่เรียนจบ</div>
+                </div>
+                <div className="bg-white/10 rounded-lg p-6">
+                  <Clock className="mx-auto text-purple-400 mb-2" size={32} />
+                  <div className="text-2xl font-bold text-white">{module.estimatedTime}</div>
+                  <div className="text-gray-400">เวลาโดยประมาณ</div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {quiz ? (
+                  <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl p-8 border-2 border-orange-500/40">
+                    <div className="text-center mb-6">
+                      <h4 className="text-2xl font-bold text-orange-400 mb-2">แบบฝึกหัด</h4>
+                      <p className="text-white text-lg mb-1">แบบฝึกหัด: จับคู่ชื่อดาวเคราะห์กับลักษณะเฉพาะ</p>
+                      <p className="text-gray-300 text-sm">ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้</p>
+                    </div>
+                    
+                    <div className="text-center">
+                      <button
+                        onClick={goToExercise}
+                        className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-lg inline-flex items-center shadow-lg"
+                      >
+                        <Brain size={24} className="mr-3" />
+                        ไปทำแบบฝึกหัด
+                      </button>
+                    </div>
+                    
+                    <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
+                      <div className="flex items-center">
+                        <Brain size={16} className="mr-1 text-orange-400" />
+                        {quiz.questions.length} ข้อ
+                      </div>
+                      <div className="flex items-center">
+                        <Clock size={16} className="mr-1 text-orange-400" />
+                        {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
+                      </div>
+                      <div className="flex items-center">
+                        <Trophy size={16} className="mr-1 text-orange-400" />
+                        ผ่าน {quiz.passingScore}%
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-gray-500/20 rounded-lg p-6 border border-gray-500/30">
+                    <div className="text-center">
+                      <Brain className="mx-auto text-gray-400 mb-3" size={48} />
+                      <h4 className="text-lg font-semibold text-gray-400 mb-2">ยังไม่มีแบบทดสอบ</h4>
+                      <p className="text-gray-500">แบบทดสอบสำหรับบทเรียนนี้จะมาเร็วๆ นี้</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-center space-x-4">
+                  <Link 
+                    href="/learning" 
+                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                  >
+                    <ArrowLeft size={20} className="mr-2" />
+                    กลับไปหน้าบทเรียน
+                  </Link>
+                  <Link 
+                    href="/quiz" 
+                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                  >
+                    <Brain size={20} className="mr-2" />
+                    ดูแบบทดสอบทั้งหมด
+                  </Link>
+                </div>
               </div>
             </div>
+          ) : (
+            // Regular Learning Content
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/10">
+              {renderContent()}
+            </div>
+          )}
 
-            <button
-              onClick={nextContent}
-              disabled={isLastChapter && isLastContent}
-              className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
-                isLastChapter && isLastContent
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-400 hover:to-orange-400'
-              }`}
-            >
-              ถัดไป
-              <ChevronRight size={20} className="ml-2" />
-            </button>
-          </div>
+          {/* Navigation Buttons - Only show when not completed */}
+          {!moduleCompleted && (
+            <div className="flex justify-between items-center">
+              <button
+                onClick={prevContent}
+                disabled={isFirstChapter && isFirstContent}
+                className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                  isFirstChapter && isFirstContent
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-gray-700 text-white hover:bg-gray-600'
+                }`}
+              >
+                <ChevronLeft size={20} className="mr-2" />
+                ย้อนกลับ
+              </button>
+
+              <div className="text-center">
+                <div className="text-sm text-gray-400 mb-1">
+                  บทที่ {currentChapterIndex + 1} จาก {module.chapters.length}
+                </div>
+                <div className="text-lg font-semibold text-white">
+                  {currentChapter.title}
+                </div>
+              </div>
+
+              <button
+                onClick={nextContent}
+                disabled={isLastChapter && isLastContent}
+                className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                  isLastChapter && isLastContent
+                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-400 hover:to-orange-400'
+                }`}
+              >
+                ถัดไป
+                <ChevronRight size={20} className="ml-2" />
+              </button>
+            </div>
+          )}
+
+          {/* Quiz Navigation Button - แสดงเมื่อจบ module แล้ว */}
+          {isLastChapter && isLastContent && (
+            <div className="mt-8 text-center">
+              <Link 
+                href={`/quiz?topic=${module.id}`}
+                className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold bg-gradient-to-r from-green-500 to-teal-500 text-white hover:from-green-400 hover:to-teal-400 transition-all"
+              >
+                <Trophy size={20} className="mr-2" />
+                ไปทำแบบทดสอบ
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

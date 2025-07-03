@@ -115,6 +115,100 @@ export const learningModules: LearningModule[] = [
         ]
       }
     ]
+  },
+  {
+    id: 'stellar-evolution',
+    title: 'Stellar Evolution',
+    description: 'Journey of stars from birth to death, understanding the lifecycle of stellar objects',
+    level: 'Intermediate',
+    estimatedTime: '60 minutes',
+    chapters: [
+      {
+        id: 'chapter-1',
+        title: 'Star Formation',
+        estimatedTime: '20 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ดาวฤกษ์เกิดขึ้นจากการยุบตัวของเมฆก๊าซและฝุ่นในอวกาศ เมื่อความหนาแน่นและอุณหภูมิสูงขึ้นจนเกิดปฏิกิริยานิวเคลียร์ฟิวชัน'
+          },
+          {
+            type: 'image',
+            content: 'Stellar Nebula Formation',
+            imageUrl: '/images/star-formation.jpg'
+          }
+        ]
+      },
+      {
+        id: 'chapter-2',
+        title: 'Main Sequence Stars',
+        estimatedTime: '20 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ระยะ Main Sequence เป็นช่วงที่ดาวฤกษ์เผาไฮโดรเจนเป็นฮีเลียม ซึ่งเป็นช่วงที่ยาวนานที่สุดในชีวิตของดาวฤกษ์'
+          }
+        ]
+      },
+      {
+        id: 'chapter-3',
+        title: 'Stellar Death',
+        estimatedTime: '20 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ดาวฤกษ์ขนาดเล็กจะกลายเป็น White Dwarf ส่วนดาวฤกษ์ขนาดใหญ่จะระเบิดเป็น Supernova และอาจกลายเป็น Neutron Star หรือ Black Hole'
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'galaxies-universe',
+    title: 'Galaxies and Universe',
+    description: 'Explore the vast cosmos, from our Milky Way galaxy to the observable universe',
+    level: 'Advanced',
+    estimatedTime: '75 minutes',
+    chapters: [
+      {
+        id: 'chapter-1',
+        title: 'Types of Galaxies',
+        estimatedTime: '25 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'กาแล็กซีแบ่งออกเป็น 3 ประเภทหลัก คือ กาแล็กซีเกลียว (Spiral) กาแล็กซีรีรูป (Elliptical) และกาแล็กซีไม่ปกติ (Irregular)'
+          },
+          {
+            type: 'image',
+            content: 'Galaxy Types',
+            imageUrl: '/images/galaxy-types.jpg'
+          }
+        ]
+      },
+      {
+        id: 'chapter-2',
+        title: 'The Milky Way',
+        estimatedTime: '25 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ทางช้างเผือกเป็นกาแล็กซีเกลียวที่เรามีขนาดใหญ่ มีดาวฤกษ์ประมาณ 200-400 พันล้านดวง และมีเส้นผ่านศูนย์กลางประมาณ 100,000 ปีแสง'
+          }
+        ]
+      },
+      {
+        id: 'chapter-3',
+        title: 'Cosmology and Big Bang',
+        estimatedTime: '25 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'จักรวาลเกิดขึ้นจากเหตุการณ์ Big Bang เมื่อประมาณ 13.8 พันล้านปีที่แล้ว และกำลังขยายตัวอย่างต่อเนื่อง'
+          }
+        ]
+      }
+    ]
   }
 ];
 
