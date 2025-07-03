@@ -28,4 +28,16 @@ export interface LearningProgress {
   completed: boolean;
   score?: number;
   completedAt?: Date;
+  timeSpent?: number; // เวลาที่ใช้เรียน (นาที)
+  readProgress?: number; // เปอร์เซ็นต์ที่อ่านแล้ว (0-100)
+}
+
+export interface ModuleProgress {
+  moduleId: string;
+  isStarted: boolean;
+  isCompleted: boolean;
+  completedChapters: string[];
+  totalTimeSpent: number; // เวลารวมที่ใช้เรียน (นาที)
+  completedAt?: Date;
+  chapters: Record<string, LearningProgress>;
 }

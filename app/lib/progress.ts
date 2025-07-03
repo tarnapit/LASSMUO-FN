@@ -1,4 +1,5 @@
 import { PlayerProgress, StageProgress } from '../types/stage';
+import { ModuleProgress, LearningProgress } from '../types/learning';
 import { authManager } from './auth';
 
 class ProgressManager {
@@ -112,6 +113,11 @@ class ProgressManager {
           bestScore: 0,
           attempts: 0
         }
+      },
+      learningProgress: {
+        completedModules: [],
+        totalLearningTime: 0,
+        modules: {}
       }
     };
   }
@@ -268,7 +274,8 @@ class ProgressManager {
     const tempProgress = this.getTempProgress();
     
     // ถ้ามี progress ชั่วคราวที่ดีกว่า ให้ migrate
-    if (tempProgress.totalStars > 0 || tempProgress.completedStages.length > 0) {
+    if (tempProgress.totalStars > 0 || tempProgress.completedStages.length > 0 || 
+        (tempProgress.learningProgress && tempProgress.learningProgress.totalLearningTime > 0)) {
       const userProgress = this.getUserProgress();
       
       // เลือกค่าที่ดีกว่าจาก temp และ user progress
@@ -277,8 +284,24 @@ class ProgressManager {
         totalPoints: Math.max(tempProgress.totalPoints, userProgress.totalPoints),
         completedStages: [...new Set([...tempProgress.completedStages, ...userProgress.completedStages])],
         currentStage: Math.max(tempProgress.currentStage, userProgress.currentStage),
-        stages: { ...userProgress.stages }
+        stages: { ...userProgress.stages },
+        learningProgress: {
+          completedModules: [
+            ...(userProgress.learningProgress?.completedModules || []),
+            ...(tempProgress.learningProgress?.completedModules || [])
+          ],
+          totalLearningTime: (userProgress.learningProgress?.totalLearningTime || 0) + 
+                           (tempProgress.learningProgress?.totalLearningTime || 0),
+          modules: {
+            ...(userProgress.learningProgress?.modules || {}),
+            ...(tempProgress.learningProgress?.modules || {})
+          }
+        }
       };
+
+      // Remove duplicates from completedModules
+      mergedProgress.learningProgress!.completedModules = 
+        [...new Set(mergedProgress.learningProgress!.completedModules)];
 
       // Merge stages โดยเลือกค่าที่ดีกว่า
       Object.keys(tempProgress.stages).forEach(stageId => {
@@ -302,9 +325,194 @@ class ProgressManager {
         }
       });
 
+      // Merge learning modules โดยเลือกค่าที่ดีกว่า
+      if (tempProgress.learningProgress) {
+        Object.keys(tempProgress.learningProgress.modules).forEach(moduleId => {
+          const tempModule = tempProgress.learningProgress!.modules[moduleId];
+          const userModule = mergedProgress.learningProgress!.modules[moduleId];
+
+          if (!userModule) {
+            mergedProgress.learningProgress!.modules[moduleId] = tempModule;
+          } else {
+            // Merge module progress
+            mergedProgress.learningProgress!.modules[moduleId] = {
+              moduleId,
+              isStarted: tempModule.isStarted || userModule.isStarted,
+              isCompleted: tempModule.isCompleted || userModule.isCompleted,
+              completedChapters: [...new Set([...tempModule.completedChapters, ...userModule.completedChapters])],
+              totalTimeSpent: tempModule.totalTimeSpent + userModule.totalTimeSpent,
+              completedAt: tempModule.completedAt && userModule.completedAt
+                ? new Date(Math.max(tempModule.completedAt.getTime(), userModule.completedAt.getTime()))
+                : tempModule.completedAt || userModule.completedAt,
+              chapters: { ...userModule.chapters, ...tempModule.chapters }
+            };
+          }
+        });
+      }
+
       this.saveUserProgress(mergedProgress);
       this.clearTempProgress();
     }
+  }
+
+  // เริ่มการเรียน module ใหม่
+  startLearningModule(moduleId: string): void {
+    const progress = this.getProgress();
+    
+    if (!progress.learningProgress) {
+      progress.learningProgress = {
+        completedModules: [],
+        totalLearningTime: 0,
+        modules: {}
+      };
+    }
+
+    if (!progress.learningProgress.modules[moduleId]) {
+      progress.learningProgress.modules[moduleId] = {
+        moduleId,
+        isStarted: true,
+        isCompleted: false,
+        completedChapters: [],
+        totalTimeSpent: 0,
+        chapters: {}
+      };
+    } else {
+      progress.learningProgress.modules[moduleId].isStarted = true;
+    }
+
+    this.saveProgress(progress);
+  }
+
+  // อัพเดต progress ของ chapter
+  updateChapterProgress(
+    moduleId: string, 
+    chapterId: string, 
+    readProgress: number = 100,
+    timeSpent: number = 0,
+    isCompleted: boolean = true
+  ): PlayerProgress {
+    const progress = this.getProgress();
+    
+    if (!progress.learningProgress) {
+      progress.learningProgress = {
+        completedModules: [],
+        totalLearningTime: 0,
+        modules: {}
+      };
+    }
+
+    if (!progress.learningProgress.modules[moduleId]) {
+      this.startLearningModule(moduleId);
+    }
+
+    const moduleProgress = progress.learningProgress.modules[moduleId];
+    
+    // อัพเดต chapter progress
+    const existingProgress = moduleProgress.chapters[chapterId];
+    const chapterProgress: LearningProgress = {
+      moduleId,
+      chapterId,
+      completed: isCompleted,
+      readProgress,
+      timeSpent: existingProgress ? existingProgress.timeSpent! + timeSpent : timeSpent,
+      completedAt: isCompleted ? new Date() : existingProgress?.completedAt
+    };
+
+    moduleProgress.chapters[chapterId] = chapterProgress;
+
+    // อัพเดต module progress
+    if (isCompleted && !moduleProgress.completedChapters.includes(chapterId)) {
+      moduleProgress.completedChapters.push(chapterId);
+    }
+
+    moduleProgress.totalTimeSpent += timeSpent;
+    
+    // อัพเดต total learning time
+    progress.learningProgress.totalLearningTime += timeSpent;
+
+    this.saveProgress(progress);
+    return progress;
+  }
+
+  // จบการเรียน module
+  completeModule(moduleId: string): PlayerProgress {
+    const progress = this.getProgress();
+    
+    if (!progress.learningProgress) {
+      progress.learningProgress = {
+        completedModules: [],
+        totalLearningTime: 0,
+        modules: {}
+      };
+    }
+
+    if (progress.learningProgress.modules[moduleId]) {
+      progress.learningProgress.modules[moduleId].isCompleted = true;
+      progress.learningProgress.modules[moduleId].completedAt = new Date();
+
+      // เพิ่มใน completed modules ถ้ายังไม่มี
+      if (!progress.learningProgress.completedModules.includes(moduleId)) {
+        progress.learningProgress.completedModules.push(moduleId);
+      }
+    }
+
+    this.saveProgress(progress);
+    return progress;
+  }
+
+  // ดึงข้อมูล learning progress ของ module
+  getModuleProgress(moduleId: string): ModuleProgress | null {
+    const progress = this.getProgress();
+    return progress.learningProgress?.modules[moduleId] || null;
+  }
+
+  // ดึงข้อมูล chapter progress
+  getChapterProgress(moduleId: string, chapterId: string): LearningProgress | null {
+    const moduleProgress = this.getModuleProgress(moduleId);
+    return moduleProgress?.chapters[chapterId] || null;
+  }
+
+  // คำนวณเปอร์เซ็นต์ความคืบหน้าของ module
+  getModuleCompletionPercentage(moduleId: string, totalChapters: number): number {
+    const moduleProgress = this.getModuleProgress(moduleId);
+    if (!moduleProgress) return 0;
+
+    const completedChapters = moduleProgress.completedChapters.length;
+    return Math.round((completedChapters / totalChapters) * 100);
+  }
+
+  // ดึงสถิติการเรียนรู้รวม
+  getLearningStats() {
+    const progress = this.getProgress();
+    
+    if (!progress.learningProgress) {
+      return {
+        totalModulesStarted: 0,
+        totalModulesCompleted: 0,
+        totalLearningTime: 0,
+        averageModuleProgress: 0
+      };
+    }
+
+    const modules = Object.values(progress.learningProgress.modules);
+    const startedModules = modules.filter(m => m.isStarted);
+    const completedModules = modules.filter(m => m.isCompleted);
+    
+    const averageProgress = modules.length > 0
+      ? modules.reduce((sum, module) => {
+          // สมมุติว่า module มี 3 chapters โดยเฉลี่ย
+          const totalChapters = 3;
+          const completion = (module.completedChapters.length / totalChapters) * 100;
+          return sum + completion;
+        }, 0) / modules.length
+      : 0;
+
+    return {
+      totalModulesStarted: startedModules.length,
+      totalModulesCompleted: completedModules.length,
+      totalLearningTime: progress.learningProgress.totalLearningTime,
+      averageModuleProgress: Math.round(averageProgress)
+    };
   }
 }
 

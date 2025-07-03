@@ -3,9 +3,10 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getLearningModuleById } from "../../data/learning-modules";
 import { LearningModule, Chapter } from "../../types/learning";
+import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import ProgressBar from "../../components/ui/ProgressBar";
-import { ChevronLeft, ChevronRight, BookOpen, Clock, ArrowLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, BookOpen, Clock, ArrowLeft, CheckCircle } from "lucide-react";
 import Link from "next/link";
 
 export default function LearningTopicPage() {
@@ -14,17 +15,34 @@ export default function LearningTopicPage() {
   const [module, setModule] = useState<LearningModule | null>(null);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [currentContentIndex, setCurrentContentIndex] = useState(0);
+  const [startTime, setStartTime] = useState<Date>(new Date());
+  const [chapterProgress, setChapterProgress] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (params.topic) {
       const foundModule = getLearningModuleById(params.topic as string);
       if (foundModule) {
         setModule(foundModule);
+        // เริ่มการเรียน module
+        progressManager.startLearningModule(params.topic as string);
+        
+        // โหลด progress ของแต่ละ chapter
+        const progresses: Record<string, any> = {};
+        foundModule.chapters.forEach(chapter => {
+          const chapterProg = progressManager.getChapterProgress(params.topic as string, chapter.id);
+          progresses[chapter.id] = chapterProg;
+        });
+        setChapterProgress(progresses);
       } else {
         router.push('/learning');
       }
     }
   }, [params.topic, router]);
+
+  // บันทึกเวลาเมื่อเปลี่ยน chapter
+  useEffect(() => {
+    setStartTime(new Date());
+  }, [currentChapterIndex]);
 
   if (!module) {
     return (
@@ -45,8 +63,14 @@ export default function LearningTopicPage() {
     if (!isLastContent) {
       setCurrentContentIndex(prev => prev + 1);
     } else if (!isLastChapter) {
+      // บันทึก progress ของ chapter ปัจจุบันเมื่อจบ chapter
+      completeCurrentChapter();
       setCurrentChapterIndex(prev => prev + 1);
       setCurrentContentIndex(0);
+    } else {
+      // จบ module แล้ว
+      completeCurrentChapter();
+      completeModule();
     }
   };
 
@@ -55,8 +79,46 @@ export default function LearningTopicPage() {
       setCurrentContentIndex(prev => prev - 1);
     } else if (!isFirstChapter) {
       setCurrentChapterIndex(prev => prev - 1);
-      setCurrentContentIndex(module.chapters[currentChapterIndex - 1].content.length - 1);
+      setCurrentContentIndex(module!.chapters[currentChapterIndex - 1].content.length - 1);
     }
+  };
+
+  // บันทึก progress ของ chapter ปัจจุบัน
+  const completeCurrentChapter = () => {
+    if (!module) return;
+    
+    const timeSpent = Math.round((new Date().getTime() - startTime.getTime()) / (1000 * 60)); // นาที
+    const currentChapter = module.chapters[currentChapterIndex];
+    
+    progressManager.updateChapterProgress(
+      module.id,
+      currentChapter.id,
+      100, // อ่านครบ 100%
+      timeSpent,
+      true // เสร็จแล้ว
+    );
+
+    // อัพเดต state
+    setChapterProgress(prev => ({
+      ...prev,
+      [currentChapter.id]: {
+        ...prev[currentChapter.id],
+        completed: true,
+        readProgress: 100,
+        timeSpent: (prev[currentChapter.id]?.timeSpent || 0) + timeSpent
+      }
+    }));
+  };
+
+  // จบการเรียน module
+  const completeModule = () => {
+    if (!module) return;
+    
+    progressManager.completeModule(module.id);
+    
+    // แสดงข้อความยินดี หรือไปหน้าอื่น
+    alert(`ยินดีด้วย! คุณเรียนจบ ${module.title} แล้ว`);
+    router.push('/learning');
   };
 
   const goToExercise = () => {
@@ -157,24 +219,30 @@ export default function LearningTopicPage() {
         {/* Chapter Navigation */}
         <div className="mb-8">
           <div className="flex space-x-2 overflow-x-auto pb-2">
-            {module.chapters.map((chapter, index) => (
-              <button
-                key={chapter.id}
-                onClick={() => {
-                  setCurrentChapterIndex(index);
-                  setCurrentContentIndex(0);
-                }}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all ${
-                  index === currentChapterIndex
-                    ? 'bg-yellow-500 text-black font-semibold'
-                    : index < currentChapterIndex
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                บทที่ {index + 1}
-              </button>
-            ))}
+            {module.chapters.map((chapter, index) => {
+              const isCompleted = chapterProgress[chapter.id]?.completed || false;
+              const isCurrent = index === currentChapterIndex;
+              
+              return (
+                <button
+                  key={chapter.id}
+                  onClick={() => {
+                    setCurrentChapterIndex(index);
+                    setCurrentContentIndex(0);
+                  }}
+                  className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all flex items-center space-x-2 ${
+                    isCurrent
+                      ? 'bg-yellow-500 text-black'
+                      : isCompleted
+                      ? 'bg-green-500/20 text-green-400 border border-green-500'
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                  }`}
+                >
+                  {isCompleted && <CheckCircle size={16} />}
+                  <span>บทที่ {index + 1}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

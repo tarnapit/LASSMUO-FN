@@ -1,10 +1,28 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { learningModules } from "../data/learning-modules";
+import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
-import { BookOpen, Clock, Star } from "lucide-react";
+import { BookOpen, Clock, Star, CheckCircle, PlayCircle, BarChart3 } from "lucide-react";
 
 export default function LearningPage() {
+  const [moduleProgresses, setModuleProgresses] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    // โหลด progress ของทุก module
+    const progresses: Record<string, any> = {};
+    learningModules.forEach(module => {
+      const moduleProgress = progressManager.getModuleProgress(module.id);
+      const completionPercentage = progressManager.getModuleCompletionPercentage(module.id, module.chapters.length);
+      progresses[module.id] = {
+        ...moduleProgress,
+        completionPercentage
+      };
+    });
+    setModuleProgresses(progresses);
+  }, []);
+
   const text = {
     lesson: "บทเรียน",
     level: "ระดับ:",
@@ -12,6 +30,45 @@ export default function LearningPage() {
     fundamental: "พื้นฐาน",
     intermediate: "ปานกลาง",
     advanced: "ขั้นสูง"
+  };
+
+  const getModuleStatusIcon = (moduleId: string) => {
+    const progress = moduleProgresses[moduleId];
+    if (!progress) return <BookOpen className="text-yellow-400" size={32} />;
+    
+    if (progress.isCompleted) {
+      return <CheckCircle className="text-green-400" size={32} />;
+    } else if (progress.isStarted) {
+      return <PlayCircle className="text-blue-400" size={32} />;
+    } else {
+      return <BookOpen className="text-yellow-400" size={32} />;
+    }
+  };
+
+  const getModuleStatusText = (moduleId: string) => {
+    const progress = moduleProgresses[moduleId];
+    if (!progress) return "เริ่มเรียน";
+    
+    if (progress.isCompleted) {
+      return "เรียนจบแล้ว";
+    } else if (progress.isStarted) {
+      return `กำลังเรียน (${progress.completionPercentage}%)`;
+    } else {
+      return "เริ่มเรียน";
+    }
+  };
+
+  const getModuleStatusColor = (moduleId: string) => {
+    const progress = moduleProgresses[moduleId];
+    if (!progress) return "text-yellow-400";
+    
+    if (progress.isCompleted) {
+      return "text-green-400";
+    } else if (progress.isStarted) {
+      return "text-blue-400";
+    } else {
+      return "text-yellow-400";
+    }
   };
 
   const getLevelColor = (level: string) => {
@@ -51,17 +108,38 @@ export default function LearningPage() {
             >
               <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full">
                 <div className="flex items-center justify-between mb-4">
-                  <BookOpen className="text-yellow-400" size={32} />
-                  <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
+                  {getModuleStatusIcon(module.id)}
+                  <div className="flex items-center space-x-2">
+                    {moduleProgresses[module.id]?.isStarted && (
+                      <BarChart3 className="text-blue-400" size={20} />
+                    )}
+                    <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
+                  </div>
                 </div>
                 
                 <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors">
                   {module.title}
                 </h3>
                 
-                <p className="text-gray-300 mb-6 leading-relaxed">
+                <p className="text-gray-300 mb-4 leading-relaxed">
                   {module.description}
                 </p>
+
+                {/* Progress Bar */}
+                {moduleProgresses[module.id]?.isStarted && (
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-400">ความคืบหน้า</span>
+                      <span className="text-blue-400">{moduleProgresses[module.id].completionPercentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div 
+                        className="bg-blue-400 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${moduleProgresses[module.id].completionPercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
                 
                 <div className="space-y-2">
                   <div className="flex items-center text-sm">
@@ -79,9 +157,14 @@ export default function LearningPage() {
                 
                 <div className="mt-6 pt-4 border-t border-white/10">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">
-                      {module.chapters.length} บท
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-sm text-gray-400">
+                        {module.chapters.length} บท
+                      </span>
+                      <span className={`text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
+                        {getModuleStatusText(module.id)}
+                      </span>
+                    </div>
                     <div className="text-yellow-400 group-hover:translate-x-1 transition-transform">
                       →
                     </div>

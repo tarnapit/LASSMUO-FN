@@ -1,3 +1,5 @@
+import { ModuleProgress } from './learning';
+
 export interface Question {
   id: number;
   question: string;
@@ -55,4 +57,10 @@ export interface PlayerProgress {
   completedStages: number[];
   currentStage: number;
   stages: Record<number, StageProgress>;
+  // เพิ่ม learning progress
+  learningProgress?: {
+    completedModules: string[];
+    totalLearningTime: number; // เวลารวมที่ใช้เรียน (นาที)
+    modules: Record<string, ModuleProgress>;
+  };
 }
