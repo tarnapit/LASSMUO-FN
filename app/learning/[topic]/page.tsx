@@ -128,12 +128,6 @@ export default function LearningTopicPage() {
     setModuleCompleted(true);
   };
 
-  const goToExercise = () => {
-    if (quiz) {
-      router.push(`/quiz/${quiz.id}`);
-    }
-  };
-
   const renderContent = () => {
     if (!currentContent) return null;
 
@@ -174,13 +168,19 @@ export default function LearningTopicPage() {
             <p className="text-white text-lg mb-2">{currentContent.content}</p>
             <p className="text-gray-300 text-sm mb-6">ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้</p>
             
-            <button 
-              onClick={goToExercise}
-              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
-            >
-              <Brain size={24} className="mr-3" />
-              ไปทำแบบฝึกหัด
-            </button>
+            {quiz ? (
+              <Link 
+                href={`/quiz/${quiz.id}`}
+                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
+              >
+                <Brain size={24} className="mr-3" />
+                ไปทำแบบทดสอบ
+              </Link>
+            ) : (
+              <div className="text-gray-400 py-4">
+                <p>ยังไม่มีแบบทดสอบสำหรับบทเรียนนี้</p>
+              </div>
+            )}
             
             {quiz && (
               <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
@@ -311,13 +311,19 @@ export default function LearningTopicPage() {
                     </div>
                     
                     <div className="text-center">
-                      <button
-                        onClick={goToExercise}
-                        className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-lg inline-flex items-center shadow-lg"
-                      >
-                        <Brain size={24} className="mr-3" />
-                        ไปทำแบบฝึกหัด
-                      </button>
+                      {quiz ? (
+                        <Link 
+                          href={`/quiz/${quiz.id}`}
+                          className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-lg inline-flex items-center shadow-lg"
+                        >
+                          <Brain size={24} className="mr-3" />
+                          ไปทำแบบทดสอบ
+                        </Link>
+                      ) : (
+                        <div className="text-gray-400 py-4">
+                          <p>ยังไม่มีแบบทดสอบสำหรับบทเรียนนี้</p>
+                        </div>
+                      )}
                     </div>
                     
                     <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
@@ -411,10 +417,10 @@ export default function LearningTopicPage() {
           )}
 
           {/* Quiz Navigation Button - แสดงเมื่อจบ module แล้ว */}
-          {isLastChapter && isLastContent && (
+          {isLastChapter && isLastContent && quiz && (
             <div className="mt-8 text-center">
               <Link 
-                href={`/quiz?topic=${module.id}`}
+                href={`/quiz/${quiz.id}`}
                 className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold bg-gradient-to-r from-green-500 to-teal-500 text-white hover:from-green-400 hover:to-teal-400 transition-all"
               >
                 <Trophy size={20} className="mr-2" />

@@ -74,7 +74,7 @@ export const learningModules: LearningModule[] = [
     title: 'Earth Structure',
     description: 'In our planet that call "Earth" have structure that we going to find out',
     level: 'Fundamental',
-    estimatedTime: '40 minutes',
+    estimatedTime: '50 minutes',
     chapters: [
       {
         id: 'chapter-1',
@@ -113,6 +113,21 @@ export const learningModules: LearningModule[] = [
             content: 'สนามแม่เหล็กโลกเกิดจากการเคลื่อนไหวของเหล็กเหลวในแกนกลางชั้นนอก ทำหน้าที่ปกป้องโลกจากรังสีอันตรายจากอวกาศ'
           }
         ]
+      },
+      {
+        id: 'chapter-4',
+        title: 'Exercise and Review',
+        estimatedTime: '10 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ตอนนี้คุณได้เรียนรู้เกี่ยวกับโครงสร้างโลกแล้ว ลองทำแบบฝึกหัดเพื่อทบทวนความรู้กัน'
+          },
+          {
+            type: 'interactive',
+            content: 'แบบฝึกหัด: ทดสอบความรู้เกี่ยวกับชั้นโลกและสนามแม่เหล็ก'
+          }
+        ]
       }
     ]
   },
@@ -121,7 +136,7 @@ export const learningModules: LearningModule[] = [
     title: 'Stellar Evolution',
     description: 'Journey of stars from birth to death, understanding the lifecycle of stellar objects',
     level: 'Intermediate',
-    estimatedTime: '60 minutes',
+    estimatedTime: '70 minutes',
     chapters: [
       {
         id: 'chapter-1',
@@ -160,6 +175,21 @@ export const learningModules: LearningModule[] = [
             content: 'ดาวฤกษ์ขนาดเล็กจะกลายเป็น White Dwarf ส่วนดาวฤกษ์ขนาดใหญ่จะระเบิดเป็น Supernova และอาจกลายเป็น Neutron Star หรือ Black Hole'
           }
         ]
+      },
+      {
+        id: 'chapter-4',
+        title: 'Exercise and Review',
+        estimatedTime: '10 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ตอนนี้คุณได้เรียนรู้เกี่ยวกับวิวัฒนาการของดาวฤกษ์แล้ว ลองทำแบบฝึกหัดเพื่อทบทวนความรู้กัน'
+          },
+          {
+            type: 'interactive',
+            content: 'แบบฝึกหัด: ทดสอบความรู้เกี่ยวกับการเกิดและการตายของดาวฤกษ์'
+          }
+        ]
       }
     ]
   },
@@ -168,7 +198,7 @@ export const learningModules: LearningModule[] = [
     title: 'Galaxies and Universe',
     description: 'Explore the vast cosmos, from our Milky Way galaxy to the observable universe',
     level: 'Advanced',
-    estimatedTime: '75 minutes',
+    estimatedTime: '85 minutes',
     chapters: [
       {
         id: 'chapter-1',
@@ -205,6 +235,21 @@ export const learningModules: LearningModule[] = [
           {
             type: 'text',
             content: 'จักรวาลเกิดขึ้นจากเหตุการณ์ Big Bang เมื่อประมาณ 13.8 พันล้านปีที่แล้ว และกำลังขยายตัวอย่างต่อเนื่อง'
+          }
+        ]
+      },
+      {
+        id: 'chapter-4',
+        title: 'Exercise and Review',
+        estimatedTime: '10 minutes',
+        content: [
+          {
+            type: 'text',
+            content: 'ตอนนี้คุณได้เรียนรู้เกี่ยวกับกาแล็กซีและจักรวาลแล้ว ลองทำแบบฝึกหัดเพื่อทบทวนความรู้กัน'
+          },
+          {
+            type: 'interactive',
+            content: 'แบบฝึกหัด: ทดสอบความรู้เกี่ยวกับประเภทกาแล็กซีและทฤษฎี Big Bang'
           }
         ]
       }
