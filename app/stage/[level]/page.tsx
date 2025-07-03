@@ -464,11 +464,28 @@ export default function StageLevelPage() {
     
     // คำนวณจำนวนดาว (1-3 ดาว ตามคะแนน)
     const totalQuestions = stageInfo.questions.length;
-    const percentage = (finalScore / (totalQuestions * 10)) * 100; // คะแนนเต็มคือ 10 คะแนนต่อข้อ
-    const stars = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
     
-    // อัปเดตความคืบหน้าของผู้เล่น
-    progressManager.completeStage(level, stars, finalScore);
+    // finalScore คือจำนวนข้อที่ตอบถูก ไม่ใช่คะแนนรวม
+    const correctAnswers = finalScore;
+    const percentage = (correctAnswers / totalQuestions) * 100;
+    
+    // เกณฑ์ดาว: ตอบถูกทุกข้อ = 3 ดาว, ตอบถูก 80% = 2 ดาว, ตอบถูก 50% = 1 ดาว
+    const stars = percentage >= 100 ? 3 : percentage >= 80 ? 2 : percentage >= 50 ? 1 : 0;
+    
+    // คำนวณคะแนน (10 คะแนนต่อข้อที่ตอบถูก)
+    const totalScore = correctAnswers * 10;
+    
+    // Debug log เพื่อตรวจสอบ
+    console.log('Quiz completed:', {
+      correctAnswers,
+      totalQuestions,
+      percentage: percentage.toFixed(2) + '%',
+      stars,
+      totalScore
+    });
+    
+    // อัปเดตความคืบหน้าของผู้เล่น (ส่งคะแนนรวม ไม่ใช่จำนวนข้อถูก)
+    progressManager.completeStage(level, stars, totalScore);
     
     setCurrentStep(3);
   };

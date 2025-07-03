@@ -133,13 +133,19 @@ class ProgressManager {
     }
 
     const stageProgress = progress.stages[stageId];
+    const previousBestScore = stageProgress.bestScore; // เก็บคะแนนเก่าก่อนอัพเดท
+    const previousStars = stageProgress.stars; // เก็บจำนวนดาวเก่า
+    
     stageProgress.attempts++;
     stageProgress.lastAttempt = new Date();
+    
+    // อัพเดทคะแนนดีที่สุด
     stageProgress.bestScore = Math.max(stageProgress.bestScore, score);
-
+    
     // ตรวจสอบว่าผ่านด่านหรือไม่ (ต้องได้อย่างน้อย 1 คะแนน)
     if (score > 0) {
       stageProgress.isCompleted = true;
+      // อัพเดทจำนวนดาว (เลือกจำนวนที่มากกว่า)
       stageProgress.stars = Math.max(stageProgress.stars, stars);
 
       // เพิ่มในรายการ completed stages ถ้าไม่มีและเป็นครั้งแรกที่ผ่าน
@@ -148,9 +154,8 @@ class ProgressManager {
       }
 
       // อัพเดท total points (เฉพาะเมื่อได้คะแนนดีกว่าเดิม)
-      const previousBestScore = stageProgress.bestScore - score; // คะแนนเก่าก่อนที่จะอัพเดท
       if (score > previousBestScore) {
-        const scoreDifference = score - Math.max(0, previousBestScore);
+        const scoreDifference = score - previousBestScore;
         progress.totalPoints += scoreDifference;
       }
 
@@ -172,7 +177,7 @@ class ProgressManager {
       }
     }
 
-    // อัพเดท total stars
+    // อัพเดท total stars โดยนับจากทุก stage
     progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + stage.stars, 0);
 
     // บันทึก progress
@@ -183,9 +188,15 @@ class ProgressManager {
       stageId,
       stars,
       score,
-      stageProgress: progress.stages[stageId],
+      previousStars,
+      newStars: stageProgress.stars,
+      previousBestScore,
+      newBestScore: stageProgress.bestScore,
       totalStars: progress.totalStars,
-      totalPoints: progress.totalPoints
+      totalPoints: progress.totalPoints,
+      allStages: Object.fromEntries(
+        Object.entries(progress.stages).map(([id, stage]) => [id, { stars: stage.stars, isCompleted: stage.isCompleted }])
+      )
     });
     
     return progress;
@@ -209,6 +220,39 @@ class ProgressManager {
     }
 
     this.saveProgress(progress);
+  }
+
+  // แก้ไขข้อมูล progress ที่มีปัญหา (สำหรับแก้ bug)
+  fixProgressData(): PlayerProgress {
+    const progress = this.getProgress();
+    
+    // ตรวจสอบและแก้ไขแต่ละ stage ที่ completed แต่ไม่มีดาว
+    Object.values(progress.stages).forEach(stage => {
+      if (stage.isCompleted && stage.stars === 0 && stage.bestScore > 0) {
+        // คำนวณดาวใหม่จากคะแนน
+        // bestScore คือคะแนนรวม เช่น 30 คะแนน (3 ข้อ x 10 คะแนน)
+        const maxScore = 30; // 3 ข้อ x 10 คะแนน
+        const correctAnswers = stage.bestScore / 10; // หาจำนวนข้อที่ตอบถูก
+        const totalQuestions = 3;
+        const percentage = (correctAnswers / totalQuestions) * 100;
+        
+        // ใช้เกณฑ์ใหม่: ตอบถูกทุกข้อ = 3 ดาว
+        const calculatedStars = percentage >= 100 ? 3 : percentage >= 80 ? 2 : percentage >= 50 ? 1 : 0;
+        
+        // ถ้าผ่านด่านแล้ว (isCompleted = true) ให้ได้อย่างน้อย 1 ดาว
+        stage.stars = Math.max(calculatedStars, 1);
+        
+        console.log(`Fixed stage ${stage.stageId}: bestScore=${stage.bestScore}, correctAnswers=${correctAnswers}, percentage=${percentage.toFixed(2)}%, calculated stars=${calculatedStars}, final stars=${stage.stars}`);
+      }
+    });
+    
+    // คำนวณ totalStars ใหม่
+    progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + stage.stars, 0);
+    
+    this.saveProgress(progress);
+    console.log('Progress data fixed:', progress);
+    
+    return progress;
   }
 
   // รีเซ็ต progress (สำหรับ dev หรือ reset ข้อมูล)
