@@ -364,7 +364,19 @@ class ProgressManager {
 
   // ฟังก์ชันช่วยเพื่อรับ chapter ids ที่คาดหวังตาม module
   private getExpectedChaptersByModuleId(moduleId: string): string[] {
-    // ข้อมูลนี้ควรมาจาก learning-modules.ts แต่เพื่อความง่าย เราจะ hardcode ไว้ก่อน
+    try {
+      // อ่านข้อมูลจาก learning modules จริง
+      const { learningModules } = require('../data/learning-modules');
+      const module = learningModules.find((m: any) => m.id === moduleId);
+      
+      if (module && module.chapters) {
+        return module.chapters.map((chapter: any) => chapter.id);
+      }
+    } catch (error) {
+      console.warn('Error loading learning modules data, using fallback:', error);
+    }
+    
+    // Fallback ถ้าอ่านข้อมูลไม่ได้
     const moduleChapters: Record<string, string[]> = {
       'solar-system': ['chapter-1', 'chapter-2', 'chapter-3'],
       'earth-structure': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4'],
@@ -562,12 +574,59 @@ class ProgressManager {
   }
 
   // คำนวณเปอร์เซ็นต์ความคืบหน้าของ module
-  getModuleCompletionPercentage(moduleId: string, totalChapters: number): number {
+  getModuleCompletionPercentage(moduleId: string, totalChapters?: number): number {
     const moduleProgress = this.getModuleProgress(moduleId);
     if (!moduleProgress) return 0;
 
+    // ถ้า module เสร็จสมบูรณ์แล้ว ให้คืน 100%
+    if (moduleProgress.isCompleted) return 100;
+
+    // ถ้าไม่ได้ระบุ totalChapters ให้ดึงจากข้อมูล modules จริง
+    if (!totalChapters) {
+      const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+      totalChapters = expectedChapters.length;
+    }
+
+    if (totalChapters === 0) return 0;
+
     const completedChapters = moduleProgress.completedChapters.length;
     return Math.round((completedChapters / totalChapters) * 100);
+  }
+
+  // ตรวจสอบและอัพเดท module progress เมื่อเสร็จสิ้น chapters ทั้งหมด
+  checkAndCompleteModule(moduleId: string): void {
+    const progress = this.getProgress();
+    
+    // สร้าง learning progress structure ถ้ายังไม่มี
+    if (!progress.learningProgress) {
+      progress.learningProgress = {
+        completedModules: [],
+        totalLearningTime: 0,
+        modules: {}
+      };
+    }
+
+    const moduleProgress = progress.learningProgress.modules[moduleId];
+    
+    if (!moduleProgress || moduleProgress.isCompleted) return;
+
+    const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+    const completedChapters = moduleProgress.completedChapters.length;
+
+    // ถ้าเรียนจบทุก chapter แล้ว ให้ mark เป็น completed
+    if (completedChapters >= expectedChapters.length && expectedChapters.length > 0) {
+      moduleProgress.isCompleted = true;
+      moduleProgress.completedAt = new Date();
+
+      // เพิ่มใน completed modules ถ้ายังไม่มี
+      if (!progress.learningProgress.completedModules.includes(moduleId)) {
+        progress.learningProgress.completedModules.push(moduleId);
+      }
+
+      this.saveProgress(progress);
+      
+      console.log(`Module ${moduleId} completed automatically - all chapters finished`);
+    }
   }
 
   // ดึงสถิติการเรียนรู้รวม

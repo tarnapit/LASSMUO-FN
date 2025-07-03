@@ -100,6 +100,8 @@ export default function LearningTopicPage() {
     const timeSpent = Math.round((new Date().getTime() - startTime.getTime()) / (1000 * 60)); // นาที
     const currentChapter = module.chapters[currentChapterIndex];
     
+    console.log(`Completing chapter ${currentChapter.id} in module ${module.id}`);
+    
     progressManager.updateChapterProgress(
       module.id,
       currentChapter.id,
@@ -118,14 +120,32 @@ export default function LearningTopicPage() {
         timeSpent: (prev[currentChapter.id]?.timeSpent || 0) + timeSpent
       }
     }));
+    
+    console.log(`Chapter ${currentChapter.id} completed successfully`);
+    
+    // ส่ง event เพื่อแจ้งการอัพเดท progress
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('progressUpdated', { 
+        detail: { type: 'chapter', moduleId: module.id, chapterId: currentChapter.id }
+      }));
+    }
   };
 
   // จบการเรียน module
   const completeModule = () => {
     if (!module) return;
     
-    progressManager.completeModule(module.id);
+    console.log(`Completing module ${module.id} with ${module.chapters.length} chapters`);
+    progressManager.completeModule(module.id, module.chapters.length);
     setModuleCompleted(true);
+    console.log(`Module ${module.id} completed successfully`);
+    
+    // ส่ง event เพื่อแจ้งการอัพเดท progress
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('progressUpdated', { 
+        detail: { type: 'module', moduleId: module.id }
+      }));
+    }
   };
 
   const renderContent = () => {
@@ -169,13 +189,32 @@ export default function LearningTopicPage() {
             <p className="text-gray-300 text-sm mb-6">ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้</p>
             
             {quiz ? (
-              <Link 
-                href={`/quiz/${quiz.id}`}
-                className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
-              >
-                <Brain size={24} className="mr-3" />
-                ไปทำแบบทดสอบ
-              </Link>
+              <div className="space-y-4">
+                {isLastChapter && (
+                  <div className="bg-green-500/20 border border-green-500/40 rounded-lg p-4 mb-4">
+                    <div className="flex items-center text-green-400 text-sm font-medium">
+                      <CheckCircle size={16} className="mr-2" />
+                      เมื่อไปทำแบบทดสอบ จะถือว่าเรียนจบบทเรียนนี้แล้ว
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    // บันทึก progress ของ chapter ปัจจุบันก่อนไปทำ quiz
+                    completeCurrentChapter();
+                    // ถ้าเป็น chapter สุดท้าย ให้ complete module ด้วย
+                    if (isLastChapter) {
+                      completeModule();
+                    }
+                    // ไปหน้า quiz
+                    router.push(`/quiz/${quiz.id}`);
+                  }}
+                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
+                >
+                  <Brain size={24} className="mr-3" />
+                  {isLastChapter ? 'เสร็จสิ้นและไปทำแบบทดสอบ' : 'ไปทำแบบทดสอบ'}
+                </button>
+              </div>
             ) : (
               <div className="text-gray-400 py-4">
                 <p>ยังไม่มีแบบทดสอบสำหรับบทเรียนนี้</p>

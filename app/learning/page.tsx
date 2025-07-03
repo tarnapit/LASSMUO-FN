@@ -18,17 +18,52 @@ export default function LearningPage() {
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
     
-    // โหลด progress ของทุก module
-    const progresses: Record<string, any> = {};
-    learningModules.forEach(module => {
-      const moduleProgress = progressManager.getModuleProgress(module.id);
-      const completionPercentage = progressManager.getModuleCompletionPercentage(module.id, module.chapters.length);
-      progresses[module.id] = {
-        ...moduleProgress,
-        completionPercentage
-      };
-    });
-    setModuleProgresses(progresses);
+    // ฟังก์ชันโหลด progress
+    const loadProgress = () => {
+      const progresses: Record<string, any> = {};
+      learningModules.forEach(module => {
+        // ตรวจสอบและ complete module ถ้าจำเป็น
+        progressManager.checkAndCompleteModule(module.id);
+        
+        const moduleProgress = progressManager.getModuleProgress(module.id);
+        const completionPercentage = progressManager.getModuleCompletionPercentage(module.id);
+        progresses[module.id] = {
+          ...moduleProgress,
+          completionPercentage
+        };
+      });
+      setModuleProgresses(progresses);
+    };
+
+    // โหลด progress ครั้งแรก
+    loadProgress();
+
+    // ฟัง progress updates จาก quiz completion หรือ chapter completion
+    const handleProgressUpdate = (event: CustomEvent) => {
+      console.log('Progress updated:', event.detail);
+      setTimeout(() => {
+        loadProgress(); // โหลด progress ใหม่หลังจาก delay เล็กน้อย
+      }, 100);
+    };
+
+    // ฟัง visibility change เมื่อ user กลับมายัง tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('Page visible again, reloading progress...');
+        setTimeout(() => {
+          loadProgress();
+        }, 200);
+      }
+    };
+
+    window.addEventListener('progressUpdated', handleProgressUpdate as EventListener);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('progressUpdated', handleProgressUpdate as EventListener);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const text = {
