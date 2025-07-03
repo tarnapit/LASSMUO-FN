@@ -104,9 +104,9 @@ export default function LearningPage() {
             <Link 
               key={module.id} 
               href={`/learning/${module.id}`}
-              className="group"
+              className="group h-full"
             >
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full">
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full flex flex-col min-h-[420px]">
                 <div className="flex items-center justify-between mb-4">
                   {getModuleStatusIcon(module.id)}
                   <div className="flex items-center space-x-2">
@@ -121,9 +121,13 @@ export default function LearningPage() {
                   {module.title}
                 </h3>
                 
-                <p className="text-gray-300 mb-4 leading-relaxed">
-                  {module.description}
-                </p>
+                <div className="flex-grow mb-4 h-20 flex items-start">
+                  <p className="text-gray-300 leading-relaxed text-sm">
+                    {module.description.length > 120 
+                      ? module.description.substring(0, 120) + "..." 
+                      : module.description}
+                  </p>
+                </div>
 
                 {/* Progress Bar */}
                 {moduleProgresses[module.id]?.isStarted && (
@@ -132,16 +136,16 @@ export default function LearningPage() {
                       <span className="text-gray-400">ความคืบหน้า</span>
                       <span className="text-blue-400">{moduleProgresses[module.id].completionPercentage}%</span>
                     </div>
-                    <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
                       <div 
-                        className="bg-blue-400 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${moduleProgresses[module.id].completionPercentage}%` }}
-                      ></div>
+                        className={`bg-blue-400 h-2 rounded-full transition-all duration-300 absolute left-0 top-0`}
+                        style={{ width: `${Math.min(moduleProgresses[module.id].completionPercentage, 100)}%` }}
+                      />
                     </div>
                   </div>
                 )}
                 
-                <div className="space-y-2">
+                <div className="space-y-2 mb-4">
                   <div className="flex items-center text-sm">
                     <span className="text-gray-400 mr-2">{text.level}</span>
                     <span className={`font-semibold ${getLevelColor(module.level)}`}>
@@ -155,7 +159,7 @@ export default function LearningPage() {
                   </div>
                 </div>
                 
-                <div className="mt-6 pt-4 border-t border-white/10">
+                <div className="mt-auto pt-4 border-t border-white/10">
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col">
                       <span className="text-sm text-gray-400">
