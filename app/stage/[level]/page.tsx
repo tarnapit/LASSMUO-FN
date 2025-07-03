@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Star, Clock, Trophy, X } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import { stageData } from "../../data/stages";
 import { progressManager } from "../../lib/progress";
@@ -246,18 +247,22 @@ const ResultsComponent = ({
   score, 
   totalQuestions,
   time, 
-  onFinish 
+  onFinish,
+  onRetry,
+  isNavigating 
 }: { 
   stageInfo: StageData;
   score: number;
   totalQuestions: number;
   time: string; 
   onFinish: () => void;
+  onRetry: () => void;
+  isNavigating?: boolean;
 }) => {
   // คำนวณดาวที่ได้รับ
   const percentage = (score / totalQuestions) * 100;
   const starsEarned = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
-  const isPassed = starsEarned > 0;
+  const isPassed = score > 0; // ต้องได้อย่างน้อย 1 คะแนนเพื่อผ่าน
   
   // คำนวณคะแนนที่ได้รับ
   const pointsEarned = Math.floor((percentage / 100) * stageInfo.rewards.points);
@@ -278,8 +283,30 @@ const ResultsComponent = ({
             
             <div className="bg-slate-800/50 rounded-xl p-6 backdrop-blur-sm">
               <p className="text-white text-lg">
-                {isPassed ? stageInfo.character.completionMessage : "อย่าท้อใจ! ลองอีกครั้งคุณจะทำได้ดีกว่านี้แน่นอน"}
+                {isPassed ? stageInfo.character.completionMessage : "คุณต้องได้อย่างน้อย 1 คะแนนเพื่อผ่านด่าน ลองใหม่อีกครั้งนะ!"}
               </p>
+              
+              {/* แสดงสถานะการผ่านด่าน */}
+              <div className={`mt-4 p-3 rounded-lg ${isPassed ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
+                <div className="flex items-center justify-center space-x-2">
+                  {isPassed ? (
+                    <>
+                      <Trophy className="text-green-400" size={20} />
+                      <span className="text-green-400 font-bold">ผ่านด่านแล้ว!</span>
+                    </>
+                  ) : (
+                    <>
+                      <X className="text-red-400" size={20} />
+                      <span className="text-red-400 font-bold">ยังไม่ผ่านด่าน</span>
+                    </>
+                  )}
+                </div>
+                {isPassed && (
+                  <p className="text-green-300 text-sm text-center mt-1">
+                    ด่านถัดไปปลดล็อกแล้ว!
+                  </p>
+                )}
+              </div>
             </div>
           </div>
           
@@ -303,23 +330,30 @@ const ResultsComponent = ({
               <h3 className="text-yellow-300 text-lg font-bold mb-2">ดาวที่ได้รับ</h3>
               <div className="flex justify-center space-x-1 mb-2">
                 {[1, 2, 3].map((star) => (
-                  <div
+                  <Star
                     key={star}
-                    className={`text-2xl ${
-                      star <= starsEarned ? "text-yellow-400" : "text-gray-600"
-                    }`}
-                  >
-                    ⭐
-                  </div>
+                    size={24}
+                    className={
+                      star <= starsEarned
+                        ? "text-yellow-400 fill-current"
+                        : "text-gray-500"
+                    }
+                  />
                 ))}
               </div>
-              <p className="text-white text-lg">{starsEarned}/3</p>
+              <p className="text-white text-lg font-bold">{starsEarned}/3</p>
+              {starsEarned > 0 && (
+                <p className="text-yellow-300 text-sm mt-1">เยี่ยมมาก!</p>
+              )}
             </div>
             
             {/* Points */}
             <div className="bg-green-900/30 rounded-xl p-6 text-center">
               <h3 className="text-green-300 text-lg font-bold mb-2">คะแนนที่ได้</h3>
-              <p className="text-white text-3xl font-bold">+{pointsEarned}</p>
+              <p className="text-white text-3xl font-bold">+{isPassed ? pointsEarned : 0}</p>
+              {!isPassed && (
+                <p className="text-red-300 text-sm mt-1">ต้องผ่านด่านจึงจะได้คะแนน</p>
+              )}
             </div>
           </div>
           
@@ -355,7 +389,7 @@ const ResultsComponent = ({
           <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
             {!isPassed && (
               <button 
-                onClick={() => window.location.reload()}
+                onClick={onRetry}
                 className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold px-8 py-3 rounded-xl hover:from-blue-400 hover:to-purple-400 transition-all duration-300"
               >
                 ลองอีกครั้ง
@@ -364,9 +398,10 @@ const ResultsComponent = ({
             
             <button 
               onClick={onFinish}
-              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold px-8 py-3 rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all duration-300"
+              disabled={isNavigating}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold px-8 py-3 rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              กลับสู่แผนที่ด่าน
+              {isNavigating ? 'กำลังโหลด...' : 'กลับสู่แผนที่ด่าน'}
             </button>
           </div>
         </div>
@@ -384,17 +419,36 @@ export default function StageLevelPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [score, setScore] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   const stageInfo = stageData[level];
 
   useEffect(() => {
     setStartTime(new Date());
+    
+    // Cleanup function เมื่อ component unmount
+    return () => {
+      setIsNavigating(false);
+    };
   }, []);
 
   // Redirect if stage not found
   if (!stageInfo) {
-    router.push('/stage');
-    return null;
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        router.replace('/stage');
+      }, 0);
+      return () => clearTimeout(timer);
+    }, [router]);
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="text-4xl mb-4">🔄</div>
+          <p>กำลังเปลี่ยนหน้า...</p>
+        </div>
+      </div>
+    );
   }
 
   const handleCharacterContinue = () => {
@@ -419,8 +473,36 @@ export default function StageLevelPage() {
     setCurrentStep(3);
   };
 
-  const handleFinish = () => {
-    router.push('/stage');
+  const handleFinish = async () => {
+    // ป้องกัน multiple navigation calls
+    if (isNavigating) return;
+    
+    setIsNavigating(true);
+    
+    try {
+      // เพิ่ม delay เล็กน้อยเพื่อให้ progress update เสร็จก่อน
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // ใช้ router.replace แทน push เพื่อ replace current history entry
+      await router.replace('/stage');
+    } catch (error) {
+      console.error('Navigation error:', error);
+      setIsNavigating(false);
+      
+      // Fallback: ใช้ window.location เป็นทางเลือกสุดท้าย
+      try {
+        window.location.href = '/stage';
+      } catch (fallbackError) {
+        console.error('Fallback navigation error:', fallbackError);
+      }
+    }
+  };
+
+  const handleRetry = () => {
+    // รีเซ็ตเกมเพื่อเล่นใหม่
+    setCurrentStep(0);
+    setScore(0);
+    setStartTime(new Date());
   };
 
   const getElapsedTime = () => {
@@ -448,6 +530,8 @@ export default function StageLevelPage() {
           totalQuestions={stageInfo.questions.length}
           time={getElapsedTime()} 
           onFinish={handleFinish} 
+          onRetry={handleRetry}
+          isNavigating={isNavigating}
         />
       );
     default:

@@ -133,40 +133,60 @@ class ProgressManager {
     }
 
     const stageProgress = progress.stages[stageId];
-    stageProgress.isCompleted = true;
-    stageProgress.stars = Math.max(stageProgress.stars, stars);
-    stageProgress.bestScore = Math.max(stageProgress.bestScore, score);
     stageProgress.attempts++;
     stageProgress.lastAttempt = new Date();
+    stageProgress.bestScore = Math.max(stageProgress.bestScore, score);
 
-    // เพิ่มในรายการ completed stages ถ้าไม่มี
-    if (!progress.completedStages.includes(stageId)) {
-      progress.completedStages.push(stageId);
-    }
+    // ตรวจสอบว่าผ่านด่านหรือไม่ (ต้องได้อย่างน้อย 1 คะแนน)
+    if (score > 0) {
+      stageProgress.isCompleted = true;
+      stageProgress.stars = Math.max(stageProgress.stars, stars);
 
-    // อัพเดท total stats
-    progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + stage.stars, 0);
-    progress.totalPoints += score; // เพิ่มคะแนนใหม่
+      // เพิ่มในรายการ completed stages ถ้าไม่มีและเป็นครั้งแรกที่ผ่าน
+      if (!progress.completedStages.includes(stageId)) {
+        progress.completedStages.push(stageId);
+      }
 
-    // ปลดล็อก stage ถัดไป
-    const nextStageId = stageId + 1;
-    if (nextStageId <= 10) { // สมมติว่ามี stage สูงสุด 10 ด่าน
-      if (!progress.stages[nextStageId]) {
-        progress.stages[nextStageId] = {
-          stageId: nextStageId,
-          isUnlocked: true,
-          isCompleted: false,
-          stars: 0,
-          bestScore: 0,
-          attempts: 0
-        };
-      } else {
-        progress.stages[nextStageId].isUnlocked = true;
+      // อัพเดท total points (เฉพาะเมื่อได้คะแนนดีกว่าเดิม)
+      const previousBestScore = stageProgress.bestScore - score; // คะแนนเก่าก่อนที่จะอัพเดท
+      if (score > previousBestScore) {
+        const scoreDifference = score - Math.max(0, previousBestScore);
+        progress.totalPoints += scoreDifference;
+      }
+
+      // ปลดล็อก stage ถัดไป (เฉพาะเมื่อผ่านด่าน)
+      const nextStageId = stageId + 1;
+      if (nextStageId <= 5) { // เปลี่ยนจาก 10 เป็น 5 ตาม stage ที่มีจริง
+        if (!progress.stages[nextStageId]) {
+          progress.stages[nextStageId] = {
+            stageId: nextStageId,
+            isUnlocked: true,
+            isCompleted: false,
+            stars: 0,
+            bestScore: 0,
+            attempts: 0
+          };
+        } else {
+          progress.stages[nextStageId].isUnlocked = true;
+        }
       }
     }
 
+    // อัพเดท total stars
+    progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + stage.stars, 0);
+
     // บันทึก progress
     this.saveProgress(progress);
+    
+    // Debug log เพื่อตรวจสอบ
+    console.log('Progress updated:', {
+      stageId,
+      stars,
+      score,
+      stageProgress: progress.stages[stageId],
+      totalStars: progress.totalStars,
+      totalPoints: progress.totalPoints
+    });
     
     return progress;
   }

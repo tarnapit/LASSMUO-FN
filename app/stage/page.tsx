@@ -18,10 +18,69 @@ export default function StagePage() {
     setPlayerProgress(progress);
   }, []);
 
+  // Function to refresh progress (เรียกใช้เมื่อต้องการอัพเดท)
+  const refreshProgress = () => {
+    const progress = progressManager.getProgress();
+    setPlayerProgress(progress);
+    console.log('Stage page progress refreshed:', progress);
+  };
+
+  // Listen for focus event เพื่ออัพเดท progress เมื่อกลับมาจากหน้าเล่นเกม
+  useEffect(() => {
+    const handleFocus = () => {
+      refreshProgress();
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshProgress();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Listen for storage changes เพื่ออัพเดท progress เมื่อมีการเปลี่ยนแปลง
+  useEffect(() => {
+    const handleStorageChange = () => {
+      refreshProgress();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Listen for route changes เพื่อ refresh progress
+  useEffect(() => {
+    const handleRouteChange = () => {
+      // รอสักครู่แล้วค่อย refresh เพื่อให้ข้อมูลใหม่อัพเดท
+      setTimeout(() => {
+        refreshProgress();
+      }, 100);
+    };
+
+    // Listen for when component becomes visible again
+    const handlePageShow = () => {
+      refreshProgress();
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, []);
+
   // ดึงข้อมูลด่านจาก data และผสมกับความคืบหน้าของผู้เล่น
   const stages = Object.values(stageData).map(stage => {
     const progress = playerProgress?.stages[stage.id];
-    const isUnlocked = progress?.isUnlocked || false;
+    const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
     
     return {
       ...stage,
@@ -36,6 +95,14 @@ export default function StagePage() {
 
   // จัดเรียงด่านตาม id
   stages.sort((a, b) => a.id - b.id);
+
+  // Debug: แสดงข้อมูล progress ในคอนโซล
+  useEffect(() => {
+    if (playerProgress) {
+      console.log('Current player progress:', playerProgress);
+      console.log('Stages data:', stages.map(s => ({ id: s.id, stars: s.stars, isCompleted: s.isCompleted })));
+    }
+  }, [playerProgress]);
 
   // Function to close popup when clicking outside
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -89,7 +156,6 @@ export default function StagePage() {
               <div
                 key={stage.id}
                 className={`relative flex justify-center mb-20 sm:mb-24 ${translateX} transition-all duration-500 z-10`}
-                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div
                   className="relative group"
@@ -150,28 +216,32 @@ export default function StagePage() {
                     </div>
                   )}
                   
-                  {/* Stars Display */}
-                  {stage.isUnlocked && stage.stars > 0 && (
-                    <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-1">
-                      {[1, 2, 3].map((star) => (
-                        <div
-                          key={star}
-                          className={`transition-all duration-300 ${
-                            star <= stage.stars ? 'animate-pulse' : ''
-                          }`}
-                        >
-                          <Star
-                            size={12}
-                            className={
-                              star <= stage.stars
-                                ? "text-yellow-400 fill-yellow-400 drop-shadow-lg"
-                                : "text-gray-500 fill-gray-500"
-                            }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Stars Display - แสดงดาวที่ได้แล้ว */}
+                  <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                    {[1, 2, 3].map((star) => (
+                      <div
+                        key={star}
+                        className={`transition-all duration-300 ${
+                          star <= stage.stars ? 'animate-pulse' : ''
+                        }`}
+                      >
+                        <Star
+                          size={14}
+                          className={
+                            star <= stage.stars
+                              ? "text-yellow-400 fill-yellow-400 drop-shadow-lg"
+                              : "text-gray-600 fill-gray-600"
+                          }
+                        />
+                      </div>
+                    ))}
+                    {/* แสดงจำนวนดาวที่ได้ */}
+                    {stage.stars > 0 && (
+                      <div className="ml-2 text-yellow-400 text-xs font-bold bg-black/50 px-1 rounded">
+                        {stage.stars}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -278,10 +348,10 @@ export default function StagePage() {
                       {[1, 2, 3].map((star) => (
                         <Star
                           key={star}
-                          size={16}
+                          size={18}
                           className={
                             star <= stage.stars
-                              ? "text-yellow-400 fill-current"
+                              ? "text-yellow-400 fill-current drop-shadow-lg"
                               : "text-gray-500"
                           }
                         />
@@ -291,6 +361,34 @@ export default function StagePage() {
                       </span>
                     </div>
                   </div>
+
+                  {/* Progress Status */}
+                  {stage.isCompleted && (
+                    <div className="mb-4 p-3 bg-green-900/30 border border-green-500/30 rounded-lg">
+                      <div className="flex items-center text-green-400 text-sm">
+                        <Trophy size={16} className="mr-2" />
+                        <span className="font-medium">ผ่านด่านแล้ว!</span>
+                      </div>
+                      {stage.bestScore > 0 && (
+                        <div className="text-green-300 text-xs mt-1">
+                          คะแนนสูงสุด: {stage.bestScore} | เล่นไปแล้ว: {stage.attempts} ครั้ง
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Incomplete Status */}
+                  {!stage.isCompleted && stage.attempts > 0 && (
+                    <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-500/30 rounded-lg">
+                      <div className="flex items-center text-yellow-400 text-sm">
+                        <Star size={16} className="mr-2" />
+                        <span className="font-medium">ยังไม่ผ่านด่าน</span>
+                      </div>
+                      <div className="text-yellow-300 text-xs mt-1">
+                        ต้องได้อย่างน้อย 1 คะแนนเพื่อผ่านด่าน | เล่นไปแล้ว: {stage.attempts} ครั้ง
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Rewards Preview */}
                   {stage.rewards && (
@@ -352,11 +450,6 @@ export default function StagePage() {
           <div
             key={i}
             className={`absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse`}
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 2}s`
-            }}
           />
         ))}
       </div>
