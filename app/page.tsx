@@ -13,6 +13,9 @@ export default function HomePage() {
   const [learningStats, setLearningStats] = useState<any>(null);
 
   useEffect(() => {
+    // มิเกรตข้อมูลเก่าก่อน
+    progressManager.migrateOldQuizData();
+    
     // โหลด progress และสถานะ auth
     const currentProgress = progressManager.getProgress();
     setProgress(currentProgress);

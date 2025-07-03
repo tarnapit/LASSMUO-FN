@@ -15,6 +15,9 @@ export default function LearningPage() {
   const [showQuizCard, setShowQuizCard] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
+    // มิเกรตข้อมูลเก่าก่อน
+    progressManager.migrateOldQuizData();
+    
     // โหลด progress ของทุก module
     const progresses: Record<string, any> = {};
     learningModules.forEach(module => {

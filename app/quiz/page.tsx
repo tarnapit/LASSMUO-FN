@@ -21,6 +21,9 @@ export default function QuizPage() {
   const [quizProgresses, setQuizProgresses] = useState<Record<string, any>>({});
 
   useEffect(() => {
+    // มิเกรตข้อมูลเก่าก่อน
+    progressManager.migrateOldQuizData();
+    
     // โหลด progress ของทุก quiz จาก progressManager
     const progresses = progressManager.getAllQuizProgress();
     setQuizProgresses(progresses);
