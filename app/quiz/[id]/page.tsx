@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getQuizById } from "../../data/quizzes";
 import { learningModules } from "../../data/learning-modules";
+import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import { 
   Clock, 
@@ -41,11 +42,10 @@ export default function QuizDetailPage() {
         setTimeLeft(foundQuiz.timeLimit * 60); // แปลงเป็นวินาที
       }
       
-      // โหลดประวัติการทำ quiz
-      const savedProgress = localStorage.getItem(`quiz-progress-${quizId}`);
-      if (savedProgress) {
-        const progress = JSON.parse(savedProgress);
-        setPreviousAttempts(progress.attempts || []);
+      // โหลดประวัติการทำ quiz จาก progressManager
+      const quizProgress = progressManager.getQuizProgress(quizId);
+      if (quizProgress) {
+        setPreviousAttempts(quizProgress.attempts || []);
       }
     }
   }, [quizId]);
@@ -141,26 +141,11 @@ export default function QuizDetailPage() {
       attemptNumber
     };
 
-    // บันทึกผลลพธ์
-    const updatedAttempts = [...previousAttempts, newAttempt];
-    const bestAttempt = updatedAttempts.reduce((best, current) => 
-      current.percentage > best.percentage ? current : best
-    );
-
-    const quizProgress = {
-      quizId: quiz.id,
-      attempts: updatedAttempts,
-      bestScore: bestAttempt.score,
-      bestPercentage: bestAttempt.percentage,
-      totalAttempts: updatedAttempts.length,
-      passed: updatedAttempts.some(attempt => attempt.passed),
-      lastAttemptAt: new Date()
-    };
-
-    localStorage.setItem(`quiz-progress-${quiz.id}`, JSON.stringify(quizProgress));
+    // บันทึกผลลพธ์ใน progressManager
+    progressManager.saveQuizAttempt(quiz.id, newAttempt);
 
     setQuizAttempt(newAttempt);
-    setPreviousAttempts(updatedAttempts);
+    setPreviousAttempts([...previousAttempts, newAttempt]);
     setIsActive(false);
     setShowResults(true);
   };
@@ -185,7 +170,7 @@ export default function QuizDetailPage() {
 
   const canRetakeQuiz = () => {
     if (!quiz?.maxAttempts) return true;
-    return previousAttempts.length < quiz.maxAttempts;
+    return progressManager.canRetakeQuiz(quiz.id, quiz.maxAttempts);
   };
 
   const getModuleTitle = () => {

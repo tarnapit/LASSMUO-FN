@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { quizzes } from "../data/quizzes";
 import { learningModules } from "../data/learning-modules";
+import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
 import { 
   Brain, 
@@ -20,14 +21,8 @@ export default function QuizPage() {
   const [quizProgresses, setQuizProgresses] = useState<Record<string, any>>({});
 
   useEffect(() => {
-    // โหลด progress ของทุก quiz จาก localStorage
-    const progresses: Record<string, any> = {};
-    quizzes.forEach(quiz => {
-      const savedProgress = localStorage.getItem(`quiz-progress-${quiz.id}`);
-      if (savedProgress) {
-        progresses[quiz.id] = JSON.parse(savedProgress);
-      }
-    });
+    // โหลด progress ของทุก quiz จาก progressManager
+    const progresses = progressManager.getAllQuizProgress();
     setQuizProgresses(progresses);
   }, []);
 

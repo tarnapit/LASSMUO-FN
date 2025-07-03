@@ -1,5 +1,6 @@
 import { PlayerProgress, StageProgress } from '../types/stage';
 import { ModuleProgress, LearningProgress } from '../types/learning';
+import { QuizProgress, QuizAttempt } from '../types/quiz';
 import { authManager } from './auth';
 
 class ProgressManager {
@@ -97,6 +98,184 @@ class ProgressManager {
     }
   }
 
+  // ====== Quiz Progress Methods ======
+  
+  // บันทึก quiz attempt
+  saveQuizAttempt(quizId: string, attempt: QuizAttempt): void {
+    const progress = this.getProgress();
+    
+    // สร้าง quiz progress structure ถ้ายังไม่มี
+    if (!progress.quizProgress) {
+      progress.quizProgress = { quizzes: {} };
+    }
+    
+    if (!progress.quizProgress.quizzes[quizId]) {
+      progress.quizProgress.quizzes[quizId] = {
+        quizId,
+        attempts: [],
+        bestScore: 0,
+        bestPercentage: 0,
+        totalAttempts: 0,
+        passed: false
+      };
+    }
+    
+    const quizProgress = progress.quizProgress.quizzes[quizId];
+    
+    // เพิ่ม attempt ใหม่
+    quizProgress.attempts.push(attempt);
+    quizProgress.totalAttempts = quizProgress.attempts.length;
+    quizProgress.lastAttemptAt = attempt.completedAt;
+    
+    // อัพเดทคะแนนดีที่สุด
+    quizProgress.bestScore = Math.max(quizProgress.bestScore, attempt.score);
+    quizProgress.bestPercentage = Math.max(quizProgress.bestPercentage, attempt.percentage);
+    
+    // อัพเดทสถานะผ่าน
+    const previouslyPassed = quizProgress.passed;
+    quizProgress.passed = quizProgress.attempts.some(a => a.passed);
+    
+    // ถ้าผ่าน quiz เป็นครั้งแรก ให้อัพเดท module progress
+    if (!previouslyPassed && quizProgress.passed && attempt.passed) {
+      const moduleId = this.getModuleIdByQuizId(quizId);
+      if (moduleId) {
+        this.completeModuleByQuiz(moduleId);
+      }
+    }
+    
+    this.saveProgress(progress);
+  }
+  
+  // ดึงข้อมูล quiz progress
+  getQuizProgress(quizId: string): QuizProgress | null {
+    const progress = this.getProgress();
+    return progress.quizProgress?.quizzes[quizId] || null;
+  }
+  
+  // ดึงข้อมูล quiz progress ทั้งหมด
+  getAllQuizProgress(): Record<string, QuizProgress> {
+    const progress = this.getProgress();
+    return progress.quizProgress?.quizzes || {};
+  }
+  
+  // ตรวจสอบว่าสามารถทำ quiz ซ้ำได้หรือไม่
+  canRetakeQuiz(quizId: string, maxAttempts?: number): boolean {
+    if (!maxAttempts) return true;
+    
+    const quizProgress = this.getQuizProgress(quizId);
+    if (!quizProgress) return true;
+    
+    return quizProgress.totalAttempts < maxAttempts;
+  }
+  
+  // รีเซ็ต quiz progress (สำหรับการพัฒนา/ทดสอบ)
+  resetQuizProgress(quizId?: string): void {
+    const progress = this.getProgress();
+    
+    if (!progress.quizProgress) return;
+    
+    if (quizId) {
+      // รีเซ็ตเฉพาะ quiz ที่ระบุ
+      delete progress.quizProgress.quizzes[quizId];
+    } else {
+      // รีเซ็ตทั้งหมด
+      progress.quizProgress.quizzes = {};
+    }
+    
+    this.saveProgress(progress);
+  }
+
+  // อัพเดท module progress เมื่อทำ quiz ผ่าน
+  completeModuleByQuiz(moduleId: string): void {
+    const progress = this.getProgress();
+    
+    // สร้าง learning progress structure ถ้ายังไม่มี
+    if (!progress.learningProgress) {
+      progress.learningProgress = {
+        completedModules: [],
+        totalLearningTime: 0,
+        modules: {}
+      };
+    }
+
+    // สร้าง module progress ถ้ายังไม่มี
+    if (!progress.learningProgress.modules[moduleId]) {
+      progress.learningProgress.modules[moduleId] = {
+        moduleId,
+        isStarted: true,
+        isCompleted: false,
+        completedChapters: [],
+        totalTimeSpent: 0,
+        chapters: {}
+      };
+    }
+
+    const moduleProgress = progress.learningProgress.modules[moduleId];
+    
+    // ถ้ายังไม่เสร็จ ให้เสร็จสิ้น module
+    if (!moduleProgress.isCompleted) {
+      moduleProgress.isCompleted = true;
+      moduleProgress.completedAt = new Date();
+
+      // เพิ่มใน completed modules ถ้ายังไม่มี
+      if (!progress.learningProgress.completedModules.includes(moduleId)) {
+        progress.learningProgress.completedModules.push(moduleId);
+      }
+
+      // ถ้ายังไม่ได้เรียนเนื้อหาทั้งหมด ให้อัพเดทเป็นเสร็จ (เพื่อให้แสดง 100%)
+      // สมมุติว่า Solar System มี 3 chapters
+      const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+      expectedChapters.forEach(chapterId => {
+        if (!moduleProgress.completedChapters.includes(chapterId)) {
+          moduleProgress.completedChapters.push(chapterId);
+        }
+        
+        // เพิ่ม chapter progress ถ้ายังไม่มี
+        if (!moduleProgress.chapters[chapterId]) {
+          moduleProgress.chapters[chapterId] = {
+            chapterId,
+            moduleId,
+            completed: true,
+            readProgress: 100,
+            timeSpent: 0,
+            completedAt: new Date()
+          };
+        } else {
+          moduleProgress.chapters[chapterId].completed = true;
+          moduleProgress.chapters[chapterId].readProgress = 100;
+        }
+      });
+    }
+
+    this.saveProgress(progress);
+  }
+
+  // ฟังก์ชันช่วยเพื่อรับ chapter ids ที่คาดหวังตาม module
+  private getExpectedChaptersByModuleId(moduleId: string): string[] {
+    // ข้อมูลนี้ควรมาจาก learning-modules.ts แต่เพื่อความง่าย เราจะ hardcode ไว้ก่อน
+    const moduleChapters: Record<string, string[]> = {
+      'solar-system': ['chapter-1', 'chapter-2', 'chapter-3'],
+      'earth-structure': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4'],
+      'stellar-evolution': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4'],
+      'galaxies-universe': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4']
+    };
+    
+    return moduleChapters[moduleId] || [];
+  }
+
+  // ฟังก์ชันช่วยเพื่อรับ module id จาก quiz id
+  private getModuleIdByQuizId(quizId: string): string | null {
+    // ข้อมูลการแมป quiz กับ module (ควรมาจาก quizzes.ts แต่เพื่อความง่ายเราจะ hardcode)
+    const quizModuleMapping: Record<string, string> = {
+      'solar-system-quiz': 'solar-system',
+      'earth-structure-quiz': 'earth-structure',
+      'stellar-evolution-quiz': 'stellar-evolution',
+      'galaxies-universe-quiz': 'galaxies-universe'
+    };
+    
+    return quizModuleMapping[quizId] || null;
+  }
+
   // Progress เริ่มต้น - stage 1 ปลดล็อกอยู่แล้ว
   private getDefaultProgress(): PlayerProgress {
     return {
@@ -118,6 +297,9 @@ class ProgressManager {
         completedModules: [],
         totalLearningTime: 0,
         modules: {}
+      },
+      quizProgress: {
+        quizzes: {}
       }
     };
   }
@@ -345,6 +527,40 @@ class ProgressManager {
                 ? new Date(Math.max(tempModule.completedAt.getTime(), userModule.completedAt.getTime()))
                 : tempModule.completedAt || userModule.completedAt,
               chapters: { ...userModule.chapters, ...tempModule.chapters }
+            };
+          }
+        });
+      }
+
+      // Merge quiz progress โดยเลือกค่าที่ดีกว่า
+      if (tempProgress.quizProgress) {
+        if (!mergedProgress.quizProgress) {
+          mergedProgress.quizProgress = { quizzes: {} };
+        }
+        
+        Object.keys(tempProgress.quizProgress.quizzes).forEach(quizId => {
+          const tempQuiz = tempProgress.quizProgress!.quizzes[quizId];
+          const userQuiz = mergedProgress.quizProgress!.quizzes[quizId];
+
+          if (!userQuiz) {
+            mergedProgress.quizProgress!.quizzes[quizId] = tempQuiz;
+          } else {
+            // Merge quiz progress
+            const allAttempts = [...userQuiz.attempts, ...tempQuiz.attempts];
+            const bestAttempt = allAttempts.reduce((best, current) => 
+              current.percentage > best.percentage ? current : best
+            );
+
+            mergedProgress.quizProgress!.quizzes[quizId] = {
+              quizId,
+              attempts: allAttempts,
+              bestScore: Math.max(tempQuiz.bestScore, userQuiz.bestScore),
+              bestPercentage: Math.max(tempQuiz.bestPercentage, userQuiz.bestPercentage),
+              totalAttempts: allAttempts.length,
+              passed: tempQuiz.passed || userQuiz.passed,
+              lastAttemptAt: tempQuiz.lastAttemptAt && userQuiz.lastAttemptAt
+                ? new Date(Math.max(tempQuiz.lastAttemptAt.getTime(), userQuiz.lastAttemptAt.getTime()))
+                : tempQuiz.lastAttemptAt || userQuiz.lastAttemptAt
             };
           }
         });

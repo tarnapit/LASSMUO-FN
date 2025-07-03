@@ -1,4 +1,5 @@
 import { ModuleProgress } from './learning';
+import { QuizProgress } from './quiz';
 
 export interface Question {
   id: number;
@@ -62,5 +63,9 @@ export interface PlayerProgress {
     completedModules: string[];
     totalLearningTime: number; // เวลารวมที่ใช้เรียน (นาที)
     modules: Record<string, ModuleProgress>;
+  };
+  // เพิ่ม quiz progress
+  quizProgress?: {
+    quizzes: Record<string, QuizProgress>;
   };
 }
