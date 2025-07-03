@@ -1,18 +1,26 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Star, Play, Clock, Award, Trophy } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
-import { stageData, playerProgress } from "../data/stages";
+import { stageData } from "../data/stages";
+import { progressManager } from "../lib/progress";
+import { PlayerProgress } from "../types/stage";
 
 export default function StagePage() {
   const router = useRouter();
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
+  const [playerProgress, setPlayerProgress] = useState<PlayerProgress | null>(null);
+
+  useEffect(() => {
+    // โหลด progress เมื่อ component mount
+    const progress = progressManager.getProgress();
+    setPlayerProgress(progress);
+  }, []);
 
   // ดึงข้อมูลด่านจาก data และผสมกับความคืบหน้าของผู้เล่น
-  
   const stages = Object.values(stageData).map(stage => {
-    const progress = playerProgress.stages[stage.id];
+    const progress = playerProgress?.stages[stage.id];
     const isUnlocked = progress?.isUnlocked || false;
     
     return {
@@ -56,15 +64,15 @@ export default function StagePage() {
           <div className="flex justify-center items-center space-x-6 mt-6 text-white">
             <div className="flex items-center space-x-2">
               <Trophy className="text-yellow-400" size={20} />
-              <span>{playerProgress.totalStars} ดาว</span>
+              <span>{playerProgress?.totalStars || 0} ดาว</span>
             </div>
             <div className="flex items-center space-x-2">
               <Award className="text-blue-400" size={20} />
-              <span>{playerProgress.totalPoints} คะแนน</span>
+              <span>{playerProgress?.totalPoints || 0} คะแนน</span>
             </div>
             <div className="flex items-center space-x-2">
               <Star className="text-green-400" size={20} />
-              <span>{playerProgress.completedStages.length} ด่านสำเร็จ</span>
+              <span>{playerProgress?.completedStages.length || 0} ด่านสำเร็จ</span>
             </div>
           </div>
         </div>
@@ -81,9 +89,7 @@ export default function StagePage() {
               <div
                 key={stage.id}
                 className={`relative flex justify-center mb-20 sm:mb-24 ${translateX} transition-all duration-500 z-10`}
-                style={{ 
-                  animationDelay: `${index * 0.1}s`,
-                }}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div
                   className="relative group"
@@ -345,23 +351,15 @@ export default function StagePage() {
         {[...Array(20)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-20"
+            className={`absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse`}
             style={{
               left: `${Math.random() * 100}%`,
               top: `${Math.random() * 100}%`,
-              animation: `float ${3 + Math.random() * 4}s ease-in-out infinite`,
               animationDelay: `${Math.random() * 2}s`
             }}
           />
         ))}
       </div>
-
-      <style jsx>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-10px) rotate(180deg); }
-        }
-      `}</style>
     </div>
   );
 }

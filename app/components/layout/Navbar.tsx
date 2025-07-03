@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Menu, X, ChevronDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Menu, X, ChevronDown, User, LogOut, Star, Trophy } from "lucide-react";
 import { learningModules } from "../../data/learning-modules";
 import { miniGames } from "../../data/mini-games";
+import { authManager, User as UserType } from "../../lib/auth";
+import { progressManager } from "../../lib/progress";
+import LoginModal from "../ui/LoginModal";
+import Toast from "../ui/Toast";
 
 interface DropdownItem {
   name: string;
@@ -45,11 +49,57 @@ const navigation: NavigationItem[] = [
       level: game.difficulty
     })),
   },
+  { name: "บอร์ดผู้นำ", href: "/leaderboard" },
 ];
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [userProgress, setUserProgress] = useState<any>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  useEffect(() => {
+    // ตรวจสอบสถานะล็อกอิน
+    setCurrentUser(authManager.getCurrentUser());
+    
+    // โหลด progress
+    const progress = progressManager.getProgress();
+    setUserProgress(progress);
+
+    // Listen for auth state changes
+    const unsubscribe = authManager.onAuthStateChange((user) => {
+      setCurrentUser(user);
+      if (user) {
+        // อัพเดท progress เมื่อล็อกอิน
+        const newProgress = progressManager.getProgress();
+        setUserProgress(newProgress);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const handleLogin = (user: UserType) => {
+    setCurrentUser(user);
+    const progress = progressManager.getProgress();
+    setUserProgress(progress);
+  };
+
+  const handleLogout = () => {
+    authManager.logout();
+    setCurrentUser(null);
+    // รีโหลด progress (จะเป็น temp progress)
+    const progress = progressManager.getProgress();
+    setUserProgress(progress);
+    // แสดง Toast
+    setToast({ message: 'ออกจากระบบแล้ว ข้อมูลจะถูกเก็บแบบชั่วคราว', type: 'info' });
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info') => {
+    setToast({ message, type });
+  };
 
   const toggleDropdown = (name: string) => {
     setActiveDropdown(activeDropdown === name ? null : name);
@@ -147,9 +197,74 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Auth Button */}
+        {/* Auth Section */}
         <div className="hidden md:block">
-          <button className="btn-secondary">เข้าสู่ระบบ</button>
+          {currentUser ? (
+            <div className="relative group">
+              <button 
+                onClick={() => toggleDropdown('profile')}
+                className="flex items-center space-x-3 bg-slate-800 rounded-lg px-4 py-2 border border-slate-700 hover:border-yellow-400 transition-colors"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <User size={16} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <div className="text-white font-medium">{currentUser.username}</div>
+                  {userProgress && (
+                    <div className="text-xs text-gray-400 flex items-center space-x-2">
+                      <span className="flex items-center">
+                        <Star size={12} className="text-yellow-400 mr-1" />
+                        {userProgress.totalStars}
+                      </span>
+                      <span className="flex items-center">
+                        <Trophy size={12} className="text-green-400 mr-1" />
+                        {userProgress.completedStages.length}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <ChevronDown size={16} className="text-gray-400" />
+              </button>
+
+              {activeDropdown === 'profile' && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-slate-800 rounded-lg shadow-xl border border-slate-700 py-2">
+                  <div className="px-4 py-3 border-b border-slate-700">
+                    <div className="text-white font-medium">{currentUser.username}</div>
+                    <div className="text-sm text-gray-400">{currentUser.email}</div>
+                    {userProgress && (
+                      <div className="mt-2 flex space-x-4 text-xs">
+                        <span className="flex items-center text-yellow-400">
+                          <Star size={12} className="mr-1" />
+                          {userProgress.totalStars} ดาว
+                        </span>
+                        <span className="flex items-center text-green-400">
+                          <Trophy size={12} className="mr-1" />
+                          {userProgress.completedStages.length} ด่าน
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setActiveDropdown(null);
+                    }}
+                    className="w-full px-4 py-3 text-left text-red-400 hover:bg-slate-700 transition-colors flex items-center space-x-2"
+                  >
+                    <LogOut size={16} />
+                    <span>ออกจากระบบ</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowLoginModal(true)}
+              className="btn-secondary"
+            >
+              เข้าสู่ระบบ
+            </button>
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -234,15 +349,70 @@ export default function Navbar() {
             ))}
 
             <div className="pt-4 border-t border-slate-700">
-              <button
-                className="w-full btn-secondary"
-                onClick={() => setIsOpen(false)}
-              >
-                เข้าสู่ระบบ
-              </button>
+              {currentUser ? (
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3 px-4 py-2 bg-slate-800 rounded-lg">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                      <User size={16} className="text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white font-medium">{currentUser.username}</div>
+                      {userProgress && (
+                        <div className="text-xs text-gray-400 flex items-center space-x-2">
+                          <span className="flex items-center">
+                            <Star size={12} className="text-yellow-400 mr-1" />
+                            {userProgress.totalStars}
+                          </span>
+                          <span className="flex items-center">
+                            <Trophy size={12} className="text-green-400 mr-1" />
+                            {userProgress.completedStages.length}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                    className="w-full flex items-center space-x-2 text-red-400 hover:text-red-300 transition-colors py-2"
+                  >
+                    <LogOut size={16} />
+                    <span>ออกจากระบบ</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setShowLoginModal(true);
+                    setIsOpen(false);
+                  }}
+                  className="w-full btn-secondary"
+                >
+                  เข้าสู่ระบบ
+                </button>
+              )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* Login Modal */}
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+        onShowToast={showToast}
+      />
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </nav>
   );

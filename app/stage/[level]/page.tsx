@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../components/layout/Navbar";
-import { stageData, updatePlayerProgress } from "../../data/stages";
+import { stageData } from "../../data/stages";
+import { progressManager } from "../../lib/progress";
 import { StageData, Question } from "../../types/stage";
 
 // Character Introduction Component
@@ -407,8 +408,13 @@ export default function StageLevelPage() {
   const handleQuizComplete = (finalScore: number) => {
     setScore(finalScore);
     
+    // คำนวณจำนวนดาว (1-3 ดาว ตามคะแนน)
+    const totalQuestions = stageInfo.questions.length;
+    const percentage = (finalScore / (totalQuestions * 10)) * 100; // คะแนนเต็มคือ 10 คะแนนต่อข้อ
+    const stars = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
+    
     // อัปเดตความคืบหน้าของผู้เล่น
-    updatePlayerProgress(level, finalScore, stageInfo.questions.length);
+    progressManager.completeStage(level, stars, finalScore);
     
     setCurrentStep(3);
   };

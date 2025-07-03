@@ -1,9 +1,33 @@
 "use client";
 import Link from "next/link";
-import { Rocket, Users, BookOpen, Gamepad2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Rocket, Users, BookOpen, Gamepad2, Star, Trophy, Target } from "lucide-react";
 import Navbar from "./components/layout/Navbar";
+import { progressManager } from "./lib/progress";
+import { authManager } from "./lib/auth";
+import { PlayerProgress } from "./types/stage";
 
 export default function HomePage() {
+  const [progress, setProgress] = useState<PlayerProgress | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // โหลด progress และสถานะ auth
+    const currentProgress = progressManager.getProgress();
+    setProgress(currentProgress);
+    setIsLoggedIn(authManager.isLoggedIn());
+
+    // Listen for auth changes
+    const unsubscribe = authManager.onAuthStateChange((user) => {
+      setIsLoggedIn(!!user);
+      // รีโหลด progress เมื่อ auth state เปลี่ยน
+      const newProgress = progressManager.getProgress();
+      setProgress(newProgress);
+    });
+
+    return unsubscribe;
+  }, []);
+
   // ข้อความภาษาไทย
   const text = {
     explore: "สำรวจอวกาศ",
@@ -32,11 +56,58 @@ export default function HomePage() {
             {text.forFun}
           </h2>
 
-          <Link href="/learning">
+          <Link href="/stage">
             <button className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-12 py-4 rounded-lg text-xl hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-2xl">
               {text.getStart}
             </button>
           </Link>
+
+          {/* Progress Display */}
+          {progress && (progress.totalStars > 0 || progress.completedStages.length > 0) && (
+            <div className="mt-8 bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
+              <h3 className="text-white text-xl font-semibold mb-4 text-center">
+                ความคืบหน้าของคุณ
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <Star className="text-yellow-400 mr-2" size={24} />
+                    <span className="text-2xl font-bold text-white">{progress.totalStars}</span>
+                  </div>
+                  <p className="text-gray-300 text-sm">ดาวที่เก็บได้</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <Trophy className="text-green-400 mr-2" size={24} />
+                    <span className="text-2xl font-bold text-white">{progress.completedStages.length}</span>
+                  </div>
+                  <p className="text-gray-300 text-sm">ด่านที่ผ่าน</p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center mb-2">
+                    <Target className="text-blue-400 mr-2" size={24} />
+                    <span className="text-2xl font-bold text-white">{progress.totalPoints}</span>
+                  </div>
+                  <p className="text-gray-300 text-sm">คะแนนรวม</p>
+                </div>
+              </div>
+              
+              {/* Save Status */}
+              <div className="mt-4 text-center">
+                {isLoggedIn ? (
+                  <p className="text-green-400 text-sm flex items-center justify-center">
+                    <Star className="mr-1" size={16} />
+                    ข้อมูลถูกบันทึกถาวรแล้ว
+                  </p>
+                ) : (
+                  <p className="text-yellow-400 text-sm flex items-center justify-center">
+                    <Target className="mr-1" size={16} />
+                    ข้อมูลชั่วคราว - ล็อกอินเพื่อบันทึกถาวร
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Decorative Elements */}

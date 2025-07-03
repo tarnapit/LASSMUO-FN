@@ -1,0 +1,247 @@
+import { PlayerProgress, StageProgress } from '../types/stage';
+import { authManager } from './auth';
+
+class ProgressManager {
+  private tempProgressKey = 'astronomy_temp_progress';
+  private userProgressKey = 'astronomy_user_progress';
+
+  // ดึงข้อมูล progress ปัจจุบัน
+  getProgress(): PlayerProgress {
+    if (authManager.isLoggedIn()) {
+      // ถ้าล็อกอินแล้ว ดึงข้อมูลจาก user progress
+      return this.getUserProgress();
+    } else {
+      // ถ้ายังไม่ล็อกอิน ดึงข้อมูลจาก session storage (ชั่วคราว)
+      return this.getTempProgress();
+    }
+  }
+
+  // บันทึก progress
+  saveProgress(progress: PlayerProgress): void {
+    if (authManager.isLoggedIn()) {
+      // ถ้าล็อกอินแล้ว บันทึกถาวร
+      this.saveUserProgress(progress);
+    } else {
+      // ถ้ายังไม่ล็อกอิน บันทึกชั่วคราว
+      this.saveTempProgress(progress);
+    }
+  }
+
+  // ดึงข้อมูล progress ชั่วคราว (sessionStorage - หายเมื่อปิดแท็บ)
+  private getTempProgress(): PlayerProgress {
+    if (typeof window === 'undefined') {
+      return this.getDefaultProgress();
+    }
+
+    const saved = sessionStorage.getItem(this.tempProgressKey);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+
+    // ถ้าไม่มีข้อมูล ให้เริ่มต้นด้วย stage 1 ปลดล็อก
+    return this.getDefaultProgress();
+  }
+
+  // บันทึก progress ชั่วคราว
+  private saveTempProgress(progress: PlayerProgress): void {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(this.tempProgressKey, JSON.stringify(progress));
+    }
+  }
+
+  // ดึงข้อมูล progress ของผู้ใช้ที่ล็อกอิน
+  private getUserProgress(): PlayerProgress {
+    if (typeof window === 'undefined') {
+      return this.getDefaultProgress();
+    }
+
+    const user = authManager.getCurrentUser();
+    if (!user) {
+      return this.getDefaultProgress();
+    }
+
+    const userKey = `${this.userProgressKey}_${user.id}`;
+    const saved = localStorage.getItem(userKey);
+    
+    if (saved) {
+      return JSON.parse(saved);
+    }
+
+    // ถ้าไม่มีข้อมูล และมี temp progress อยู่ ให้ migrate ข้อมูล
+    const tempProgress = this.getTempProgress();
+    if (tempProgress.totalStars > 0 || tempProgress.completedStages.length > 0) {
+      this.saveUserProgress(tempProgress);
+      this.clearTempProgress();
+      return tempProgress;
+    }
+
+    return this.getDefaultProgress();
+  }
+
+  // บันทึก progress ของผู้ใช้ที่ล็อกอิน
+  private saveUserProgress(progress: PlayerProgress): void {
+    if (typeof window === 'undefined') return;
+
+    const user = authManager.getCurrentUser();
+    if (!user) return;
+
+    const userKey = `${this.userProgressKey}_${user.id}`;
+    localStorage.setItem(userKey, JSON.stringify(progress));
+  }
+
+  // ลบข้อมูล progress ชั่วคราว
+  private clearTempProgress(): void {
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(this.tempProgressKey);
+    }
+  }
+
+  // Progress เริ่มต้น - stage 1 ปลดล็อกอยู่แล้ว
+  private getDefaultProgress(): PlayerProgress {
+    return {
+      totalStars: 0,
+      totalPoints: 0,
+      completedStages: [],
+      currentStage: 1,
+      stages: {
+        1: {
+          stageId: 1,
+          isUnlocked: true, // stage แรกปลดล็อกอยู่แล้ว
+          isCompleted: false,
+          stars: 0,
+          bestScore: 0,
+          attempts: 0
+        }
+      }
+    };
+  }
+
+  // อัพเดท progress เมื่อจบด่าน
+  completeStage(stageId: number, stars: number, score: number): PlayerProgress {
+    const progress = this.getProgress();
+    
+    // อัพเดท stage ปัจจุบัน
+    if (!progress.stages[stageId]) {
+      progress.stages[stageId] = {
+        stageId,
+        isUnlocked: true,
+        isCompleted: false,
+        stars: 0,
+        bestScore: 0,
+        attempts: 0
+      };
+    }
+
+    const stageProgress = progress.stages[stageId];
+    stageProgress.isCompleted = true;
+    stageProgress.stars = Math.max(stageProgress.stars, stars);
+    stageProgress.bestScore = Math.max(stageProgress.bestScore, score);
+    stageProgress.attempts++;
+    stageProgress.lastAttempt = new Date();
+
+    // เพิ่มในรายการ completed stages ถ้าไม่มี
+    if (!progress.completedStages.includes(stageId)) {
+      progress.completedStages.push(stageId);
+    }
+
+    // อัพเดท total stats
+    progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + stage.stars, 0);
+    progress.totalPoints += score; // เพิ่มคะแนนใหม่
+
+    // ปลดล็อก stage ถัดไป
+    const nextStageId = stageId + 1;
+    if (nextStageId <= 10) { // สมมติว่ามี stage สูงสุด 10 ด่าน
+      if (!progress.stages[nextStageId]) {
+        progress.stages[nextStageId] = {
+          stageId: nextStageId,
+          isUnlocked: true,
+          isCompleted: false,
+          stars: 0,
+          bestScore: 0,
+          attempts: 0
+        };
+      } else {
+        progress.stages[nextStageId].isUnlocked = true;
+      }
+    }
+
+    // บันทึก progress
+    this.saveProgress(progress);
+    
+    return progress;
+  }
+
+  // ปลดล็อก stage เฉพาะ (สำหรับ admin หรือ special cases)
+  unlockStage(stageId: number): void {
+    const progress = this.getProgress();
+    
+    if (!progress.stages[stageId]) {
+      progress.stages[stageId] = {
+        stageId,
+        isUnlocked: true,
+        isCompleted: false,
+        stars: 0,
+        bestScore: 0,
+        attempts: 0
+      };
+    } else {
+      progress.stages[stageId].isUnlocked = true;
+    }
+
+    this.saveProgress(progress);
+  }
+
+  // รีเซ็ต progress (สำหรับ dev หรือ reset ข้อมูล)
+  resetProgress(): void {
+    const defaultProgress = this.getDefaultProgress();
+    this.saveProgress(defaultProgress);
+  }
+
+  // Migrate temp progress เมื่อผู้ใช้ล็อกอิน
+  migrateProgressOnLogin(): void {
+    if (!authManager.isLoggedIn()) return;
+
+    const tempProgress = this.getTempProgress();
+    
+    // ถ้ามี progress ชั่วคราวที่ดีกว่า ให้ migrate
+    if (tempProgress.totalStars > 0 || tempProgress.completedStages.length > 0) {
+      const userProgress = this.getUserProgress();
+      
+      // เลือกค่าที่ดีกว่าจาก temp และ user progress
+      const mergedProgress: PlayerProgress = {
+        totalStars: Math.max(tempProgress.totalStars, userProgress.totalStars),
+        totalPoints: Math.max(tempProgress.totalPoints, userProgress.totalPoints),
+        completedStages: [...new Set([...tempProgress.completedStages, ...userProgress.completedStages])],
+        currentStage: Math.max(tempProgress.currentStage, userProgress.currentStage),
+        stages: { ...userProgress.stages }
+      };
+
+      // Merge stages โดยเลือกค่าที่ดีกว่า
+      Object.keys(tempProgress.stages).forEach(stageId => {
+        const tempStage = tempProgress.stages[parseInt(stageId)];
+        const userStage = mergedProgress.stages[parseInt(stageId)];
+
+        if (!userStage) {
+          mergedProgress.stages[parseInt(stageId)] = tempStage;
+        } else {
+          mergedProgress.stages[parseInt(stageId)] = {
+            stageId: parseInt(stageId),
+            isUnlocked: tempStage.isUnlocked || userStage.isUnlocked,
+            isCompleted: tempStage.isCompleted || userStage.isCompleted,
+            stars: Math.max(tempStage.stars, userStage.stars),
+            bestScore: Math.max(tempStage.bestScore, userStage.bestScore),
+            attempts: tempStage.attempts + userStage.attempts,
+            lastAttempt: tempStage.lastAttempt && userStage.lastAttempt 
+              ? new Date(Math.max(tempStage.lastAttempt.getTime(), userStage.lastAttempt.getTime()))
+              : tempStage.lastAttempt || userStage.lastAttempt
+          };
+        }
+      });
+
+      this.saveUserProgress(mergedProgress);
+      this.clearTempProgress();
+    }
+  }
+}
+
+export const progressManager = new ProgressManager();
