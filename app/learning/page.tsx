@@ -368,6 +368,10 @@ export default function LearningPage() {
                       <QuizCard quiz={quiz} moduleTitle={module.title} />
                     </div>
                   )}
+
+                  <div className="flex-grow mb-4">
+                    {/* Empty div to maintain consistent card height */}
+                  </div>
                 </div>
               </div>
             );

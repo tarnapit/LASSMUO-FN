@@ -567,11 +567,7 @@ class ProgressManager {
     return progress.learningProgress?.modules[moduleId] || null;
   }
 
-  // ดึงข้อมูล chapter progress
-  getChapterProgress(moduleId: string, chapterId: string): LearningProgress | null {
-    const moduleProgress = this.getModuleProgress(moduleId);
-    return moduleProgress?.chapters[chapterId] || null;
-  }
+  // ====== Module Progress Methods (Extended) ======
 
   // คำนวณเปอร์เซ็นต์ความคืบหน้าของ module
   getModuleCompletionPercentage(moduleId: string, totalChapters?: number): number {
@@ -633,14 +629,6 @@ class ProgressManager {
     // คืนค่าเป็น 40% ของคะแนนรวม (เนื่องจาก quiz คิดเป็น 40% ของ progress)
     const averageQuizScore = totalScore / quizCount;
     const quizProgressContribution = (averageQuizScore / 100) * 40;
-    
-    // Debug log
-    console.log(`Module ${moduleId} quiz progress:`, {
-      moduleQuizzes: moduleQuizzes.length,
-      averageQuizScore,
-      quizProgressContribution,
-      quizDetails: moduleQuizzes.map(q => ({ id: q.quizId, bestPercentage: q.bestPercentage }))
-    });
     
     return quizProgressContribution;
   }
@@ -713,26 +701,107 @@ class ProgressManager {
       }
 
       this.saveProgress(progress);
-      
-      console.log(`Module ${moduleId} completed automatically - all chapters finished and passed overall criteria`);
     }
   }
 
-  // ตรวจสอบว่าทำ quiz ของ module ผ่านเกณฑ์แล้วหรือไม่
-  hasPassedModuleQuiz(moduleId: string): boolean {
-    const progress = this.getProgress();
-    if (!progress.quizProgress) return false;
+  // ====== Quiz Unlock Methods ======
 
-    // ค้นหา quiz ที่เกี่ยวข้องกับ module นี้
-    const moduleQuizzes = Object.values(progress.quizProgress.quizzes).filter(
-      quiz => this.getModuleIdByQuizId(quiz.quizId) === moduleId
+  // ตรวจสอบว่าแบบฝึกหัดปลดล็อกแล้วหรือไม่
+  isQuizUnlocked(quizId: string): boolean {
+    const progress = this.getProgress();
+    
+    // ดึงข้อมูล quiz และ module ที่เกี่ยวข้อง
+    const moduleId = this.getModuleIdByQuizId(quizId);
+    if (!moduleId) return false;
+
+    const moduleProgress = this.getModuleProgress(moduleId);
+    if (!moduleProgress) return false;
+
+    // เงื่อนไขการปลดล็อก: ต้องอ่านเนื้อหาไปแล้วอย่างน้อย 60% ของ module
+    const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+    const requiredChapters = Math.ceil(expectedChapters.length * 0.6); // 60% ของ chapters
+    const completedChapters = moduleProgress.completedChapters.length;
+
+    return completedChapters >= requiredChapters;
+  }
+
+  // ดึงข้อมูลเงื่อนไขการปลดล็อกแบบฝึกหัด
+  getQuizUnlockRequirements(quizId: string): {
+    isUnlocked: boolean;
+    moduleId: string | null;
+    moduleTitle: string;
+    requiredChapters: number;
+    completedChapters: number;
+    requiredPercentage: number;
+    currentPercentage: number;
+    remainingChapters: string[];
+  } {
+    const moduleId = this.getModuleIdByQuizId(quizId);
+    
+    if (!moduleId) {
+      return {
+        isUnlocked: false,
+        moduleId: null,
+        moduleTitle: 'ไม่พบข้อมูล',
+        requiredChapters: 0,
+        completedChapters: 0,
+        requiredPercentage: 60,
+        currentPercentage: 0,
+        remainingChapters: []
+      };
+    }
+
+    const moduleProgress = this.getModuleProgress(moduleId);
+    const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+    const requiredChapters = Math.ceil(expectedChapters.length * 0.6); // 60%
+    const completedChapters = moduleProgress?.completedChapters.length || 0;
+    const currentPercentage = expectedChapters.length > 0 ? (completedChapters / expectedChapters.length) * 100 : 0;
+    const isUnlocked = completedChapters >= requiredChapters;
+
+    // หา chapters ที่ยังไม่ได้อ่าน
+    const completedChapterIds = moduleProgress?.completedChapters || [];
+    const remainingChapters = expectedChapters.filter(chapterId => 
+      !completedChapterIds.includes(chapterId)
     );
 
-    // ถ้าไม่มี quiz สำหรับ module นี้ ให้ถือว่าผ่าน
-    if (moduleQuizzes.length === 0) return true;
+    // ดึงชื่อ module
+    let moduleTitle = 'ไม่พบข้อมูล';
+    try {
+      const { learningModules } = require('../data/learning-modules');
+      const module = learningModules.find((m: any) => m.id === moduleId);
+      moduleTitle = module?.title || 'ไม่พบข้อมูล';
+    } catch (error) {
+      console.warn('Error loading module title:', error);
+    }
 
-    // ตรวจสอบว่าผ่านเกณฑ์ 70% ใน quiz อย่างน้อย 1 ข้อ
-    return moduleQuizzes.some(quiz => quiz.passed && quiz.bestPercentage >= 70);
+    return {
+      isUnlocked,
+      moduleId,
+      moduleTitle,
+      requiredChapters,
+      completedChapters,
+      requiredPercentage: 60,
+      currentPercentage: Math.round(currentPercentage),
+      remainingChapters
+    };
+  }
+
+  // ดึงข้อมูลสถานะการปลดล็อกของแบบฝึกหัดทั้งหมด
+  getAllQuizUnlockStatus(): Record<string, boolean> {
+    const knownQuizzes = ['solar-system-quiz', 'earth-structure-quiz', 'stellar-evolution-quiz', 'galaxies-universe-quiz'];
+    const unlockStatus: Record<string, boolean> = {};
+
+    knownQuizzes.forEach(quizId => {
+      unlockStatus[quizId] = this.isQuizUnlocked(quizId);
+    });
+
+    return unlockStatus;
+  }
+
+  // ดึงข้อมูล chapter progress
+  getChapterProgress(moduleId: string, chapterId: string): LearningProgress | null {
+    const moduleProgress = this.getModuleProgress(moduleId);
+    return moduleProgress?.chapters[chapterId] || null;
   }
 
   // ดึงสถิติการเรียนรู้รวม
@@ -754,8 +823,8 @@ class ProgressManager {
     
     const averageProgress = modules.length > 0
       ? modules.reduce((sum, module) => {
-          // สมมุติว่า module มี 3 chapters โดยเฉลี่ย
-          const totalChapters = 3;
+          const expectedChapters = this.getExpectedChaptersByModuleId(module.moduleId);
+          const totalChapters = expectedChapters.length || 3; // fallback to 3 if can't determine
           const completion = (module.completedChapters.length / totalChapters) * 100;
           return sum + completion;
         }, 0) / modules.length
@@ -767,134 +836,6 @@ class ProgressManager {
       totalLearningTime: progress.learningProgress.totalLearningTime,
       averageModuleProgress: Math.round(averageProgress)
     };
-  }
-
-  // ====== Merge and Migration Methods ======
-
-  // ผสาน progress ชั่วคราวกับ progress ของผู้ใช้
-  mergeTempWithUserProgress(): void {
-    if (typeof window === 'undefined') return;
-    
-    const tempProgress = this.getTempProgress();
-    const userProgress = this.getUserProgress();
-
-    // ถ้าไม่มี temp progress ให้ข้าม
-    if (tempProgress.totalStars === 0 && tempProgress.completedStages.length === 0) {
-      return;
-    }
-
-    // ผสาน progress โดยเลือกค่าที่ดีกว่า
-    const mergedProgress: PlayerProgress = { ...userProgress };
-
-    // Merge basic stats
-    mergedProgress.totalStars = Math.max(tempProgress.totalStars, userProgress.totalStars);
-    mergedProgress.totalPoints = Math.max(tempProgress.totalPoints, userProgress.totalPoints);
-    mergedProgress.currentStage = Math.max(tempProgress.currentStage, userProgress.currentStage);
-    
-    // Merge completed stages
-    mergedProgress.completedStages = [...new Set([...tempProgress.completedStages, ...userProgress.completedStages])];
-
-    // Merge learning progress
-    if (tempProgress.learningProgress) {
-      if (!mergedProgress.learningProgress) {
-        mergedProgress.learningProgress = {
-          completedModules: [],
-          totalLearningTime: 0,
-          modules: {}
-        };
-      }
-
-      // Merge completed modules
-      mergedProgress.learningProgress.completedModules = [
-        ...new Set([
-          ...tempProgress.learningProgress.completedModules,
-          ...mergedProgress.learningProgress.completedModules
-        ])
-      ];
-
-      // Merge total learning time
-      mergedProgress.learningProgress.totalLearningTime = 
-        tempProgress.learningProgress.totalLearningTime + mergedProgress.learningProgress.totalLearningTime;
-
-      // Merge stages
-      Object.keys(tempProgress.stages).forEach(stageId => {
-        const tempStage = tempProgress.stages[parseInt(stageId)];
-        const userStage = mergedProgress.stages[parseInt(stageId)];
-
-        if (!userStage) {
-          mergedProgress.stages[parseInt(stageId)] = tempStage;
-        } else {
-          mergedProgress.stages[parseInt(stageId)] = {
-            stageId: parseInt(stageId),
-            isUnlocked: tempStage.isUnlocked || userStage.isUnlocked,
-            isCompleted: tempStage.isCompleted || userStage.isCompleted,
-            stars: Math.max(tempStage.stars, userStage.stars),
-            bestScore: Math.max(tempStage.bestScore, userStage.bestScore),
-            attempts: tempStage.attempts + userStage.attempts,
-            lastAttempt: tempStage.lastAttempt && userStage.lastAttempt 
-              ? new Date(Math.max(tempStage.lastAttempt.getTime(), userStage.lastAttempt.getTime()))
-              : tempStage.lastAttempt || userStage.lastAttempt
-          };
-        }
-      });
-
-      // Merge learning modules
-      Object.keys(tempProgress.learningProgress.modules).forEach(moduleId => {
-        const tempModule = tempProgress.learningProgress!.modules[moduleId];
-        const userModule = mergedProgress.learningProgress!.modules[moduleId];
-
-        if (!userModule) {
-          mergedProgress.learningProgress!.modules[moduleId] = tempModule;
-        } else {
-          // Merge module progress
-          mergedProgress.learningProgress!.modules[moduleId] = {
-            moduleId,
-            isStarted: tempModule.isStarted || userModule.isStarted,
-            isCompleted: tempModule.isCompleted || userModule.isCompleted,
-            completedChapters: [...new Set([...tempModule.completedChapters, ...userModule.completedChapters])],
-            totalTimeSpent: tempModule.totalTimeSpent + userModule.totalTimeSpent,
-            completedAt: tempModule.completedAt && userModule.completedAt
-              ? new Date(Math.max(tempModule.completedAt.getTime(), userModule.completedAt.getTime()))
-              : tempModule.completedAt || userModule.completedAt,
-            chapters: { ...userModule.chapters, ...tempModule.chapters }
-          };
-        }
-      });
-
-      // Merge quiz progress
-      if (tempProgress.quizProgress) {
-        if (!mergedProgress.quizProgress) {
-          mergedProgress.quizProgress = { quizzes: {} };
-        }
-        
-        Object.keys(tempProgress.quizProgress.quizzes).forEach(quizId => {
-          const tempQuiz = tempProgress.quizProgress!.quizzes[quizId];
-          const userQuiz = mergedProgress.quizProgress!.quizzes[quizId];
-
-          if (!userQuiz) {
-            mergedProgress.quizProgress!.quizzes[quizId] = tempQuiz;
-          } else {
-            // Merge quiz progress
-            const allAttempts = [...userQuiz.attempts, ...tempQuiz.attempts];
-
-            mergedProgress.quizProgress!.quizzes[quizId] = {
-              quizId,
-              attempts: allAttempts,
-              bestScore: Math.max(tempQuiz.bestScore, userQuiz.bestScore),
-              bestPercentage: Math.max(tempQuiz.bestPercentage, userQuiz.bestPercentage),
-              totalAttempts: allAttempts.length,
-              passed: tempQuiz.passed || userQuiz.passed,
-              lastAttemptAt: tempQuiz.lastAttemptAt && userQuiz.lastAttemptAt
-                ? new Date(Math.max(tempQuiz.lastAttemptAt.getTime(), userQuiz.lastAttemptAt.getTime()))
-                : tempQuiz.lastAttemptAt || userQuiz.lastAttemptAt
-            };
-          }
-        });
-      }
-
-      this.saveUserProgress(mergedProgress);
-      this.clearTempProgress();
-    }
   }
 }
 

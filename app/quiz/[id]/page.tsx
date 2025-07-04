@@ -37,6 +37,14 @@ export default function QuizDetailPage() {
   useEffect(() => {
     const foundQuiz = getQuizById(quizId);
     if (foundQuiz) {
+      // ตรวจสอบการปลดล็อกก่อน
+      const isUnlocked = progressManager.isQuizUnlocked(quizId);
+      if (!isUnlocked) {
+        // ถ้ายังไม่ปลดล็อก ให้เปลี่ยนเส้นทางกลับไปหน้า quiz
+        router.push('/quiz');
+        return;
+      }
+
       setQuiz(foundQuiz);
       if (foundQuiz.timeLimit) {
         setTimeLeft(foundQuiz.timeLimit * 60); // แปลงเป็นวินาที
@@ -48,7 +56,7 @@ export default function QuizDetailPage() {
         setPreviousAttempts(quizProgress.attempts || []);
       }
     }
-  }, [quizId]);
+  }, [quizId, router]);
 
   // Timer
   useEffect(() => {

@@ -14,11 +14,13 @@ import {
   CheckCircle,
   XCircle,
   BarChart3,
-  Star
+  Star,
+  BookOpen
 } from "lucide-react";
 
 export default function QuizPage() {
   const [quizProgresses, setQuizProgresses] = useState<Record<string, any>>({});
+  const [quizUnlockStatus, setQuizUnlockStatus] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     // มิเกรตข้อมูลเก่าก่อน
@@ -27,6 +29,10 @@ export default function QuizPage() {
     // โหลด progress ของทุก quiz จาก progressManager
     const progresses = progressManager.getAllQuizProgress();
     setQuizProgresses(progresses);
+
+    // โหลดสถานะการปลดล็อกของแบบฝึกหัด
+    const unlockStatus = progressManager.getAllQuizUnlockStatus();
+    setQuizUnlockStatus(unlockStatus);
   }, []);
 
   const getModuleTitle = (moduleId: string) => {
@@ -36,6 +42,12 @@ export default function QuizPage() {
 
   const getQuizStatusIcon = (quizId: string) => {
     const progress = quizProgresses[quizId];
+    const isUnlocked = quizUnlockStatus[quizId];
+    
+    if (!isUnlocked) {
+      return <Brain className="text-gray-500" size={32} />;
+    }
+    
     if (!progress) return <Brain className="text-blue-400" size={32} />;
     
     if (progress.passed) {
@@ -49,6 +61,13 @@ export default function QuizPage() {
 
   const getQuizStatusText = (quizId: string) => {
     const progress = quizProgresses[quizId];
+    const isUnlocked = quizUnlockStatus[quizId];
+    
+    if (!isUnlocked) {
+      const unlockReq = progressManager.getQuizUnlockRequirements(quizId);
+      return `ต้องเรียน ${unlockReq.moduleTitle} ${unlockReq.requiredPercentage}% ก่อน`;
+    }
+    
     if (!progress) return "เริ่มทำแบบทดสอบ";
     
     if (progress.passed) {
@@ -64,6 +83,10 @@ export default function QuizPage() {
 
   const getQuizStatusColor = (quizId: string) => {
     const progress = quizProgresses[quizId];
+    const isUnlocked = quizUnlockStatus[quizId];
+    
+    if (!isUnlocked) return "text-gray-500";
+    
     if (!progress) return "text-blue-400";
     
     if (progress.passed) {
@@ -123,119 +146,226 @@ export default function QuizPage() {
           {quizzes.map((quiz) => {
             const averageDifficulty = calculateAverageDifficulty(quiz);
             const progress = quizProgresses[quiz.id];
+            const isUnlocked = quizUnlockStatus[quiz.id];
+            const unlockReq = progressManager.getQuizUnlockRequirements(quiz.id);
             
             return (
-              <Link 
-                key={quiz.id} 
-                href={`/quiz/${quiz.id}`}
-                className="group h-full"
-              >
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full flex flex-col min-h-[420px]">
-                  <div className="flex items-center justify-between mb-4">
-                    {getQuizStatusIcon(quiz.id)}
-                    <div className="flex items-center space-x-2">
-                      {progress?.totalAttempts > 0 && (
-                        <BarChart3 className="text-purple-400" size={20} />
+              <div key={quiz.id} className="group h-full">
+                {isUnlocked ? (
+                  <Link href={`/quiz/${quiz.id}`} className="h-full block">
+                    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full flex flex-col min-h-[420px]">
+                      <div className="flex items-center justify-between mb-4">
+                        {getQuizStatusIcon(quiz.id)}
+                        <div className="flex items-center space-x-2">
+                          {progress?.totalAttempts > 0 && (
+                            <BarChart3 className="text-purple-400" size={20} />
+                          )}
+                          <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
+                        </div>
+                      </div>
+                      
+                      <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
+                        {quiz.title}
+                      </h3>
+                      
+                      <p className="text-sm text-gray-400 mb-3">
+                        บทเรียน: {getModuleTitle(quiz.moduleId)}
+                      </p>
+                      
+                      <div className="flex-grow mb-4">
+                        <p className="text-gray-300 leading-relaxed text-sm">
+                          {quiz.description}
+                        </p>
+                      </div>
+
+                      {/* Progress for completed quizzes */}
+                      {progress?.passed && (
+                        <div className="mb-4 p-3 bg-green-500/20 rounded-lg border border-green-500/30">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-green-400 font-semibold">ผ่านแล้ว!</span>
+                            <span className="text-green-400">{progress.bestPercentage}%</span>
+                          </div>
+                          <div className="text-xs text-green-300 mt-1">
+                            คะแนนสูงสุด: {progress.bestScore} คะแนน
+                          </div>
+                        </div>
                       )}
-                      <Star className="text-gray-400 group-hover:text-yellow-400 transition-colors" size={20} />
+
+                      {/* Failed attempts warning */}
+                      {progress?.totalAttempts > 0 && !progress.passed && (
+                        <div className="mb-4 p-3 bg-red-500/20 rounded-lg border border-red-500/30">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-red-400">ยังไม่ผ่าน</span>
+                            <span className="text-red-400">{progress.bestPercentage}%</span>
+                          </div>
+                          <div className="text-xs text-red-300 mt-1">
+                            ทำไปแล้ว {progress.totalAttempts}/{quiz.maxAttempts || '∞'} ครั้ง
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Brain size={16} className="text-gray-400 mr-2" />
+                            <span className="text-gray-400">จำนวนข้อ:</span>
+                          </div>
+                          <span className="text-white font-semibold">{quiz.questions.length} ข้อ</span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Clock size={16} className="text-gray-400 mr-2" />
+                            <span className="text-gray-400">เวลา:</span>
+                          </div>
+                          <span className="text-white font-semibold">
+                            {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Target size={16} className="text-gray-400 mr-2" />
+                            <span className="text-gray-400">ผ่าน:</span>
+                          </div>
+                          <span className="text-white font-semibold">{quiz.passingScore}%</span>
+                        </div>
+
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center">
+                            <Trophy size={16} className="text-gray-400 mr-2" />
+                            <span className="text-gray-400">ระดับ:</span>
+                          </div>
+                          <span className={`font-semibold ${getDifficultyColor(averageDifficulty)}`}>
+                            {getDifficultyText(averageDifficulty)}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-auto pt-4 border-t border-white/10">
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-400">
+                              คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                            </span>
+                            <span className={`text-sm font-semibold ${getQuizStatusColor(quiz.id)}`}>
+                              {getQuizStatusText(quiz.id)}
+                            </span>
+                          </div>
+                          <div className="text-blue-400 group-hover:translate-x-1 transition-transform">
+                            <PlayCircle size={24} />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
-                    {quiz.title}
-                  </h3>
-                  
-                  <p className="text-sm text-gray-400 mb-3">
-                    บทเรียน: {getModuleTitle(quiz.moduleId)}
-                  </p>
-                  
-                  <div className="flex-grow mb-4">
-                    <p className="text-gray-300 leading-relaxed text-sm">
-                      {quiz.description}
+                  </Link>
+                ) : (
+                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 h-full flex flex-col min-h-[420px] opacity-75">
+                    <div className="flex items-center justify-between mb-4">
+                      {getQuizStatusIcon(quiz.id)}
+                      <div className="flex items-center space-x-2">
+                        <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center">
+                          <XCircle className="text-red-400" size={16} />
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-2xl font-bold text-gray-400 mb-2">
+                      {quiz.title}
+                    </h3>
+                    
+                    <p className="text-sm text-gray-500 mb-3">
+                      บทเรียน: {getModuleTitle(quiz.moduleId)}
                     </p>
-                  </div>
-
-                  {/* Progress for completed quizzes */}
-                  {progress?.passed && (
-                    <div className="mb-4 p-3 bg-green-500/20 rounded-lg border border-green-500/30">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-green-400 font-semibold">ผ่านแล้ว!</span>
-                        <span className="text-green-400">{progress.bestPercentage}%</span>
-                      </div>
-                      <div className="text-xs text-green-300 mt-1">
-                        คะแนนสูงสุด: {progress.bestScore} คะแนน
-                      </div>
+                    
+                    <div className="flex-grow mb-4">
+                      <p className="text-gray-400 leading-relaxed text-sm">
+                        {quiz.description}
+                      </p>
                     </div>
-                  )}
 
-                  {/* Failed attempts warning */}
-                  {progress?.totalAttempts > 0 && !progress.passed && (
-                    <div className="mb-4 p-3 bg-red-500/20 rounded-lg border border-red-500/30">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-red-400">ยังไม่ผ่าน</span>
-                        <span className="text-red-400">{progress.bestPercentage}%</span>
+                    {/* Unlock Requirements */}
+                    <div className="mb-4 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                      <div className="flex items-center mb-2">
+                        <Trophy className="text-yellow-400 mr-2" size={16} />
+                        <span className="text-yellow-400 font-semibold text-sm">เงื่อนไขการปลดล็อก</span>
                       </div>
-                      <div className="text-xs text-red-300 mt-1">
-                        ทำไปแล้ว {progress.totalAttempts}/{quiz.maxAttempts || '∞'} ครั้ง
+                      <div className="text-xs text-yellow-300 space-y-1">
+                        <div>ต้องเรียน "{unlockReq.moduleTitle}" อย่างน้อย {unlockReq.requiredPercentage}%</div>
+                        <div className="flex items-center justify-between">
+                          <span>ความคืบหน้าปัจจุบัน:</span>
+                          <span className="font-semibold">{unlockReq.currentPercentage}%</span>
+                        </div>
+                        <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
+                          <div 
+                            className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${Math.min(unlockReq.currentPercentage, 100)}%` }}
+                          ></div>
+                        </div>
+                        {unlockReq.remainingChapters.length > 0 && (
+                          <div className="mt-2 text-xs">
+                            ต้องอ่านอีก {Math.max(0, unlockReq.requiredChapters - unlockReq.completedChapters)} บท
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
-                  
-                  <div className="space-y-2 mb-4">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center">
-                        <Brain size={16} className="text-gray-400 mr-2" />
-                        <span className="text-gray-400">จำนวนข้อ:</span>
-                      </div>
-                      <span className="text-white font-semibold">{quiz.questions.length} ข้อ</span>
                     </div>
                     
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center">
-                        <Clock size={16} className="text-gray-400 mr-2" />
-                        <span className="text-gray-400">เวลา:</span>
+                    <div className="space-y-2 mb-4 opacity-70">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center">
+                          <Brain size={16} className="text-gray-500 mr-2" />
+                          <span className="text-gray-500">จำนวนข้อ:</span>
+                        </div>
+                        <span className="text-gray-400 font-semibold">{quiz.questions.length} ข้อ</span>
                       </div>
-                      <span className="text-white font-semibold">
-                        {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
-                      </span>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center">
+                          <Clock size={16} className="text-gray-500 mr-2" />
+                          <span className="text-gray-500">เวลา:</span>
+                        </div>
+                        <span className="text-gray-400 font-semibold">
+                          {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center">
+                          <Target size={16} className="text-gray-500 mr-2" />
+                          <span className="text-gray-500">ผ่าน:</span>
+                        </div>
+                        <span className="text-gray-400 font-semibold">{quiz.passingScore}%</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center">
+                          <Trophy size={16} className="text-gray-500 mr-2" />
+                          <span className="text-gray-500">ระดับ:</span>
+                        </div>
+                        <span className="text-gray-400 font-semibold">
+                          {getDifficultyText(averageDifficulty)}
+                        </span>
+                      </div>
                     </div>
                     
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center">
-                        <Target size={16} className="text-gray-400 mr-2" />
-                        <span className="text-gray-400">ผ่าน:</span>
-                      </div>
-                      <span className="text-white font-semibold">{quiz.passingScore}%</span>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center">
-                        <Trophy size={16} className="text-gray-400 mr-2" />
-                        <span className="text-gray-400">ระดับ:</span>
-                      </div>
-                      <span className={`font-semibold ${getDifficultyColor(averageDifficulty)}`}>
-                        {getDifficultyText(averageDifficulty)}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-auto pt-4 border-t border-white/10">
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-sm text-gray-400">
-                          คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
-                        </span>
-                        <span className={`text-sm font-semibold ${getQuizStatusColor(quiz.id)}`}>
-                          {getQuizStatusText(quiz.id)}
-                        </span>
-                      </div>
-                      <div className="text-blue-400 group-hover:translate-x-1 transition-transform">
-                        <PlayCircle size={24} />
+                    <div className="mt-auto pt-4 border-t border-white/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-sm text-gray-500">
+                            คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                          </span>
+                          <span className="text-sm font-semibold text-gray-500">
+                            ล็อกอยู่
+                          </span>
+                        </div>
+                        <div className="text-gray-500">
+                          <Brain size={24} />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Link>
+                )}
+              </div>
             );
           })}
         </div>
@@ -247,6 +377,59 @@ export default function QuizPage() {
             <p className="text-gray-500">แบบทดสอบจะปรากฏขึ้นเมื่อมีบทเรียนใหม่</p>
           </div>
         )}
+
+        {/* Help Section */}
+        <div className="max-w-4xl mx-auto mt-16 p-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10">
+          <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
+            <Brain className="mr-2 text-blue-400" size={24} />
+            วิธีการปลดล็อกแบบฝึกหัด
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold text-blue-400 mb-3">เงื่อนไขการปลดล็อก</h3>
+              <ul className="space-y-2 text-gray-300">
+                <li className="flex items-start">
+                  <CheckCircle className="text-green-400 mr-2 mt-0.5" size={16} />
+                  <span>ต้องเรียนเนื้อหาในบทเรียนไปอย่างน้อย 60%</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="text-green-400 mr-2 mt-0.5" size={16} />
+                  <span>อ่านบทเรียนจนครบตามจำนวนที่กำหนด</span>
+                </li>
+                <li className="flex items-start">
+                  <CheckCircle className="text-green-400 mr-2 mt-0.5" size={16} />
+                  <span>ระบบจะปลดล็อกโดยอัตโนมัติเมื่อครบเงื่อนไข</span>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-yellow-400 mb-3">คำแนะนำ</h3>
+              <ul className="space-y-2 text-gray-300">
+                <li className="flex items-start">
+                  <Star className="text-yellow-400 mr-2 mt-0.5" size={16} />
+                  <span>ไปที่หน้าบทเรียนเพื่อเรียนรู้เนื้อหา</span>
+                </li>
+                <li className="flex items-start">
+                  <Star className="text-yellow-400 mr-2 mt-0.5" size={16} />
+                  <span>ติดตามความคืบหน้าในการ์ดแต่ละบทเรียน</span>
+                </li>
+                <li className="flex items-start">
+                  <Star className="text-yellow-400 mr-2 mt-0.5" size={16} />
+                  <span>แบบฝึกหัดจะช่วยทบทวนความรู้ที่ได้เรียนมา</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-6 text-center">
+            <Link
+              href="/learning"
+              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
+            >
+              <BookOpen size={20} className="mr-2" />
+              ไปเรียนบทเรียน
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Background Stars Effect */}
