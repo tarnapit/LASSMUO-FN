@@ -647,8 +647,8 @@ class ProgressManager {
 
   // ตรวจสอบว่า module ผ่านเกณฑ์หรือไม่ (70%)
   isModulePassed(moduleId: string): boolean {
-    const progress = this.getModuleCompletionPercentage(moduleId);
-    return progress >= 70;
+    const totalProgress = this.getModuleCompletionPercentage(moduleId);
+    return totalProgress >= 70;
   }
 
   // ตรวจสอบว่า module เสร็จสมบูรณ์ 100% หรือไม่
@@ -698,12 +698,12 @@ class ProgressManager {
     const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
     const completedChapters = moduleProgress.completedChapters.length;
 
-    // ตรวจสอบว่าเรียนจบทุก chapter และทำ quiz ผ่านเกณฑ์แล้วหรือไม่
+    // ตรวจสอบว่าเรียนจบทุก chapter และผ่านเกณฑ์รวม 70% แล้วหรือไม่
     const hasReadAllChapters = completedChapters >= expectedChapters.length && expectedChapters.length > 0;
-    const hasPassedQuiz = this.hasPassedModuleQuiz(moduleId);
+    const hasPassedOverallCriteria = this.isModulePassed(moduleId); // ใช้การตรวจสอบเกณฑ์รวม
 
-    // ถ้าผ่านทั้งการอ่านและแบบทดสอบ ให้ mark เป็น completed
-    if (hasReadAllChapters && hasPassedQuiz) {
+    // ถ้าผ่านทั้งการอ่านและเกณฑ์รวม ให้ mark เป็น completed
+    if (hasReadAllChapters && hasPassedOverallCriteria) {
       moduleProgress.isCompleted = true;
       moduleProgress.completedAt = new Date();
 
@@ -714,7 +714,7 @@ class ProgressManager {
 
       this.saveProgress(progress);
       
-      console.log(`Module ${moduleId} completed automatically - all chapters finished and quiz passed`);
+      console.log(`Module ${moduleId} completed automatically - all chapters finished and passed overall criteria`);
     }
   }
 
@@ -731,8 +731,8 @@ class ProgressManager {
     // ถ้าไม่มี quiz สำหรับ module นี้ ให้ถือว่าผ่าน
     if (moduleQuizzes.length === 0) return true;
 
-    // ตรวจสอบว่าผ่าน quiz อย่างน้อย 1 ข้อ
-    return moduleQuizzes.some(quiz => quiz.passed);
+    // ตรวจสอบว่าผ่านเกณฑ์ 70% ใน quiz อย่างน้อย 1 ข้อ
+    return moduleQuizzes.some(quiz => quiz.passed && quiz.bestPercentage >= 70);
   }
 
   // ดึงสถิติการเรียนรู้รวม

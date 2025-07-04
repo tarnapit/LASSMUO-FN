@@ -120,7 +120,7 @@ export default function LearningPage() {
 
     // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
     if (progressManager.isModulePerfect(moduleId)) {
-      return "เรียนจบแล้ว (100%)";
+      return "เรียนจบแล้ว";
     }
     // ตรวจสอบว่าผ่านเกณฑ์ (70%)
     else if (progressManager.isModulePassed(moduleId)) {
@@ -300,13 +300,24 @@ export default function LearningPage() {
                             }}
                           />
                         </div>
-                        {/* แสดงข้อมูลเพิ่มเติมเกี่ยวกับสิ่งที่ต้องทำเพื่อให้ได้ 100% */}
-                        {progressManager.isModulePassed(module.id) &&
-                          !progressManager.isModulePerfect(module.id) && (
-                            <div className="text-xs text-yellow-400 mt-1">
-                              💡 ทำแบบฝึกหัดให้ได้คะแนนเต็มเพื่อให้ได้ 100%
-                            </div>
-                          )}
+                        {/* แสดงข้อมูลเพิ่มเติมเกี่ยวกับสิ่งที่ต้องทำ */}
+                        {moduleProgresses[module.id]?.isStarted && (
+                          <div className="text-xs mt-1">
+                            {progressManager.isModulePerfect(module.id) ? (
+                              <div className="text-green-400">
+                                ✅ เรียนจบแล้ว คะแนนเต็ม!
+                              </div>
+                            ) : progressManager.isModulePassed(module.id) ? (
+                              <div className="text-yellow-400">
+                                💡 ทำแบบฝึกหัดให้ได้คะแนนเต็มเพื่อให้ได้ 100%
+                              </div>
+                            ) : (
+                              <div className="text-red-400">
+                                ⚠️ ต้องได้คะแนนรวม 70% ขึ้นไปจึงจะผ่าน
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -351,13 +362,12 @@ export default function LearningPage() {
                     </div>
                   </Link>
 
-                  {/* Quiz Section - Show when module is passed (70% or more) */}
-                  {(progressManager.isModulePassed(module.id) || isCompleted) &&
-                    quiz && (
-                      <div className="mt-4 pt-4 border-t border-white/10">
-                        <QuizCard quiz={quiz} moduleTitle={module.title} />
-                      </div>
-                    )}
+                  {/* Quiz Section - Show when reading is complete (can attempt quiz) */}
+                  {moduleProgresses[module.id]?.isStarted && quiz && (
+                    <div className="mt-4 pt-4 border-t border-white/10">
+                      <QuizCard quiz={quiz} moduleTitle={module.title} />
+                    </div>
+                  )}
                 </div>
               </div>
             );
