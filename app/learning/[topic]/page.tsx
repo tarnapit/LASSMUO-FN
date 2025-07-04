@@ -80,7 +80,7 @@ export default function LearningTopicPage() {
     } else {
       // จบ module แล้ว
       completeCurrentChapter();
-      completeModule();
+      completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
       
       // ถ้ามี quiz ให้ไปหน้า quiz เลย
       if (quiz) {
@@ -137,12 +137,17 @@ export default function LearningTopicPage() {
   };
 
   // จบการเรียน module
-  const completeModule = () => {
+  const completeModule = (shouldRedirect = false) => {
     if (!module) return;
     
     console.log(`Completing module ${module.id} with ${module.chapters.length} chapters`);
     progressManager.completeModule(module.id, module.chapters.length);
-    setModuleCompleted(true);
+    
+    // ถ้าไม่ต้องการ redirect ให้แสดงหน้าสรุป
+    if (!shouldRedirect) {
+      setModuleCompleted(true);
+    }
+    
     console.log(`Module ${module.id} completed successfully`);
     
     // ส่ง event เพื่อแจ้งการอัพเดท progress
@@ -207,9 +212,9 @@ export default function LearningTopicPage() {
                   onClick={() => {
                     // บันทึก progress ของ chapter ปัจจุบันก่อนไปทำ quiz
                     completeCurrentChapter();
-                    // ถ้าเป็น chapter สุดท้าย ให้ complete module ด้วย
+                    // ถ้าเป็น chapter สุดท้าย ให้ complete module ด้วย (แต่ไม่แสดงหน้าสรุป)
                     if (isLastChapter) {
-                      completeModule();
+                      completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
                     }
                     // ไปหน้า quiz
                     router.push(`/quiz/${quiz.id}`);
