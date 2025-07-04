@@ -81,6 +81,11 @@ export default function LearningTopicPage() {
       // จบ module แล้ว
       completeCurrentChapter();
       completeModule();
+      
+      // ถ้ามี quiz ให้ไปหน้า quiz เลย
+      if (quiz) {
+        router.push(`/quiz/${quiz.id}`);
+      }
     }
   };
 
@@ -345,24 +350,18 @@ export default function LearningTopicPage() {
                   <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl p-8 border-2 border-orange-500/40">
                     <div className="text-center mb-6">
                       <h4 className="text-2xl font-bold text-orange-400 mb-2">แบบฝึกหัด</h4>
-                      <p className="text-white text-lg mb-1">แบบฝึกหัด: จับคู่ชื่อดาวเคราะห์กับลักษณะเฉพาะ</p>
+                      <p className="text-white text-lg mb-1">แบบฝึกหัด: {quiz.title}</p>
                       <p className="text-gray-300 text-sm">ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้</p>
                     </div>
                     
                     <div className="text-center">
-                      {quiz ? (
-                        <Link 
-                          href={`/quiz/${quiz.id}`}
-                          className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-lg inline-flex items-center shadow-lg"
-                        >
-                          <Brain size={24} className="mr-3" />
-                          ไปทำแบบทดสอบ
-                        </Link>
-                      ) : (
-                        <div className="text-gray-400 py-4">
-                          <p>ยังไม่มีแบบทดสอบสำหรับบทเรียนนี้</p>
-                        </div>
-                      )}
+                      <Link 
+                        href={`/quiz/${quiz.id}`}
+                        className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-lg inline-flex items-center shadow-lg"
+                      >
+                        <Brain size={24} className="mr-3" />
+                        ไปทำแบบทดสอบ
+                      </Link>
                     </div>
                     
                     <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
@@ -391,6 +390,13 @@ export default function LearningTopicPage() {
                 )}
 
                 <div className="flex justify-center space-x-4">
+                  <button 
+                    onClick={() => setModuleCompleted(false)}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                  >
+                    <BookOpen size={20} className="mr-2" />
+                    ดูเนื้อหาการเรียน
+                  </button>
                   <Link 
                     href="/learning" 
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
@@ -410,62 +416,60 @@ export default function LearningTopicPage() {
             </div>
           ) : (
             // Regular Learning Content
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/10">
-              {renderContent()}
-            </div>
-          )}
-
-          {/* Navigation Buttons - Only show when not completed */}
-          {!moduleCompleted && (
-            <div className="flex justify-between items-center">
-              <button
-                onClick={prevContent}
-                disabled={isFirstChapter && isFirstContent}
-                className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
-                  isFirstChapter && isFirstContent
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-gray-700 text-white hover:bg-gray-600'
-                }`}
-              >
-                <ChevronLeft size={20} className="mr-2" />
-                ย้อนกลับ
-              </button>
-
-              <div className="text-center">
-                <div className="text-sm text-gray-400 mb-1">
-                  บทที่ {currentChapterIndex + 1} จาก {module.chapters.length}
-                </div>
-                <div className="text-lg font-semibold text-white">
-                  {currentChapter.title}
-                </div>
+            <>
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/10">
+                {renderContent()}
               </div>
 
-              <button
-                onClick={nextContent}
-                disabled={isLastChapter && isLastContent}
-                className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
-                  isLastChapter && isLastContent
-                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-400 hover:to-orange-400'
-                }`}
-              >
-                ถัดไป
-                <ChevronRight size={20} className="ml-2" />
-              </button>
-            </div>
-          )}
+              {/* Navigation Buttons */}
+              <div className="flex justify-between items-center">
+                <button
+                  onClick={prevContent}
+                  disabled={isFirstChapter && isFirstContent}
+                  className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                    isFirstChapter && isFirstContent
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-700 text-white hover:bg-gray-600'
+                  }`}
+                >
+                  <ChevronLeft size={20} className="mr-2" />
+                  ย้อนกลับ
+                </button>
 
-          {/* Quiz Navigation Button - แสดงเมื่อจบ module แล้ว */}
-          {isLastChapter && isLastContent && quiz && (
-            <div className="mt-8 text-center">
-              <Link 
-                href={`/quiz/${quiz.id}`}
-                className="inline-flex items-center justify-center px-6 py-3 rounded-lg font-semibold bg-gradient-to-r from-green-500 to-teal-500 text-white hover:from-green-400 hover:to-teal-400 transition-all"
-              >
-                <Trophy size={20} className="mr-2" />
-                ไปทำแบบทดสอบ
-              </Link>
-            </div>
+                <div className="text-center">
+                  <div className="text-sm text-gray-400 mb-1">
+                    บทที่ {currentChapterIndex + 1} จาก {module.chapters.length}
+                  </div>
+                  <div className="text-lg font-semibold text-white">
+                    {currentChapter.title}
+                  </div>
+                </div>
+
+                <button
+                  onClick={nextContent}
+                  disabled={isLastChapter && isLastContent && !quiz}
+                  className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                    isLastChapter && isLastContent && !quiz
+                      ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                      : isLastChapter && isLastContent && quiz
+                      ? 'bg-gradient-to-r from-green-500 to-teal-500 text-white hover:from-green-400 hover:to-teal-400'
+                      : 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-400 hover:to-orange-400'
+                  }`}
+                >
+                  {isLastChapter && isLastContent && quiz ? (
+                    <>
+                      <Trophy size={20} className="mr-2" />
+                      เสร็จแล้ว - ไปทำแบบทดสอบ
+                    </>
+                  ) : (
+                    <>
+                      ถัดไป
+                      <ChevronRight size={20} className="ml-2" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
