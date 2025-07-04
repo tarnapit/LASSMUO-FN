@@ -139,7 +139,24 @@ export default function QuizPage() {
       <div className="container mx-auto px-6 py-20">
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-white mb-4">แบบทดสอบ</h1>
-          <p className="text-gray-300 text-lg">ทดสอบความเข้าใจหลังจากเรียนบทเรียนเสร็จแล้ว</p>
+          <p className="text-gray-300 text-lg mb-6">ทดสอบความเข้าใจหลังจากเรียนบทเรียนเสร็จแล้ว</p>
+          
+          {/* Lock status summary */}
+          <div className="inline-flex items-center space-x-4 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="text-green-400" size={20} />
+              <span className="text-green-400 text-sm font-medium">
+                {Object.values(quizUnlockStatus).filter(Boolean).length} ปลดล็อกแล้ว
+              </span>
+            </div>
+            <div className="w-px h-4 bg-white/20"></div>
+            <div className="flex items-center space-x-2">
+              <XCircle className="text-yellow-400" size={20} />
+              <span className="text-yellow-400 text-sm font-medium">
+                {Object.values(quizUnlockStatus).filter(status => !status).length} ล็อกอยู่
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
@@ -260,105 +277,149 @@ export default function QuizPage() {
                     </div>
                   </Link>
                 ) : (
-                  <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 h-full flex flex-col min-h-[420px] opacity-75">
-                    <div className="flex items-center justify-between mb-4">
-                      {getQuizStatusIcon(quiz.id)}
-                      <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 rounded-full bg-red-500/20 flex items-center justify-center">
-                          <XCircle className="text-red-400" size={16} />
-                        </div>
-                      </div>
-                    </div>
+                  <div className="relative bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 h-full flex flex-col min-h-[420px] overflow-hidden">
+                    {/* Background blur overlay */}
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm rounded-2xl"></div>
                     
-                    <h3 className="text-2xl font-bold text-gray-400 mb-2">
-                      {quiz.title}
-                    </h3>
-                    
-                    <p className="text-sm text-gray-500 mb-3">
-                      บทเรียน: {getModuleTitle(quiz.moduleId)}
-                    </p>
-                    
-                    <div className="flex-grow mb-4">
-                      <p className="text-gray-400 leading-relaxed text-sm">
-                        {quiz.description}
-                      </p>
-                    </div>
-
-                    {/* Unlock Requirements */}
-                    <div className="mb-4 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-                      <div className="flex items-center mb-2">
-                        <Trophy className="text-yellow-400 mr-2" size={16} />
-                        <span className="text-yellow-400 font-semibold text-sm">เงื่อนไขการปลดล็อก</span>
-                      </div>
-                      <div className="text-xs text-yellow-300 space-y-1">
-                        <div>ต้องเรียน "{unlockReq.moduleTitle}" อย่างน้อย {unlockReq.requiredPercentage}%</div>
-                        <div className="flex items-center justify-between">
-                          <span>ความคืบหน้าปัจจุบัน:</span>
-                          <span className="font-semibold">{unlockReq.currentPercentage}%</span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2 mt-2">
-                          <div 
-                            className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${Math.min(unlockReq.currentPercentage, 100)}%` }}
-                          ></div>
-                        </div>
-                        {unlockReq.remainingChapters.length > 0 && (
-                          <div className="mt-2 text-xs">
-                            ต้องอ่านอีก {Math.max(0, unlockReq.requiredChapters - unlockReq.completedChapters)} บท
+                    {/* Content */}
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        {getQuizStatusIcon(quiz.id)}
+                        <div className="flex items-center space-x-2">
+                          <div className="w-8 h-8 rounded-full bg-red-500/30 flex items-center justify-center animate-pulse">
+                            <XCircle className="text-red-400" size={18} />
                           </div>
-                        )}
+                        </div>
+                      </div>
+                      
+                      <h3 className="text-2xl font-bold text-gray-300 mb-2">
+                        {quiz.title}
+                      </h3>
+                      
+                      <p className="text-sm text-gray-400 mb-3">
+                        บทเรียน: {getModuleTitle(quiz.moduleId)}
+                      </p>
+                      
+                      <div className="flex-grow mb-4">
+                        <p className="text-gray-400 leading-relaxed text-sm opacity-70">
+                          {quiz.description}
+                        </p>
+                      </div>
+
+                      {/* Highlighted Unlock Requirements */}
+                      <div className="mb-4 p-5 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl border-2 border-yellow-400/50 shadow-lg shadow-yellow-400/20 backdrop-blur-md hover:shadow-yellow-400/40 transition-all duration-300 group/unlock">
+                        <div className="flex items-center mb-3">
+                          <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center mr-3 group-hover/unlock:bg-yellow-400/30 transition-colors duration-300">
+                            <Trophy className="text-yellow-400 group-hover/unlock:text-yellow-300 transition-colors duration-300" size={18} />
+                          </div>
+                          <span className="text-yellow-300 font-bold text-base group-hover/unlock:text-yellow-200 transition-colors duration-300">🔒 เงื่อนไขการปลดล็อก</span>
+                        </div>
+                        
+                        <div className="bg-black/40 rounded-lg p-4 border border-yellow-400/30 group-hover/unlock:border-yellow-400/50 transition-all duration-300">
+                          <div className="text-sm text-yellow-200 space-y-3">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                              <span>ต้องเรียน "<span className="font-semibold text-yellow-300 group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.moduleTitle}</span>" อย่างน้อย <span className="font-bold text-yellow-300 text-lg group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.requiredPercentage}%</span></span>
+                            </div>
+                            
+                            <div className="bg-gray-800/50 rounded-lg p-3 border border-yellow-400/20 group-hover/unlock:border-yellow-400/40 transition-all duration-300">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-yellow-300 font-medium group-hover/unlock:text-yellow-200 transition-colors duration-300">ความคืบหน้าปัจจุบัน:</span>
+                                <span className="font-bold text-yellow-300 text-lg group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.currentPercentage}%</span>
+                              </div>
+                              
+                              <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden border border-yellow-400/30 group-hover/unlock:border-yellow-400/50 transition-all duration-300">
+                                <div 
+                                  className="bg-gradient-to-r from-yellow-400 to-orange-400 h-3 rounded-full transition-all duration-500 ease-out relative group-hover/unlock:from-yellow-300 group-hover/unlock:to-orange-300"
+                                  style={{ width: `${Math.min(unlockReq.currentPercentage, 100)}%` }}
+                                >
+                                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                                  <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover/unlock:opacity-100 transition-opacity duration-300 animate-[shimmer_2s_infinite]"></div>
+                                </div>
+                              </div>
+                              
+                              <div className="mt-2 text-xs text-yellow-200 group-hover/unlock:text-yellow-100 transition-colors duration-300">
+                                {unlockReq.currentPercentage >= unlockReq.requiredPercentage ? (
+                                  <span className="text-green-400 font-semibold animate-pulse">✅ ครบเงื่อนไขแล้ว!</span>
+                                ) : (
+                                  <span>ต้องเรียนเพิ่มอีก <span className="font-semibold text-yellow-300 group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.requiredPercentage - unlockReq.currentPercentage}%</span></span>
+                                )}
+                              </div>
+                            </div>
+                            
+                            {unlockReq.remainingChapters.length > 0 && (
+                              <div className="flex items-center space-x-2 text-sm">
+                                <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                                <span>ต้องอ่านอีก <span className="font-semibold text-orange-300 group-hover/unlock:text-orange-200 transition-colors duration-300">{Math.max(0, unlockReq.requiredChapters - unlockReq.completedChapters)} บท</span></span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Action button */}
+                        <div className="mt-4 text-center">
+                          <Link
+                            href="/learning"
+                            className="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-yellow-500/25 group-hover/unlock:shadow-yellow-500/50"
+                          >
+                            <BookOpen size={16} className="mr-2" />
+                            ไปเรียนบทเรียน
+                          </Link>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="space-y-2 mb-4 opacity-70">
+                    {/* Dimmed quiz details */}
+                    <div className="relative z-10 space-y-2 mb-4 opacity-40 blur-sm">
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center">
-                          <Brain size={16} className="text-gray-500 mr-2" />
-                          <span className="text-gray-500">จำนวนข้อ:</span>
+                          <Brain size={16} className="text-gray-600 mr-2" />
+                          <span className="text-gray-600">จำนวนข้อ:</span>
                         </div>
-                        <span className="text-gray-400 font-semibold">{quiz.questions.length} ข้อ</span>
+                        <span className="text-gray-500 font-semibold">{quiz.questions.length} ข้อ</span>
                       </div>
                       
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center">
-                          <Clock size={16} className="text-gray-500 mr-2" />
-                          <span className="text-gray-500">เวลา:</span>
+                          <Clock size={16} className="text-gray-600 mr-2" />
+                          <span className="text-gray-600">เวลา:</span>
                         </div>
-                        <span className="text-gray-400 font-semibold">
+                        <span className="text-gray-500 font-semibold">
                           {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
                         </span>
                       </div>
                       
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center">
-                          <Target size={16} className="text-gray-500 mr-2" />
-                          <span className="text-gray-500">ผ่าน:</span>
+                          <Target size={16} className="text-gray-600 mr-2" />
+                          <span className="text-gray-600">ผ่าน:</span>
                         </div>
-                        <span className="text-gray-400 font-semibold">{quiz.passingScore}%</span>
+                        <span className="text-gray-500 font-semibold">{quiz.passingScore}%</span>
                       </div>
 
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center">
-                          <Trophy size={16} className="text-gray-500 mr-2" />
-                          <span className="text-gray-500">ระดับ:</span>
+                          <Trophy size={16} className="text-gray-600 mr-2" />
+                          <span className="text-gray-600">ระดับ:</span>
                         </div>
-                        <span className="text-gray-400 font-semibold">
+                        <span className="text-gray-500 font-semibold">
                           {getDifficultyText(averageDifficulty)}
                         </span>
                       </div>
                     </div>
                     
-                    <div className="mt-auto pt-4 border-t border-white/5">
+                    <div className="relative z-10 mt-auto pt-4 border-t border-white/5 opacity-40">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-gray-600">
                             คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
                           </span>
-                          <span className="text-sm font-semibold text-gray-500">
+                          <span className="text-sm font-semibold text-red-400 flex items-center">
+                            <XCircle size={14} className="mr-1" />
                             ล็อกอยู่
                           </span>
                         </div>
-                        <div className="text-gray-500">
+                        <div className="text-gray-600 opacity-50">
                           <Brain size={24} />
                         </div>
                       </div>

@@ -38,6 +38,7 @@ const config: Config = {
         twinkle: "twinkle 2s ease-in-out infinite",
         "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "bounce-slow": "bounce 2s infinite",
+        shimmer: "shimmer 2s ease-in-out infinite",
       },
       keyframes: {
         float: {
@@ -47,6 +48,10 @@ const config: Config = {
         twinkle: {
           "0%, 100%": { opacity: "0.3" },
           "50%": { opacity: "1" },
+        },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
         },
       },
       fontFamily: {
