@@ -362,8 +362,8 @@ class ProgressManager {
     this.saveProgress(progress);
   }
 
-  // ฟังก์ชันช่วยเพื่อรับ chapter ids ที่คาดหวังตาม module
-  private getExpectedChaptersByModuleId(moduleId: string): string[] {
+  // ฟังก์ชันช่วยเพื่อรับ chapter ids ที่คาดหวังตาม module (เปิดเป็น public)
+  getExpectedChaptersByModuleId(moduleId: string): string[] {
     try {
       // อ่านข้อมูลจาก learning modules จริง
       const { learningModules } = require('../data/learning-modules');
@@ -578,9 +578,6 @@ class ProgressManager {
     const moduleProgress = this.getModuleProgress(moduleId);
     if (!moduleProgress) return 0;
 
-    // ถ้า module เสร็จสมบูรณ์แล้ว ให้คืน 100%
-    if (moduleProgress.isCompleted) return 100;
-
     // ถ้าไม่ได้ระบุ totalChapters ให้ดึงจากข้อมูล modules จริง
     if (!totalChapters) {
       const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
@@ -589,8 +586,96 @@ class ProgressManager {
 
     if (totalChapters === 0) return 0;
 
+    // คำนวณความคืบหน้าจากการอ่านเนื้อหา (60% ของคะแนนรวม)
     const completedChapters = moduleProgress.completedChapters.length;
-    return Math.round((completedChapters / totalChapters) * 100);
+    const readingProgress = (completedChapters / totalChapters) * 60;
+
+    // คำนวณความคืบหน้าจากแบบฝึกหัด/แบบทดสอบ (40% ของคะแนนรวม)
+    const quizProgress = this.getModuleQuizProgress(moduleId);
+    
+    const totalProgress = readingProgress + quizProgress;
+    
+    // ถ้าได้ 100% จริงๆ (อ่านครบ + ทำ quiz ได้เต็ม) ถึงจะแสดง 100%
+    // มิฉะนั้นให้แสดงคะแนนจริง แต่ไม่เกิน 99% ถ้ายังไม่ perfect
+    if (this.isModulePerfect(moduleId)) {
+      return 100;
+    } else {
+      return Math.round(Math.min(totalProgress, 99));
+    }
+  }
+
+  // คำนวณความคืบหน้าจากแบบฝึกหัด/แบบทดสอบของ module
+  getModuleQuizProgress(moduleId: string): number {
+    const progress = this.getProgress();
+    if (!progress.quizProgress) return 0;
+
+    // ค้นหา quiz ที่เกี่ยวข้องกับ module นี้
+    const moduleQuizzes = Object.values(progress.quizProgress.quizzes).filter(
+      quiz => this.getModuleIdByQuizId(quiz.quizId) === moduleId
+    );
+
+    if (moduleQuizzes.length === 0) return 0;
+
+    // คำนวณคะแนนเฉลี่ยจาก quiz ทั้งหมดของ module
+    let totalScore = 0;
+    let quizCount = 0;
+
+    moduleQuizzes.forEach(quiz => {
+      if (quiz.attempts && quiz.attempts.length > 0) {
+        // ใช้คะแนนดีที่สุด
+        totalScore += quiz.bestPercentage;
+        quizCount++;
+      }
+    });
+
+    if (quizCount === 0) return 0;
+
+    // คืนค่าเป็น 40% ของคะแนนรวม (เนื่องจาก quiz คิดเป็น 40% ของ progress)
+    const averageQuizScore = totalScore / quizCount;
+    const quizProgressContribution = (averageQuizScore / 100) * 40;
+    
+    // Debug log
+    console.log(`Module ${moduleId} quiz progress:`, {
+      moduleQuizzes: moduleQuizzes.length,
+      averageQuizScore,
+      quizProgressContribution,
+      quizDetails: moduleQuizzes.map(q => ({ id: q.quizId, bestPercentage: q.bestPercentage }))
+    });
+    
+    return quizProgressContribution;
+  }
+
+  // ตรวจสอบว่า module ผ่านเกณฑ์หรือไม่ (70%)
+  isModulePassed(moduleId: string): boolean {
+    const progress = this.getModuleCompletionPercentage(moduleId);
+    return progress >= 70;
+  }
+
+  // ตรวจสอบว่า module เสร็จสมบูรณ์ 100% หรือไม่
+  isModulePerfect(moduleId: string): boolean {
+    const moduleProgress = this.getModuleProgress(moduleId);
+    if (!moduleProgress) return false;
+
+    // ต้องอ่านเนื้อหาครบทุก chapter
+    const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+    const hasReadAllChapters = moduleProgress.completedChapters.length >= expectedChapters.length && expectedChapters.length > 0;
+
+    // ต้องทำ quiz ได้คะแนนเต็ม (100%)
+    const progress = this.getProgress();
+    if (!progress.quizProgress) return false;
+
+    const moduleQuizzes = Object.values(progress.quizProgress.quizzes).filter(
+      quiz => this.getModuleIdByQuizId(quiz.quizId) === moduleId
+    );
+
+    // ถ้าไม่มี quiz ให้ถือว่าไม่ perfect (เพราะไม่มีการทดสอบ)
+    if (moduleQuizzes.length === 0) return false;
+
+    const hasPassedAllQuizzesWithPerfectScore = moduleQuizzes.every(quiz => 
+      quiz.attempts && quiz.attempts.length > 0 && quiz.bestPercentage === 100
+    );
+
+    return hasReadAllChapters && hasPassedAllQuizzesWithPerfectScore;
   }
 
   // ตรวจสอบและอัพเดท module progress เมื่อเสร็จสิ้น chapters ทั้งหมด
@@ -613,8 +698,12 @@ class ProgressManager {
     const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
     const completedChapters = moduleProgress.completedChapters.length;
 
-    // ถ้าเรียนจบทุก chapter แล้ว ให้ mark เป็น completed
-    if (completedChapters >= expectedChapters.length && expectedChapters.length > 0) {
+    // ตรวจสอบว่าเรียนจบทุก chapter และทำ quiz ผ่านเกณฑ์แล้วหรือไม่
+    const hasReadAllChapters = completedChapters >= expectedChapters.length && expectedChapters.length > 0;
+    const hasPassedQuiz = this.hasPassedModuleQuiz(moduleId);
+
+    // ถ้าผ่านทั้งการอ่านและแบบทดสอบ ให้ mark เป็น completed
+    if (hasReadAllChapters && hasPassedQuiz) {
       moduleProgress.isCompleted = true;
       moduleProgress.completedAt = new Date();
 
@@ -625,8 +714,25 @@ class ProgressManager {
 
       this.saveProgress(progress);
       
-      console.log(`Module ${moduleId} completed automatically - all chapters finished`);
+      console.log(`Module ${moduleId} completed automatically - all chapters finished and quiz passed`);
     }
+  }
+
+  // ตรวจสอบว่าทำ quiz ของ module ผ่านเกณฑ์แล้วหรือไม่
+  hasPassedModuleQuiz(moduleId: string): boolean {
+    const progress = this.getProgress();
+    if (!progress.quizProgress) return false;
+
+    // ค้นหา quiz ที่เกี่ยวข้องกับ module นี้
+    const moduleQuizzes = Object.values(progress.quizProgress.quizzes).filter(
+      quiz => this.getModuleIdByQuizId(quiz.quizId) === moduleId
+    );
+
+    // ถ้าไม่มี quiz สำหรับ module นี้ ให้ถือว่าผ่าน
+    if (moduleQuizzes.length === 0) return true;
+
+    // ตรวจสอบว่าผ่าน quiz อย่างน้อย 1 ข้อ
+    return moduleQuizzes.some(quiz => quiz.passed);
   }
 
   // ดึงสถิติการเรียนรู้รวม
