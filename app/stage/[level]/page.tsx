@@ -6,9 +6,9 @@ import Navbar from "../../components/layout/Navbar";
 import { stageData } from "../../data/stages";
 import { progressManager } from "../../lib/progress";
 import { StageData, Question } from "../../types/stage";
-import DragDropQuestion from "../../components/quiz/DragDropQuestion";
-import FillBlankQuestion from "../../components/quiz/FillBlankQuestion";
-import MatchPairsQuestion from "../../components/quiz/MatchPairsQuestion";
+import EnhancedQuizComponent from "../../components/quiz/QuizComponent";
+import QuizLoadingScreen from "../../components/quiz/QuizLoadingScreen";
+import EnhancedResultsComponent from "../../components/quiz/ResultsComponent";
 
 // Character Introduction Component
 const CharacterIntro = ({ 
@@ -114,445 +114,6 @@ const LearningContent = ({
   );
 };
 
-// Quiz Component
-const QuizComponent = ({ 
-  questions, 
-  onComplete 
-}: { 
-  questions: Question[];
-  onComplete: (score: number) => void;
-}) => {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [showResult, setShowResult] = useState(false);
-  const [score, setScore] = useState(0);
-  const [answers, setAnswers] = useState<boolean[]>([]);
-  const [userAnswers, setUserAnswers] = useState<Record<number, any>>({});
-  
-  const currentQuestion = questions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
-
-  // Handle multiple choice and true-false questions
-  const handleAnswerClick = (answerId: number) => {
-    if (showResult) return;
-    
-    setSelectedAnswer(answerId);
-    setShowResult(true);
-    
-    // Check if current question has answers property (multiple-choice type)
-    let isCorrect = false;
-    if ('answers' in currentQuestion && currentQuestion.answers) {
-      const answer = currentQuestion.answers.find(a => a.id === answerId);
-      isCorrect = answer?.isCorrect || false;
-    } else if (currentQuestion.type === 'true-false') {
-      // Handle true-false questions (assuming answerId 1 = true, 2 = false)
-      isCorrect = (answerId === 1 && currentQuestion.correctAnswer) || 
-                 (answerId === 2 && !currentQuestion.correctAnswer);
-    }
-    
-    const newAnswers = [...answers, isCorrect];
-    setAnswers(newAnswers);
-    
-    // Store user answer
-    setUserAnswers(prev => ({ ...prev, [currentQuestionIndex]: answerId }));
-    
-    if (isCorrect) {
-      setScore(prev => prev + 1);
-    }
-  };
-
-  // Handle drag-drop, fill-blank, and match-pairs questions
-  const handleAdvancedAnswer = (isCorrect: boolean, userAnswer: any) => {
-    setShowResult(true);
-    
-    const newAnswers = [...answers, isCorrect];
-    setAnswers(newAnswers);
-    
-    // Store user answer
-    setUserAnswers(prev => ({ ...prev, [currentQuestionIndex]: userAnswer }));
-    
-    if (isCorrect) {
-      setScore(prev => prev + 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (isLastQuestion) {
-      onComplete(score);
-    } else {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setSelectedAnswer(null);
-      setShowResult(false);
-    }
-  };
-
-  const getButtonStyle = (answerId: number) => {
-    if (!showResult) {
-      return "bg-white text-black hover:bg-gray-100";
-    }
-    
-    // Check if current question has answers property (multiple-choice type)
-    if ('answers' in currentQuestion && currentQuestion.answers) {
-      const answer = currentQuestion.answers.find(a => a.id === answerId);
-      if (answer?.isCorrect) {
-        return "bg-green-500 text-white";
-      } else if (selectedAnswer === answerId) {
-        return "bg-orange-500 text-white";
-      }
-    }
-    return "bg-gray-500 text-white";
-  };
-
-  const getMessage = () => {
-    if (!showResult) return null;
-    
-    // Check if current question has answers property (multiple-choice type)
-    let isCorrect = false;
-    if ('answers' in currentQuestion && currentQuestion.answers) {
-      const selectedAnswerData = currentQuestion.answers.find(a => a.id === selectedAnswer);
-      isCorrect = selectedAnswerData?.isCorrect || false;
-    } else if (currentQuestion.type === 'true-false') {
-      isCorrect = (selectedAnswer === 1 && currentQuestion.correctAnswer) || 
-                 (selectedAnswer === 2 && !currentQuestion.correctAnswer);
-    } else {
-      // For advanced question types, check the last answer in answers array
-      isCorrect = answers[answers.length - 1] || false;
-    }
-    
-    if (isCorrect) {
-      return (
-        <div className="mt-8 text-center">
-          <p className="text-green-500 text-lg font-semibold">
-            {isLastQuestion ? "Good job ! Ready for results" : "Good job ! Ready to the next Question"}
-          </p>
-          <button 
-            onClick={handleNext}
-            className="text-yellow-500 underline cursor-pointer mt-2 hover:text-yellow-400"
-          >
-            Click Here
-          </button>
-        </div>
-      );
-    } else {
-      return (
-        <div className="mt-8 text-center">
-          <p className="text-orange-500 text-lg font-semibold">Don't give up ! is just little mistake</p>
-          <button 
-            onClick={handleNext}
-            className="text-yellow-500 underline cursor-pointer mt-2 hover:text-yellow-400"
-          >
-            Click Here
-          </button>
-        </div>
-      );
-    }
-  };
-
-  const renderQuestionContent = () => {
-    switch (currentQuestion.type) {
-      case 'multiple-choice':
-        if ('answers' in currentQuestion && currentQuestion.answers) {
-          return (
-            <div className="grid grid-cols-2 gap-4 max-w-md">
-              {currentQuestion.answers.map((answer) => (
-                <button
-                  key={answer.id}
-                  onClick={() => handleAnswerClick(answer.id)}
-                  className={`
-                    w-32 h-16 rounded-lg font-bold text-xl transition-all duration-300
-                    ${getButtonStyle(answer.id)}
-                    disabled:cursor-not-allowed
-                  `}
-                  disabled={showResult}
-                >
-                  {answer.text}
-                </button>
-              ))}
-            </div>
-          );
-        }
-        break;
-
-      case 'true-false':
-        return (
-          <div className="grid grid-cols-2 gap-4 max-w-md">
-            <button
-              onClick={() => handleAnswerClick(1)}
-              className={`
-                w-32 h-16 rounded-lg font-bold text-xl transition-all duration-300
-                ${getButtonStyle(1)}
-                disabled:cursor-not-allowed
-              `}
-              disabled={showResult}
-            >
-              จริง
-            </button>
-            <button
-              onClick={() => handleAnswerClick(2)}
-              className={`
-                w-32 h-16 rounded-lg font-bold text-xl transition-all duration-300
-                ${getButtonStyle(2)}
-                disabled:cursor-not-allowed
-              `}
-              disabled={showResult}
-            >
-              เท็จ
-            </button>
-          </div>
-        );
-
-      case 'drag-drop':
-        if ('dragItems' in currentQuestion && 'dropZones' in currentQuestion) {
-          return (
-            <DragDropQuestion
-              dragItems={currentQuestion.dragItems}
-              dropZones={currentQuestion.dropZones}
-              onAnswer={handleAdvancedAnswer}
-              showResult={showResult}
-              userAnswer={userAnswers[currentQuestionIndex]}
-            />
-          );
-        }
-        break;
-
-      case 'fill-blank':
-        if ('correctAnswer' in currentQuestion) {
-          return (
-            <FillBlankQuestion
-              question={currentQuestion.question}
-              correctAnswer={currentQuestion.correctAnswer}
-              alternatives={currentQuestion.alternatives}
-              placeholder={currentQuestion.placeholder || "พิมพ์คำตอบ..."}
-              hints={currentQuestion.hints}
-              onAnswer={handleAdvancedAnswer}
-              showResult={showResult}
-              userAnswer={userAnswers[currentQuestionIndex]}
-            />
-          );
-        }
-        break;
-
-      case 'match-pairs':
-        if ('pairs' in currentQuestion) {
-          return (
-            <MatchPairsQuestion
-              pairs={currentQuestion.pairs}
-              onAnswer={handleAdvancedAnswer}
-              showResult={showResult}
-              userAnswer={userAnswers[currentQuestionIndex]}
-            />
-          );
-        }
-        break;
-
-      default:
-        return (
-          <div className="col-span-2 text-center text-white">
-            <p>Question type &quot;{(currentQuestion as any).type}&quot; not yet implemented</p>
-          </div>
-        );
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
-      <Navbar />
-      <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <div className="mb-4 text-white">
-          Question {currentQuestionIndex + 1} of {questions.length}
-        </div>
-        
-        {/* Only show question title for non-fill-blank questions */}
-        {currentQuestion.type !== 'fill-blank' && (
-          <h1 className="text-3xl font-bold text-white mb-8 text-center">{currentQuestion.question}</h1>
-        )}
-        
-        {/* Image placeholder (only for certain question types) */}
-        {!['fill-blank', 'match-pairs'].includes(currentQuestion.type) && (
-          <div className="mb-12">
-            <div className="w-80 h-32 bg-gray-800 rounded-lg flex items-center justify-center border-2 border-gray-600">
-              <p className="text-white text-lg">Image or Animation</p>
-            </div>
-          </div>
-        )}
-        
-        {renderQuestionContent()}
-        
-        {getMessage()}
-      </div>
-    </div>
-  );
-};
-
-// Results Component
-const ResultsComponent = ({ 
-  stageInfo,
-  score, 
-  totalQuestions,
-  time, 
-  onFinish,
-  onRetry,
-  isNavigating 
-}: { 
-  stageInfo: StageData;
-  score: number;
-  totalQuestions: number;
-  time: string; 
-  onFinish: () => void;
-  onRetry: () => void;
-  isNavigating?: boolean;
-}) => {
-  // คำนวณดาวที่ได้รับ
-  const percentage = (score / totalQuestions) * 100;
-  const starsEarned = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
-  const isPassed = score > 0; // ต้องได้อย่างน้อย 1 คะแนนเพื่อผ่าน
-  
-  // คำนวณคะแนนที่ได้รับ
-  const pointsEarned = Math.floor((percentage / 100) * stageInfo.rewards.points);
-  
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
-      <Navbar />
-      <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <div className="text-center space-y-8 max-w-4xl">
-          {/* Character Message */}
-          <div className="flex flex-col items-center space-y-4">
-            <div className="text-8xl">{stageInfo.character.avatar}</div>
-            <h1 className="text-4xl font-bold">
-              <span className={isPassed ? "text-green-400" : "text-orange-400"}>
-                {isPassed ? "ยอดเยี่ยม!" : "เกือบได้แล้ว!"}
-              </span>
-            </h1>
-            
-            <div className="bg-slate-800/50 rounded-xl p-6 backdrop-blur-sm">
-              <p className="text-white text-lg">
-                {isPassed ? stageInfo.character.completionMessage : "คุณต้องได้อย่างน้อย 1 คะแนนเพื่อผ่านด่าน ลองใหม่อีกครั้งนะ!"}
-              </p>
-              
-              {/* แสดงสถานะการผ่านด่าน */}
-              <div className={`mt-4 p-3 rounded-lg ${isPassed ? 'bg-green-900/50' : 'bg-red-900/50'}`}>
-                <div className="flex items-center justify-center space-x-2">
-                  {isPassed ? (
-                    <>
-                      <Trophy className="text-green-400" size={20} />
-                      <span className="text-green-400 font-bold">ผ่านด่านแล้ว!</span>
-                    </>
-                  ) : (
-                    <>
-                      <X className="text-red-400" size={20} />
-                      <span className="text-red-400 font-bold">ยังไม่ผ่านด่าน</span>
-                    </>
-                  )}
-                </div>
-                {isPassed && (
-                  <p className="text-green-300 text-sm text-center mt-1">
-                    ด่านถัดไปปลดล็อกแล้ว!
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Results Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12">
-            {/* Score */}
-            <div className="bg-blue-900/30 rounded-xl p-6 text-center">
-              <h3 className="text-blue-300 text-lg font-bold mb-2">คะแนน</h3>
-              <p className="text-white text-3xl font-bold">{score}/{totalQuestions}</p>
-              <p className="text-gray-300 text-sm">{percentage.toFixed(0)}%</p>
-            </div>
-            
-            {/* Time */}
-            <div className="bg-purple-900/30 rounded-xl p-6 text-center">
-              <h3 className="text-purple-300 text-lg font-bold mb-2">เวลาที่ใช้</h3>
-              <p className="text-white text-3xl font-bold">{time}</p>
-            </div>
-            
-            {/* Stars */}
-            <div className="bg-yellow-900/30 rounded-xl p-6 text-center">
-              <h3 className="text-yellow-300 text-lg font-bold mb-2">ดาวที่ได้รับ</h3>
-              <div className="flex justify-center space-x-1 mb-2">
-                {[1, 2, 3].map((star) => (
-                  <Star
-                    key={star}
-                    size={24}
-                    className={
-                      star <= starsEarned
-                        ? "text-yellow-400 fill-current"
-                        : "text-gray-500"
-                    }
-                  />
-                ))}
-              </div>
-              <p className="text-white text-lg font-bold">{starsEarned}/3</p>
-              {starsEarned > 0 && (
-                <p className="text-yellow-300 text-sm mt-1">เยี่ยมมาก!</p>
-              )}
-            </div>
-            
-            {/* Points */}
-            <div className="bg-green-900/30 rounded-xl p-6 text-center">
-              <h3 className="text-green-300 text-lg font-bold mb-2">คะแนนที่ได้</h3>
-              <p className="text-white text-3xl font-bold">+{isPassed ? pointsEarned : 0}</p>
-              {!isPassed && (
-                <p className="text-red-300 text-sm mt-1">ต้องผ่านด่านจึงจะได้คะแนน</p>
-              )}
-            </div>
-          </div>
-          
-          {/* Rewards Section */}
-          {isPassed && (
-            <div className="bg-gradient-to-r from-yellow-900/30 to-orange-900/30 rounded-xl p-6 mt-8">
-              <h3 className="text-2xl font-bold text-white mb-4">🎉 รางวัลที่ได้รับ!</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-white">
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">🏆</span>
-                  <span>คะแนน: +{pointsEarned}</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">⭐</span>
-                  <span>ดาว: +{starsEarned}</span>
-                </div>
-                {stageInfo.rewards.badges && stageInfo.rewards.badges.length > 0 && (
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">🏅</span>
-                    <span>เหรียญ: {stageInfo.rewards.badges.join(', ')}</span>
-                  </div>
-                )}
-                {stageInfo.rewards.unlocksStages && stageInfo.rewards.unlocksStages.length > 0 && (
-                  <div className="flex items-center space-x-3">
-                    <span className="text-2xl">🔓</span>
-                    <span>ปลดล็อกด่าน: {stageInfo.rewards.unlocksStages.join(', ')}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-            {!isPassed && (
-              <button 
-                onClick={onRetry}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold px-8 py-3 rounded-xl hover:from-blue-400 hover:to-purple-400 transition-all duration-300"
-              >
-                ลองอีกครั้ง
-              </button>
-            )}
-            
-            <button 
-              onClick={onFinish}
-              disabled={isNavigating}
-              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold px-8 py-3 rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isNavigating ? 'กำลังโหลด...' : 'กลับสู่แผนที่ด่าน'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // Main Stage Level Component
 export default function StageLevelPage() {
   const params = useParams();
@@ -563,6 +124,7 @@ export default function StageLevelPage() {
   const [score, setScore] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [showQuizLoading, setShowQuizLoading] = useState(false);
 
   const stageInfo = stageData[level];
 
@@ -599,6 +161,11 @@ export default function StageLevelPage() {
   };
 
   const handleLearningContinue = () => {
+    setShowQuizLoading(true);
+  };
+
+  const handleQuizLoadingComplete = () => {
+    setShowQuizLoading(false);
     setCurrentStep(2);
   };
 
@@ -679,6 +246,14 @@ export default function StageLevelPage() {
     case 0:
       return <CharacterIntro stageInfo={stageInfo} onContinue={handleCharacterContinue} />;
     case 1:
+      if (showQuizLoading) {
+        return (
+          <QuizLoadingScreen 
+            stage={stageInfo.title} 
+            onComplete={handleQuizLoadingComplete} 
+          />
+        );
+      }
       return <LearningContent stageInfo={stageInfo} onContinue={handleLearningContinue} />;
     case 2:
       // Ensure questions array exists before passing to QuizComponent
@@ -699,10 +274,14 @@ export default function StageLevelPage() {
           </div>
         );
       }
-      return <QuizComponent questions={questions} onComplete={handleQuizComplete} />;
+      return <EnhancedQuizComponent 
+        questions={questions} 
+        onComplete={handleQuizComplete} 
+        onExit={() => router.replace('/stage')}
+      />;
     case 3:
       return (
-        <ResultsComponent 
+        <EnhancedResultsComponent 
           stageInfo={stageInfo}
           score={score} 
           totalQuestions={stageInfo.questions.length}

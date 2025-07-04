@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { Volume2, CheckCircle, XCircle, RotateCcw } from "lucide-react";
 
 interface DragItem {
   id: string;
@@ -13,29 +14,48 @@ interface DropZone {
   label: string;
 }
 
-interface DragDropQuestionProps {
+interface EnhancedDragDropQuestionProps {
   dragItems: DragItem[];
   dropZones: DropZone[];
   onAnswer: (isCorrect: boolean, userAnswer: Record<string, number>) => void;
   showResult: boolean;
   userAnswer?: Record<string, number>;
+  question?: string;
 }
 
-export default function DragDropQuestion({
+export default function EnhancedDragDropQuestion({
   dragItems,
   dropZones,
   onAnswer,
   showResult,
-  userAnswer
-}: DragDropQuestionProps) {
-  const [items, setItems] = useState<DragItem[]>(
-    // Shuffle the drag items initially
-    [...dragItems].sort(() => Math.random() - 0.5)
-  );
+  userAnswer,
+  question = "ลากคำตอบไปยังตำแหน่งที่ถูกต้อง"
+}: EnhancedDragDropQuestionProps) {
+  const [items, setItems] = useState<DragItem[]>([]);
   const [droppedItems, setDroppedItems] = useState<Record<number, DragItem>>({});
   const [draggedItem, setDraggedItem] = useState<DragItem | null>(null);
   const [draggedFrom, setDraggedFrom] = useState<'items' | number | null>(null);
+  const [isComplete, setIsComplete] = useState(false);
+  const [hoveredZone, setHoveredZone] = useState<number | null>(null);
   const dragCounter = useRef(0);
+
+  // Initialize items and restore user answer
+  useEffect(() => {
+    const shuffledItems = [...dragItems].sort(() => Math.random() - 0.5);
+    setItems(shuffledItems);
+    
+    if (userAnswer) {
+      const restored: Record<number, DragItem> = {};
+      Object.entries(userAnswer).forEach(([itemId, zoneId]) => {
+        const item = dragItems.find(item => item.id === itemId);
+        if (item) {
+          restored[zoneId] = item;
+        }
+      });
+      setDroppedItems(restored);
+      setItems(prev => prev.filter(item => !Object.values(restored).some(dropped => dropped.id === item.id)));
+    }
+  }, [dragItems, userAnswer]);
 
   const handleDragStart = (e: React.DragEvent, item: DragItem, from: 'items' | number) => {
     if (showResult) return;
@@ -51,170 +71,201 @@ export default function DragDropQuestion({
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDragEnter = (e: React.DragEvent) => {
+  const handleDragEnter = (e: React.DragEvent, zoneId: number) => {
     e.preventDefault();
+    setHoveredZone(zoneId);
     dragCounter.current++;
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
     dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setHoveredZone(null);
+    }
   };
 
-  const handleDrop = (e: React.DragEvent, dropZoneId: number) => {
+  const handleDrop = (e: React.DragEvent, zoneId: number) => {
     e.preventDefault();
+    setHoveredZone(null);
     dragCounter.current = 0;
     
-    if (!draggedItem || !draggedFrom || showResult) return;
+    if (!draggedItem || showResult) return;
 
-    // If dropping in the same place, do nothing
-    if (draggedFrom === dropZoneId) return;
-
-    const newDroppedItems = { ...droppedItems };
-    let newItems = [...items];
-
-    // Remove item from its current location
+    // Remove item from previous location
     if (draggedFrom === 'items') {
-      newItems = items.filter(item => item.id !== draggedItem.id);
+      setItems(prev => prev.filter(item => item.id !== draggedItem.id));
     } else if (typeof draggedFrom === 'number') {
-      delete newDroppedItems[draggedFrom];
+      setDroppedItems(prev => {
+        const newItems = { ...prev };
+        delete newItems[draggedFrom];
+        return newItems;
+      });
     }
 
-    // If there's already an item in the target zone, move it back to items
-    if (newDroppedItems[dropZoneId]) {
-      newItems.push(newDroppedItems[dropZoneId]);
+    // Add to new zone (replace if occupied)
+    const previousItemInZone = droppedItems[zoneId];
+    if (previousItemInZone) {
+      setItems(prev => [...prev, previousItemInZone]);
     }
 
-    // Place the dragged item in the target zone
-    newDroppedItems[dropZoneId] = draggedItem;
+    setDroppedItems(prev => ({
+      ...prev,
+      [zoneId]: draggedItem
+    }));
 
-    setItems(newItems);
-    setDroppedItems(newDroppedItems);
     setDraggedItem(null);
     setDraggedFrom(null);
-
-    // Check if all items are placed
-    if (newItems.length === 0) {
-      const isCorrect = checkAnswer(newDroppedItems);
-      const answer = Object.fromEntries(
-        Object.entries(newDroppedItems).map(([zoneId, item]) => [item.id, parseInt(zoneId)])
-      );
-      onAnswer(isCorrect, answer);
-    }
   };
 
-  const handleDropToItems = (e: React.DragEvent) => {
-    e.preventDefault();
-    dragCounter.current = 0;
+  const handleSubmit = () => {
+    if (showResult || Object.keys(droppedItems).length !== dragItems.length) return;
     
-    if (!draggedItem || !draggedFrom || showResult) return;
-
-    // Only allow dropping back to items from drop zones
-    if (typeof draggedFrom === 'number') {
-      const newDroppedItems = { ...droppedItems };
-      delete newDroppedItems[draggedFrom];
-      
-      const newItems = [...items, draggedItem];
-      
-      setItems(newItems);
-      setDroppedItems(newDroppedItems);
-    }
-
-    setDraggedItem(null);
-    setDraggedFrom(null);
-  };
-
-  const checkAnswer = (droppedItems: Record<number, DragItem>): boolean => {
-    return Object.entries(droppedItems).every(([zoneId, item]) => {
-      return item.correctPosition === parseInt(zoneId);
+    // Check if all items are correctly placed
+    const isCorrect = dragItems.every(item => {
+      const placedZone = Object.entries(droppedItems).find(([_, placedItem]) => placedItem.id === item.id);
+      return placedZone && parseInt(placedZone[0]) === item.correctPosition;
     });
+
+    setIsComplete(true);
+    
+    // Create user answer record
+    const userAnswerRecord: Record<string, number> = {};
+    Object.entries(droppedItems).forEach(([zoneId, item]) => {
+      userAnswerRecord[item.id] = parseInt(zoneId);
+    });
+    
+    onAnswer(isCorrect, userAnswerRecord);
   };
 
-  const getItemStyle = (item: DragItem, isInDropZone: boolean = false): string => {
-    if (!showResult) {
-      return "bg-white text-black hover:bg-gray-100 border-2 border-gray-300 cursor-grab active:cursor-grabbing";
+  const handleReset = () => {
+    if (showResult) return;
+    
+    // Move all dropped items back to items area
+    const allItems = [...items, ...Object.values(droppedItems)];
+    setItems(allItems.sort(() => Math.random() - 0.5));
+    setDroppedItems({});
+    setIsComplete(false);
+  };
+
+  const getZoneStyle = (zoneId: number) => {
+    const hasItem = droppedItems[zoneId];
+    const isHovered = hoveredZone === zoneId;
+    
+    if (showResult && hasItem) {
+      const isCorrect = hasItem.correctPosition === zoneId;
+      return `
+        border-2 rounded-xl p-4 min-h-[80px] flex items-center justify-center
+        transition-all duration-300
+        ${isCorrect 
+          ? 'border-green-500 bg-green-500/20 text-green-400' 
+          : 'border-red-500 bg-red-500/20 text-red-400'
+        }
+      `;
     }
     
-    // Show result colors
-    if (userAnswer && userAnswer[item.id]) {
-      const placedPosition = userAnswer[item.id];
-      const isCorrect = item.correctPosition === placedPosition;
-      return isCorrect 
-        ? "bg-green-500 text-white border-2 border-green-600"
-        : "bg-red-500 text-white border-2 border-red-600";
-    }
-    
-    if (isInDropZone) {
-      const placedPosition = Object.entries(droppedItems).find(([_, droppedItem]) => droppedItem.id === item.id)?.[0];
-      if (placedPosition) {
-        const isCorrect = item.correctPosition === parseInt(placedPosition);
-        return isCorrect 
-          ? "bg-green-500 text-white border-2 border-green-600"
-          : "bg-red-500 text-white border-2 border-red-600";
+    return `
+      border-2 border-dashed rounded-xl p-4 min-h-[80px] flex items-center justify-center
+      transition-all duration-300
+      ${hasItem 
+        ? 'border-blue-400 bg-blue-500/20 text-white' 
+        : isHovered 
+          ? 'border-yellow-400 bg-yellow-500/20 text-yellow-300'
+          : 'border-gray-500 bg-gray-700/50 text-gray-300'
+      }
+    `;
+  };
+
+  const getItemStyle = (item: DragItem, location: 'items' | 'dropped') => {
+    if (showResult && location === 'dropped') {
+      const placedZone = Object.entries(droppedItems).find(([_, placedItem]) => placedItem.id === item.id);
+      if (placedZone) {
+        const isCorrect = parseInt(placedZone[0]) === item.correctPosition;
+        return `
+          px-4 py-3 rounded-xl font-semibold cursor-move
+          transition-all duration-300 border-2
+          ${isCorrect 
+            ? 'bg-green-500 text-white border-green-500' 
+            : 'bg-red-500 text-white border-red-500'
+          }
+        `;
       }
     }
     
-    return "bg-gray-300 text-gray-600 border-2 border-gray-400";
+    return `
+      px-4 py-3 rounded-xl font-semibold cursor-move
+      bg-white text-gray-900 border-2 border-gray-200
+      hover:border-blue-400 hover:bg-blue-50
+      transform transition-all duration-200 hover:scale-105
+      shadow-md hover:shadow-lg
+    `;
   };
 
-  const getDropZoneStyle = (zoneId: number, isDragOver: boolean = false): string => {
-    const baseStyle = "min-h-24 p-4 rounded-lg border-2 transition-all duration-200";
-    
-    if (isDragOver) {
-      return `${baseStyle} border-blue-500 bg-blue-100 scale-105`;
-    }
-    
-    if (!showResult) {
-      return droppedItems[zoneId] 
-        ? `${baseStyle} border-blue-400 bg-blue-50` 
-        : `${baseStyle} border-gray-300 bg-gray-50 border-dashed`;
-    }
-    
-    // Show result colors
-    if (droppedItems[zoneId]) {
-      const item = droppedItems[zoneId];
-      const isCorrect = item.correctPosition === zoneId;
-      return isCorrect 
-        ? `${baseStyle} border-green-400 bg-green-50`
-        : `${baseStyle} border-red-400 bg-red-50`;
-    }
-    
-    return `${baseStyle} border-gray-300 bg-gray-50 border-dashed`;
-  };
+  const allItemsPlaced = Object.keys(droppedItems).length === dragItems.length;
 
   return (
-    <div className="w-full max-w-4xl space-y-8">
+    <div className="w-full max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl lg:text-4xl font-bold text-white">
+          {question}
+        </h1>
+        
+        <div className="flex items-center space-x-4">
+          <button
+            className="p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors"
+            title="ฟังเสียงคำถาม"
+            aria-label="ฟังเสียงคำถาม"
+          >
+            <Volume2 className="w-6 h-6 text-white" />
+          </button>
+          
+          {!showResult && (
+            <button
+              onClick={handleReset}
+              className="p-3 bg-gray-500 hover:bg-gray-600 rounded-full transition-colors"
+              title="รีเซ็ตการจัดเรียง"
+              aria-label="รีเซ็ตการจัดเรียง"
+            >
+              <RotateCcw className="w-6 h-6 text-white" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="mb-8 text-center">
+        <p className="text-gray-300 text-lg">
+          ลากรายการจากด้านล่างไปวางในตำแหน่งที่ถูกต้อง
+        </p>
+      </div>
+
       {/* Drop Zones */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
         {dropZones.map((zone) => (
           <div
             key={zone.id}
-            className={getDropZoneStyle(zone.id, draggedItem !== null)}
             onDragOver={handleDragOver}
-            onDragEnter={handleDragEnter}
+            onDragEnter={(e) => handleDragEnter(e, zone.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, zone.id)}
+            className={getZoneStyle(zone.id)}
           >
-            <div className="text-center text-sm font-medium text-gray-600 mb-2">
-              {zone.label}
-            </div>
-            
-            {droppedItems[zone.id] && (
+            {droppedItems[zone.id] ? (
               <div
                 draggable={!showResult}
                 onDragStart={(e) => handleDragStart(e, droppedItems[zone.id], zone.id)}
-                className={`
-                  p-3 rounded-lg text-center font-medium transition-all duration-200
-                  ${getItemStyle(droppedItems[zone.id], true)}
-                  ${showResult ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}
-                `}
+                className={getItemStyle(droppedItems[zone.id], 'dropped')}
               >
-                <div className="flex items-center justify-center space-x-2">
-                  {droppedItems[zone.id].emoji && (
-                    <span className="text-lg">{droppedItems[zone.id].emoji}</span>
-                  )}
-                  <span className="text-sm">{droppedItems[zone.id].text}</span>
-                </div>
+                {droppedItems[zone.id].emoji && (
+                  <span className="mr-2">{droppedItems[zone.id].emoji}</span>
+                )}
+                {droppedItems[zone.id].text}
+              </div>
+            ) : (
+              <div className="text-center">
+                <div className="text-2xl mb-2">⬇️</div>
+                <span className="font-semibold">{zone.label}</span>
               </div>
             )}
           </div>
@@ -222,55 +273,52 @@ export default function DragDropQuestion({
       </div>
 
       {/* Available Items */}
-      <div className="bg-gray-100 rounded-lg p-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
-          ลากรายการด้านล่างไปยังตำแหน่งที่ถูกต้อง
-        </h3>
-        
-        <div
-          className={`
-            flex flex-wrap gap-3 justify-center min-h-16 p-4 rounded-lg transition-all duration-200
-            ${draggedItem && draggedFrom !== 'items' ? 'bg-blue-100 border-2 border-blue-300 border-dashed' : 'bg-transparent'}
-          `}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDropToItems}
-        >
+      <div className="bg-gray-800/50 rounded-2xl p-6 mb-8">
+        <h3 className="text-xl font-bold text-white mb-4 text-center">รายการที่สามารถลากได้</h3>
+        <div className="flex flex-wrap justify-center gap-4 min-h-[100px]">
           {items.map((item) => (
             <div
               key={item.id}
               draggable={!showResult}
               onDragStart={(e) => handleDragStart(e, item, 'items')}
-              className={`
-                p-3 rounded-lg font-medium transition-all duration-200
-                ${getItemStyle(item)}
-                ${showResult ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}
-              `}
+              className={getItemStyle(item, 'items')}
             >
-              <div className="flex items-center space-x-2">
-                {item.emoji && (
-                  <span className="text-lg">{item.emoji}</span>
-                )}
-                <span>{item.text}</span>
-              </div>
+              {item.emoji && <span className="mr-2">{item.emoji}</span>}
+              {item.text}
             </div>
           ))}
-          
           {items.length === 0 && !showResult && (
-            <div className="text-gray-500 text-sm italic">
-              ลากรายการจากบนลงมาวางที่นี่เพื่อย้ายกลับ
+            <div className="text-gray-500 text-center py-8">
+              <p>รายการทั้งหมดถูกวางแล้ว!</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Instructions */}
-      {!showResult && items.length > 0 && (
-        <div className="text-center text-gray-600">
-          <p className="text-sm">💡 ลากและวางรายการไปยังตำแหน่งที่ถูกต้อง</p>
+      {/* Submit Button */}
+      {allItemsPlaced && !showResult && (
+        <div className="text-center">
+          <button
+            onClick={handleSubmit}
+            className="px-8 py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-105"
+          >
+            ตรวจสอบคำตอบ
+          </button>
         </div>
       )}
+
+      {/* Progress Indicator */}
+      <div className="text-center mt-6">
+        <div className="inline-flex items-center space-x-2 text-gray-300">
+          <span>ความคืบหน้า:</span>
+          <span className="font-semibold text-white">
+            {Object.keys(droppedItems).length}/{dragItems.length}
+          </span>
+          {allItemsPlaced && !showResult && (
+            <CheckCircle className="w-5 h-5 text-green-400 ml-2" />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
