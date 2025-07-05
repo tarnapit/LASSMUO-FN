@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Navbar from "../../components/layout/Navbar";
 import { ArrowLeft, Zap, Heart, Clock, Gauge, AlertTriangle, Target, Trophy } from "lucide-react";
 import Link from "next/link";
+import "../../styles/mini-game-animations.css";
 
 interface BlackHoleGameState {
   gamePhase: 'waiting' | 'playing' | 'finished';
@@ -102,6 +103,14 @@ export default function BlackHoleEscapeGame() {
   const [showPhysicsInfo, setShowPhysicsInfo] = useState(false);
   const [particleEffects, setParticleEffects] = useState<any[]>([]);
 
+  // Check game validity
+  useEffect(() => {
+    if (!params.gameId || params.gameId !== 'black-hole-escape') {
+      router.push('/mini-game');
+      return;
+    }
+  }, [params.gameId, router]);
+
   useEffect(() => {
     // Timer for the game
     let timer: NodeJS.Timeout;
@@ -118,15 +127,8 @@ export default function BlackHoleEscapeGame() {
       endGame();
     }
     
-    // Update progress bar
-    const currentEscapePercentage = (gameState.escapeDistance / gameState.maxEscapeDistance) * 100;
-    const progressBar = document.querySelector('.progress-bar') as HTMLElement;
-    if (progressBar) {
-      progressBar.style.setProperty('--progress-width', currentEscapePercentage.toString());
-    }
-    
     return () => clearTimeout(timer);
-  }, [gameState.gamePhase, gameState.timeLeft, gameState.escapeDistance]);
+  }, [gameState.gamePhase, gameState.timeLeft]);
 
   useEffect(() => {
     // Generate new challenge every 20 seconds
@@ -254,8 +256,8 @@ export default function BlackHoleEscapeGame() {
   const escapePercentage = (gameState.escapeDistance / gameState.maxEscapeDistance) * 100;
   const gravityInfo = getGravityLevel();
 
+  // Don't render if redirecting
   if (!params.gameId || params.gameId !== 'black-hole-escape') {
-    router.push('/mini-game');
     return null;
   }
 
@@ -336,7 +338,7 @@ export default function BlackHoleEscapeGame() {
               <div className="w-full bg-gray-700 rounded-full h-4 mb-4">
                 <div 
                   className={`bg-gradient-to-r from-purple-500 to-pink-500 h-4 rounded-full transition-all duration-300 progress-bar`}
-                  data-width={escapePercentage}
+                  data-width={Math.floor(escapePercentage / 10) * 10}
                 ></div>
               </div>
               
