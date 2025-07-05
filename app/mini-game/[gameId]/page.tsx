@@ -80,18 +80,20 @@ export default function PlanetMatchGame() {
     const randomPlanet = availablePlanets[Math.floor(Math.random() * availablePlanets.length)];
     setCurrentPlanet(randomPlanet);
 
-    // Create fact options (1 correct + 2 wrong)
+    // Create more challenging fact options (1 correct + 3 wrong)
     const correctFact = randomPlanet.facts[Math.floor(Math.random() * randomPlanet.facts.length)];
     const wrongFacts: string[] = [];
     
+    // Get wrong facts from other planets
     planets.forEach(planet => {
       if (planet.id !== randomPlanet.id) {
         wrongFacts.push(...planet.facts);
       }
     });
 
+    // Select 3 random wrong facts
     const shuffledWrongFacts = wrongFacts.sort(() => Math.random() - 0.5);
-    const options = [correctFact, ...shuffledWrongFacts.slice(0, 2)];
+    const options = [correctFact, ...shuffledWrongFacts.slice(0, 3)];
     setFactOptions(options.sort(() => Math.random() - 0.5));
   };
 

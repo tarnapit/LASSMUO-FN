@@ -113,3 +113,138 @@
 .progress-animated {
   animation: progress-fill 1.5s ease-out;
 }
+
+/* Progress bar with dynamic width */
+.progress-bar {
+  width: 0%;
+  transition: width 0.5s ease-out;
+}
+
+.progress-bar[data-width] {
+  width: calc(var(--progress-width, 0) * 1%);
+}
+
+/* Additional Animations for Enhanced Games */
+
+/* Shooting star animation */
+@keyframes shooting-star {
+  0% {
+    transform: translateX(-100px) translateY(-100px);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(1000px) translateY(1000px);
+    opacity: 0;
+  }
+}
+
+.animate-shooting-star {
+  animation: shooting-star 3s linear infinite;
+}
+
+/* Slow spin for celestial objects */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
+
+/* Black hole gravitational pull effect */
+@keyframes black-hole-pull {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  50% {
+    transform: scale(0.95) rotate(180deg);
+  }
+  100% {
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+.black-hole-pull {
+  animation: black-hole-pull 10s linear infinite;
+}
+
+/* Energy pulse effect */
+@keyframes energy-pulse {
+  0% {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.energy-pulse {
+  animation: energy-pulse 2s ease-out infinite;
+}
+
+/* Star constellation twinkle */
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.star-twinkle {
+  animation: star-twinkle 2s ease-in-out infinite;
+}
+
+/* Glow pulse for special elements */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(147, 51, 234, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(147, 51, 234, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .float-animation {
+    animation-duration: 2s;
+  }
+  
+  .animate-shooting-star {
+    animation-duration: 2s;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .float-animation,
+  .animate-shooting-star,
+  .animate-spin-slow,
+  .black-hole-pull,
+  .energy-pulse,
+  .star-twinkle,
+  .pulse-glow {
+    animation: none;
+  }
+}
