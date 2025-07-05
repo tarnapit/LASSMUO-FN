@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { friends, leaderboard, groupSessions, getOnlineFriends } from "../data/friends";
 import { Friend } from "../types/friends";
 import Navbar from "../components/layout/Navbar";
 import ChatModal from "../components/ui/ChatModal";
+import LoginModal from "../components/ui/LoginModal";
+import { authManager, User as UserType } from "../lib/auth";
 import { 
   Users, 
   Trophy, 
@@ -18,7 +20,8 @@ import {
   Award,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  User
 } from "lucide-react";
 
 type Tab = 'friends' | 'leaderboard' | 'groups' | 'badges';
@@ -28,6 +31,29 @@ export default function FriendsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  useEffect(() => {
+    // ตรวจสอบสถานะการล็อกอินเมื่อ component mount
+    const checkAuthState = () => {
+      const loggedIn = authManager.isLoggedIn();
+      const user = authManager.getCurrentUser();
+      setIsLoggedIn(loggedIn);
+      setCurrentUser(user);
+    };
+
+    checkAuthState();
+
+    // Listen for auth state changes
+    const unsubscribe = authManager.onAuthStateChange((user) => {
+      setIsLoggedIn(!!user);
+      setCurrentUser(user);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const openChat = (friend: Friend) => {
     setSelectedFriend(friend);
@@ -39,9 +65,25 @@ export default function FriendsPage() {
     setSelectedFriend(null);
   };
 
+  const handleLogin = (user: UserType) => {
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+    setShowLoginModal(false);
+  };
+
+  const handleShowLogin = () => {
+    setShowLoginModal(true);
+  };
+
   const text = {
     title: "กับเพื่อน",
     subtitle: "เรียนรู้และเล่นร่วมกับเพื่อนๆ",
+    loginRequired: {
+      title: "เข้าสู่ระบบเพื่อใช้งานฟีเจอร์เพื่อน",
+      subtitle: "ล็อกอินเพื่อดูรายชื่อเพื่อน แอดเพื่อน และแข่งขันกับผู้อื่น",
+      loginButton: "เข้าสู่ระบบ",
+      signUpText: "ยังไม่มีบัญชี? สมัครสมาชิก"
+    },
     tabs: {
       friends: "เพื่อนๆ",
       leaderboard: "อันดับ",
@@ -132,28 +174,92 @@ export default function FriendsPage() {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex justify-center mb-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2 border border-white/20">
-            <div className="flex space-x-2">
-              {(Object.keys(text.tabs) as Tab[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-6 py-3 rounded-xl font-semibold transition-all ${
-                    activeTab === tab
-                      ? 'bg-yellow-500 text-black'
-                      : 'text-white hover:bg-white/10'
-                  }`}
-                >
-                  {text.tabs[tab]}
-                </button>
-              ))}
+        {isLoggedIn && (
+          <div className="flex justify-center mb-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2 border border-white/20">
+              <div className="flex space-x-2">
+                {(Object.keys(text.tabs) as Tab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                      activeTab === tab
+                        ? 'bg-yellow-500 text-black'
+                        : 'text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {text.tabs[tab]}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* Login Required Section */}
+        {!isLoggedIn && (
+          <div className="max-w-2xl mx-auto text-center">
+            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-12 border border-white/20">
+              <div className="flex justify-center mb-6">
+                <div className="w-20 h-20 bg-yellow-500/20 rounded-full flex items-center justify-center">
+                  <Users className="text-yellow-400" size={40} />
+                </div>
+              </div>
+              
+              <h2 className="text-3xl font-bold text-white mb-4">
+                {text.loginRequired.title}
+              </h2>
+              
+              <p className="text-gray-300 text-lg mb-8 leading-relaxed">
+                {text.loginRequired.subtitle}
+              </p>
+
+              <div className="space-y-4">
+                <button
+                  onClick={handleShowLogin}
+                  className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold py-4 px-8 rounded-xl hover:from-yellow-400 hover:to-orange-400 transition-all transform hover:scale-105 flex items-center justify-center"
+                >
+                  <User className="mr-3" size={24} />
+                  {text.loginRequired.loginButton}
+                </button>
+                
+                <p className="text-gray-400 text-sm">
+                  {text.loginRequired.signUpText}
+                </p>
+              </div>
+
+              {/* Features Preview */}
+              <div className="grid md:grid-cols-3 gap-6 mt-12">
+                <div className="text-center p-4">
+                  <div className="w-12 h-12 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <UserPlus className="text-green-400" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-white mb-2">เพิ่มเพื่อน</h3>
+                  <p className="text-gray-400 text-sm">ค้นหาและเพิ่มเพื่อนใหม่</p>
+                </div>
+                
+                <div className="text-center p-4">
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Trophy className="text-blue-400" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-white mb-2">กระดานคะแนน</h3>
+                  <p className="text-gray-400 text-sm">แข่งขันกับเพื่อนๆ</p>
+                </div>
+                
+                <div className="text-center p-4">
+                  <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <MessageCircle className="text-purple-400" size={24} />
+                  </div>
+                  <h3 className="font-semibold text-white mb-2">แชทกลุ่ม</h3>
+                  <p className="text-gray-400 text-sm">สื่อสารกับเพื่อนๆ</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Friends Tab */}
-        {activeTab === 'friends' && (
+        {isLoggedIn && activeTab === 'friends' && (
           <div className="max-w-6xl mx-auto">
             {/* Search and Add Friend */}
             <div className="flex flex-col md:flex-row gap-4 mb-8">
@@ -283,7 +389,7 @@ export default function FriendsPage() {
         )}
 
         {/* Leaderboard Tab */}
-        {activeTab === 'leaderboard' && (
+        {isLoggedIn && activeTab === 'leaderboard' && (
           <div className="max-w-4xl mx-auto">
             <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 overflow-hidden">
               <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-6">
@@ -354,7 +460,7 @@ export default function FriendsPage() {
         )}
 
         {/* Groups Tab */}
-        {activeTab === 'groups' && (
+        {isLoggedIn && activeTab === 'groups' && (
           <div className="max-w-6xl mx-auto">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-2xl font-bold text-white">กลุ่มกิจกรรม</h2>
@@ -440,7 +546,7 @@ export default function FriendsPage() {
         )}
 
         {/* Badges Tab - Simple implementation */}
-        {activeTab === 'badges' && (
+        {isLoggedIn && activeTab === 'badges' && (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-bold text-white mb-4">เหรียญรางวัลของคุณ</h2>
@@ -483,6 +589,13 @@ export default function FriendsPage() {
           onClose={closeChat} 
         />
       )}
+
+      {/* Login Modal */}
+      <LoginModal 
+        isOpen={showLoginModal} 
+        onClose={() => setShowLoginModal(false)} 
+        onLogin={handleLogin} 
+      />
     </div>
   );
 }
