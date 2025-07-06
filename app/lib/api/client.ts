@@ -42,10 +42,14 @@ class ApiClient {
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // เพิ่ม Authorization header ถ้ามี token
+    const token = typeof window !== 'undefined' ? localStorage.getItem('astronomy_app_token') : null;
+    
     const config: RequestInit = {
       ...options,
       headers: {
         ...this.defaultHeaders,
+        ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       },
     };

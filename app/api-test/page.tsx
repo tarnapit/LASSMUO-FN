@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useApiContext } from '../lib/api/providers/ApiProvider';
 import { useUsers, useStages, useCourses, useLeaderboard } from '../lib/api/hooks';
 import { Monitor, Database, Wifi, WifiOff, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import { userService } from '../lib/api/services/userService';
+import { authManager } from '../lib/auth';
 
 export default function ApiTestPage() {
   const { isOnline, isLoading, error, retryConnection } = useApiContext();
@@ -54,6 +56,47 @@ export default function ApiTestPage() {
           timestamp: new Date().toISOString()
         }
       }));
+    }
+  };
+
+  // Add new test functions
+  const testCreateUser = async () => {
+    try {
+      const userData = {
+        name: "Test User " + Date.now(),
+        email: `test${Date.now()}@example.com`,
+        password: "123456"
+      };
+      
+      console.log('Creating user:', userData);
+      const result = await userService.createUser(userData);
+      console.log('Create user result:', result);
+      setTestResults(prev => ({ ...prev, createUser: result }));
+      alert('User created successfully! Check console for details.');
+    } catch (error) {
+      console.error('Create user error:', error);
+      setTestResults(prev => ({ ...prev, createUser: { error: (error as any).message } }));
+      alert('Error creating user: ' + (error as any).message);
+    }
+  };
+
+  const testAuthSignUp = async () => {
+    try {
+      const signUpData = {
+        name: "Auth Test User " + Date.now(),
+        email: `authtest${Date.now()}@example.com`,
+        password: "123456"
+      };
+      
+      console.log('Auth sign up:', signUpData);
+      const result = await authManager.signUp(signUpData);
+      console.log('Auth sign up result:', result);
+      setTestResults(prev => ({ ...prev, authSignUp: result }));
+      alert(`Auth sign up: ${result.success ? 'Success' : 'Failed'} - ${result.message}`);
+    } catch (error) {
+      console.error('Auth sign up error:', error);
+      setTestResults(prev => ({ ...prev, authSignUp: { error: (error as any).message } }));
+      alert('Auth sign up error: ' + (error as any).message);
     }
   };
 
@@ -210,6 +253,53 @@ export default function ApiTestPage() {
             </div>
           </div>
         )}
+
+        {/* New User Registration Tests */}
+        <div className="bg-slate-800 p-6 rounded-lg">
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center">
+            <CheckCircle className="mr-3" size={24} />
+            User Registration Tests
+          </h2>
+          
+          <div className="space-y-4">
+            <button
+              onClick={testCreateUser}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded mr-4 transition-colors"
+            >
+              Test Create User (Direct API)
+            </button>
+            <button
+              onClick={testAuthSignUp}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded transition-colors"
+            >
+              Test Auth Sign Up (via AuthManager)
+            </button>
+          </div>
+
+          {/* Test Results */}
+          {Object.keys(testResults).length > 0 && (
+            <div className="mt-6 p-4 bg-slate-700 rounded-lg">
+              <h3 className="text-white font-medium mb-2">Test Results:</h3>
+              <pre className="text-gray-300 text-sm overflow-auto max-h-40">
+                {JSON.stringify(testResults, null, 2)}
+              </pre>
+            </div>
+          )}
+
+          {/* Current Auth Status */}
+          <div className="mt-6 p-4 bg-slate-700 rounded-lg">
+            <h3 className="text-white font-medium mb-2">Current Auth Status:</h3>
+            <div className="text-gray-300 text-sm space-y-1">
+              <p>Logged in: <span className={authManager.isLoggedIn() ? 'text-green-400' : 'text-red-400'}>
+                {authManager.isLoggedIn() ? 'Yes' : 'No'}
+              </span></p>
+              <p>Current user: {authManager.getCurrentUser()?.name || 'None'}</p>
+              <p>Token: <span className={authManager.getToken() ? 'text-green-400' : 'text-red-400'}>
+                {authManager.getToken() ? 'Available' : 'None'}
+              </span></p>
+            </div>
+          </div>
+        </div>
 
         {/* Instructions */}
         <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">

@@ -43,22 +43,26 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       let result;
       if (isSignUp) {
-        result = authManager.signUp({ name: name.trim(), email: email.trim(), password });
+        console.log('Attempting sign up with:', { name: name.trim(), email: email.trim() });
+        result = await authManager.signUp({ name: name.trim(), email: email.trim(), password });
       } else {
-        result = authManager.login({ email: email.trim(), password });
+        console.log('Attempting login with:', { email: email.trim() });
+        result = await authManager.login({ email: email.trim(), password });
       }
 
+      console.log('Auth result:', result);
+
       if (!result.success) {
+        console.error('Auth failed:', result.message);
         setError(result.message);
         return;
       }
 
       if (result.user) {
+        console.log('Auth successful, user:', result.user);
+        
         // Migrate progress จาก temp เป็น user progress
         progressManager.migrateProgressOnLogin();
         
@@ -81,10 +85,18 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
         setPassword('');
         setIsSignUp(false);
         setError('');
+      } else {
+        setError('เกิดข้อผิดพลาดที่ไม่คาดคิด');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Auth error:', error);
-      setError('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+      const errorMessage = error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+      setError(errorMessage);
+      
+      // แสดง toast สำหรับ error ที่สำคัญ
+      if (onShowToast) {
+        onShowToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
