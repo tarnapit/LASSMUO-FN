@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "api:test": "node -e \"import('./app/lib/api/test-utils.js').then(m => m.runAllTests())\"",
+    "api:health": "node -e \"import('./app/lib/api/test-utils.js').then(m => m.quickHealthCheck().then(ok => console.log(ok ? 'API OK' : 'API ERROR')))\""
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
