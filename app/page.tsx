@@ -3,14 +3,20 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { Rocket, Users, BookOpen, Gamepad2, Star, Trophy, Target, Clock, GraduationCap } from "lucide-react";
 import Navbar from "./components/layout/Navbar";
+import ApiStatusIndicator from "./components/ui/ApiStatusIndicator";
 import { progressManager } from "./lib/progress";
 import { authManager } from "./lib/auth";
 import { PlayerProgress } from "./types/stage";
+import { useUser, useUserProfile } from "./lib/api/hooks";
 
 export default function HomePage() {
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [learningStats, setLearningStats] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // API hooks for user data
+  const { data: userProfile, loading: userProfileLoading, error: userProfileError } = useUserProfile(currentUser?.id || '');
 
   useEffect(() => {
     // มิเกรตข้อมูลเก่าก่อน
@@ -19,6 +25,9 @@ export default function HomePage() {
     // โหลด progress และสถานะ auth
     const currentProgress = progressManager.getProgress();
     setProgress(currentProgress);
+    
+    const user = authManager.getCurrentUser();
+    setCurrentUser(user);
     setIsLoggedIn(authManager.isLoggedIn());
     
     // โหลดสถิติการเรียนรู้
@@ -27,6 +36,7 @@ export default function HomePage() {
 
     // Listen for auth changes
     const unsubscribe = authManager.onAuthStateChange((user) => {
+      setCurrentUser(user);
       setIsLoggedIn(!!user);
       // รีโหลด progress เมื่อ auth state เปลี่ยน
       const newProgress = progressManager.getProgress();
@@ -50,6 +60,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+      {/* API Status Indicator */}
+      <ApiStatusIndicator />
+      
       {/* Navigation */}
       <Navbar />
 

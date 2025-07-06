@@ -5,6 +5,8 @@ import { quizzes } from "../data/quizzes";
 import { learningModules } from "../data/learning-modules";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
+import { useOrdersByLesson, useUser } from "../lib/api/hooks";
+import { authManager } from "../lib/auth";
 import { 
   Brain, 
   Clock, 
@@ -21,8 +23,17 @@ import {
 export default function QuizPage() {
   const [quizProgresses, setQuizProgresses] = useState<Record<string, any>>({});
   const [quizUnlockStatus, setQuizUnlockStatus] = useState<Record<string, boolean>>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // สำหรับตอนนี้ จะใช้ local data หลัก และ API เป็น optional
+  // ในอนาคตสามารถขยายให้ใช้ API เป็นหลักได้
+  const quizzesToShow = quizzes; // ใช้ local data
 
   useEffect(() => {
+    // โหลดข้อมูล user
+    const user = authManager.getCurrentUser();
+    setCurrentUser(user);
+    
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
     

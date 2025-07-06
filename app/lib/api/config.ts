@@ -7,9 +7,13 @@ export const API_CONFIG = {
     LESSON: '/lesson',
     ORDER: '/order',
     USER: '/users',
-    ANSWER: '/answer'
+    ANSWER: '/answer',
+    HEALTH: '/health'
   },
-  TIMEOUT: 30000, // 30 seconds
+  TIMEOUT: 5000, // ลดเวลา timeout ลง
+  MAX_RETRIES: 2, // ลดจำนวนการ retry
+  RETRY_DELAY: 1000,
+  HEALTH_CHECK_INTERVAL: 60000, // เพิ่มช่วงเวลาตรวจสอบ
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json'
