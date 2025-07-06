@@ -21,6 +21,11 @@ class ApiClient {
         errorMessage = response.statusText || errorMessage;
       }
       
+      // เพิ่มข้อมูลเพิ่มเติมสำหรับ debugging
+      if (response.status === 404) {
+        errorMessage = `Not Found: ${errorMessage}`;
+      }
+      
       throw new ApiError(errorMessage, response.status);
     }
 
@@ -57,6 +62,8 @@ class ApiClient {
       clearTimeout(timeoutId);
       return await this.handleResponse<T>(response);
     } catch (error) {
+      console.error('API Request failed:', { url, error });
+      
       if (error instanceof ApiError) {
         throw error;
       }
@@ -64,6 +71,9 @@ class ApiClient {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           throw new NetworkError('Request timeout');
+        }
+        if (error.message.includes('Failed to fetch')) {
+          throw new NetworkError('Network connection failed - API server may be down');
         }
         throw new NetworkError(error.message);
       }

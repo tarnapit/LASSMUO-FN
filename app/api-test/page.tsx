@@ -15,16 +15,25 @@ export default function ApiTestPage() {
   const leaderboardQuery = useLeaderboard();
 
   const apiTests = [
-    { name: 'Users API', hook: usersQuery, endpoint: '/users' },
-    { name: 'Stages API', hook: stagesQuery, endpoint: '/stage' },
-    { name: 'Courses API', hook: coursesQuery, endpoint: '/course' },
-    { name: 'Leaderboard API', hook: leaderboardQuery, endpoint: '/answer/leaderboard' },
+    { name: 'Users API', hook: usersQuery, endpoint: '/users/get' },
+    { name: 'Stages API', hook: stagesQuery, endpoint: '/stage/get' },
+    { name: 'Courses API', hook: coursesQuery, endpoint: '/course/get' },
+    { name: 'Leaderboard API', hook: leaderboardQuery, endpoint: '/answer/leaderboard/get' },
   ];
 
   const testApiEndpoint = async (endpoint: string) => {
     try {
+      console.log(`Testing endpoint: ${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}${endpoint}`);
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}${endpoint}`);
+      console.log(`Response status: ${response.status}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log(`Response data:`, data);
       
       setTestResults(prev => ({
         ...prev,
@@ -36,6 +45,7 @@ export default function ApiTestPage() {
         }
       }));
     } catch (err: any) {
+      console.error(`Error testing ${endpoint}:`, err);
       setTestResults(prev => ({
         ...prev,
         [endpoint]: {

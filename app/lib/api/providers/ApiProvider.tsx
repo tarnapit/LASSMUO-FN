@@ -37,11 +37,11 @@ export function ApiProvider({ children }: ApiProviderProps) {
       setIsLoading(true);
       setError(null);
       
-      // ลองเชื่อมต่อ API - ใช้ simple request แทน health check
+      // ลองเชื่อมต่อ API - ใช้ users endpoint แทน health check เพราะ health endpoint อาจไม่มี
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/health`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}`, {
         method: 'GET',
         signal: controller.signal,
         headers: {
@@ -51,7 +51,8 @@ export function ApiProvider({ children }: ApiProviderProps) {
       
       clearTimeout(timeoutId);
       
-      if (response.ok) {
+      // ตรวจสอบว่า response เป็น JSON และมี status ที่ถูกต้อง
+      if (response.ok || response.status === 200) {
         setIsOnline(true);
         setError(null);
         console.log('API server connected successfully');
@@ -63,7 +64,7 @@ export function ApiProvider({ children }: ApiProviderProps) {
       
       if (err.name === 'AbortError') {
         setError('API connection timeout. Using offline mode.');
-      } else if (err.message?.includes('fetch')) {
+      } else if (err.message?.includes('Failed to fetch') || err.message?.includes('NetworkError')) {
         setError('API server not available. Using offline mode.');
       } else {
         setError('API server not responding. Using offline mode.');
