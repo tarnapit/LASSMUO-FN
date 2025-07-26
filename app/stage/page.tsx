@@ -6,6 +6,8 @@ import Navbar from "../components/layout/Navbar";
 import { stageData } from "../data/stages";
 import { progressManager } from "../lib/progress";
 import { PlayerProgress } from "../types/stage";
+import { useStages, useStagesByCourse, useUser } from "../lib/api/hooks";
+import { authManager } from "../lib/auth";
 
 export default function StagePage() {
   const router = useRouter();
@@ -13,8 +15,43 @@ export default function StagePage() {
   const [playerProgress, setPlayerProgress] = useState<PlayerProgress | null>(
     null
   );
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // API hooks for stage data
+  const { data: apiStages, loading: stagesLoading, error: stagesError } = useStages();
+  
+  // ดึงข้อมูลด่านจาก data และผสมกับความคืบหน้าของผู้เล่น
+  const processedStages = Object.values(stageData).map((stage) => {
+    const progress = playerProgress?.stages[stage.id];
+    const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
+
+    return {
+      ...stage,
+      isUnlocked,
+      isCompleted: progress?.isCompleted || false,
+      stars: progress?.stars || 0,
+      bestScore: progress?.bestScore || 0,
+      attempts: progress?.attempts || 0,
+      lastAttempt: progress?.lastAttempt,
+      totalStars: stage.totalStars || 3, // เพิ่ม totalStars จาก stageData
+    };
+  });
+
+  // จัดเรียงด่านตาม id
+  processedStages.sort((a, b) => a.id - b.id);
+
+  // Use API stages if available for additional data, otherwise use processed local data
+  const finalStages = apiStages?.data ? 
+    processedStages.map(stage => {
+      const apiStage = apiStages.data?.find((s: any) => s.id === stage.id);
+      return apiStage ? { ...stage, ...apiStage } : stage;
+    }) : processedStages;
 
   useEffect(() => {
+    // โหลดข้อมูล user
+    const user = authManager.getCurrentUser();
+    setCurrentUser(user);
+    
     // โหลด progress เมื่อ component mount
     const progress = progressManager.getProgress();
     setPlayerProgress(progress);
@@ -107,38 +144,18 @@ export default function StagePage() {
     };
   }, []);
 
-  // ดึงข้อมูลด่านจาก data และผสมกับความคืบหน้าของผู้เล่น
-  const stages = Object.values(stageData).map((stage) => {
-    const progress = playerProgress?.stages[stage.id];
-    const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
-
-    return {
-      ...stage,
-      isUnlocked,
-      isCompleted: progress?.isCompleted || false,
-      stars: progress?.stars || 0,
-      bestScore: progress?.bestScore || 0,
-      attempts: progress?.attempts || 0,
-      lastAttempt: progress?.lastAttempt,
-      totalStars: stage.totalStars || 3, // เพิ่ม totalStars จาก stageData
-    };
-  });
-
-  // จัดเรียงด่านตาม id
-  stages.sort((a, b) => a.id - b.id);
-
   // Debug: แสดงข้อมูล progress ในคอนโซล
   useEffect(() => {
     if (playerProgress) {
       console.log("Current player progress:", playerProgress);
       console.log(
         "Stages data with stars:",
-        stages.map((s) => ({
+        finalStages.map((s) => ({
           id: s.id,
           stars: s.stars,
           isCompleted: s.isCompleted,
           totalStars: s.totalStars,
-          stageProgress: playerProgress.stages[s.id],
+          stageProgress: playerProgress.stages[s.id as number],
         }))
       );
     }
@@ -189,7 +206,7 @@ export default function StagePage() {
           className="relative max-w-4xl mx-auto px-4 sm:px-8"
           onClick={handleBackgroundClick}
         >
-          {stages.map((stage, index) => {
+          {finalStages.map((stage, index) => {
             // Duolingo-style zigzag positioning
             const isEven = index % 2 === 0;
             const translateX = isEven
@@ -209,7 +226,7 @@ export default function StagePage() {
                     e.stopPropagation();
                     if (stage.isUnlocked) {
                       setSelectedStage(
-                        selectedStage === stage.id ? null : stage.id
+                        selectedStage === stage.id ? null : Number(stage.id)
                       );
                     }
                   }}
@@ -328,7 +345,7 @@ export default function StagePage() {
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
-              const stage = stages.find((s) => s.id === selectedStage);
+              const stage = finalStages.find((s) => s.id === selectedStage);
               if (!stage) return null;
 
               return (

@@ -7,6 +7,8 @@ import { getQuizByModuleId } from "../data/quizzes";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
 import QuizCard from "../components/ui/QuizCard";
+import { useCourses, useStages, useUser } from "../lib/api/hooks";
+import { authManager } from "../lib/auth";
 import {
   BookOpen,
   Clock,
@@ -23,8 +25,16 @@ export default function LearningPage() {
     {}
   );
   const [showQuizCard, setShowQuizCard] = useState<Record<string, boolean>>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // API hooks for course/module data
+  const { data: apiCourses, loading: coursesLoading, error: coursesError } = useCourses();
 
   useEffect(() => {
+    // โหลดข้อมูล user
+    const user = authManager.getCurrentUser();
+    setCurrentUser(user);
+    
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
 

@@ -6,6 +6,7 @@ import Navbar from "../components/layout/Navbar";
 import ChatModal from "../components/ui/ChatModal";
 import LoginModal from "../components/ui/LoginModal";
 import { authManager, User as UserType } from "../lib/auth";
+import { useUsers, useLeaderboard, useUserProfile } from "../lib/api/hooks";
 import { 
   Users, 
   Trophy, 
@@ -34,6 +35,11 @@ export default function FriendsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // API hooks
+  const { data: apiUsers, loading: usersLoading } = useUsers();
+  const { data: apiLeaderboard, loading: leaderboardLoading } = useLeaderboard();
+  const { data: userProfile, loading: profileLoading } = useUserProfile(currentUser?.id || '');
 
   useEffect(() => {
     // ตรวจสอบสถานะการล็อกอินเมื่อ component mount

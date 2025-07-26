@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { X, User, Mail, LogIn, UserPlus } from 'lucide-react';
+import { X, User, Mail, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
 import { authManager, User as UserType } from '../../lib/auth';
 import { progressManager } from '../../lib/progress';
 
@@ -13,46 +13,90 @@ interface LoginModalProps {
 
 export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: LoginModalProps) {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !email.trim()) return;
+    setError('');
+
+    if (isSignUp) {
+      // ตรวจสอบข้อมูลสำหรับการสมัครสมาชิก
+      if (!name.trim() || !email.trim() || !password.trim()) {
+        setError('กรุณากรอกข้อมูลให้ครบถ้วน');
+        return;
+      }
+    } else {
+      // ตรวจสอบข้อมูลสำหรับการเข้าสู่ระบบ
+      if (!email.trim() || !password.trim()) {
+        setError('กรุณากรอกอีเมลและรหัสผ่าน');
+        return;
+      }
+    }
 
     setIsLoading(true);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const user = authManager.login(username.trim(), email.trim());
-      
-      // Migrate progress จาก temp เป็น user progress
-      progressManager.migrateProgressOnLogin();
-      
-      onLogin(user);
-      onClose();
-      
-      // แสดง toast notification
-      if (onShowToast) {
-        const progressData = progressManager.getProgress();
-        if (progressData.totalStars > 0 || progressData.completedStages.length > 0) {
-          onShowToast('เข้าสู่ระบบสำเร็จ! ข้อมูลความคืบหน้าของคุณถูกบันทึกแล้ว', 'success');
-        } else {
-          onShowToast(`ยินดีต้อนรับ ${user.username}! เริ่มต้นการเรียนรู้ดาราศาสตร์กันเถอะ`, 'success');
-        }
+      let result;
+      if (isSignUp) {
+        console.log('Attempting sign up with:', { name: name.trim(), email: email.trim() });
+        result = await authManager.signUp({ name: name.trim(), email: email.trim(), password });
+      } else {
+        console.log('Attempting login with:', { email: email.trim() });
+        result = await authManager.login({ email: email.trim(), password });
       }
+
+      console.log('Auth result:', result);
+
+      if (!result.success) {
+        console.error('Auth failed:', result.message);
+        setError(result.message);
+        return;
+      }
+
+      if (result.user) {
+        console.log('Auth successful, user:', result.user);
+        
+        // Migrate progress จาก temp เป็น user progress
+        progressManager.migrateProgressOnLogin();
+        
+        onLogin(result.user);
+        onClose();
+        
+        // แสดง toast notification
+        if (onShowToast) {
+          const progressData = progressManager.getProgress();
+          if (progressData.totalStars > 0 || progressData.completedStages.length > 0) {
+            onShowToast('เข้าสู่ระบบสำเร็จ! ข้อมูลความคืบหน้าของคุณถูกบันทึกแล้ว', 'success');
+          } else {
+            onShowToast(`ยินดีต้อนรับ ${result.user.name}! ${isSignUp ? 'สมัครสมาชิกเรียบร้อย' : 'เริ่มต้นการเรียนรู้ดาราศาสตร์กันเถอะ'}`, 'success');
+          }
+        }
+        
+        // Reset form
+        setName('');
+        setEmail('');
+        setPassword('');
+        setIsSignUp(false);
+        setError('');
+      } else {
+        setError('เกิดข้อผิดพลาดที่ไม่คาดคิด');
+      }
+    } catch (error: any) {
+      console.error('Auth error:', error);
+      const errorMessage = error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+      setError(errorMessage);
       
-      // Reset form
-      setUsername('');
-      setEmail('');
-      setIsSignUp(false);
-    } catch (error) {
-      console.error('Login error:', error);
+      // แสดง toast สำหรับ error ที่สำคัญ
+      if (onShowToast) {
+        onShowToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -100,25 +144,36 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
           </p>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+            <p className="text-red-200 text-sm">
+              ⚠️ {error}
+            </p>
+          </div>
+        )}
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Username */}
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
-              ชื่อผู้ใช้
-            </label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                placeholder="ใส่ชื่อผู้ใช้"
-                required
-              />
+          {/* Name (only for sign up) */}
+          {isSignUp && (
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                ชื่อ-นามสกุล
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  placeholder="ใส่ชื่อ-นามสกุลของคุณ"
+                  required={isSignUp}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Email */}
           <div>
@@ -138,10 +193,35 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
             </div>
           </div>
 
+          {/* Password */}
+          <div>
+            <label className="block text-gray-300 text-sm font-medium mb-2">
+              รหัสผ่าน {isSignUp && <span className="text-gray-400 text-xs">(อย่างน้อย 6 ตัวอักษร)</span>}
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-4 pr-12 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                placeholder={isSignUp ? "สร้างรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)" : "ใส่รหัสผ่านของคุณ"}
+                required
+                minLength={isSignUp ? 6 : undefined}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading || !username.trim() || !email.trim()}
+            disabled={isLoading || !email.trim() || !password.trim() || (isSignUp && !name.trim())}
             className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (

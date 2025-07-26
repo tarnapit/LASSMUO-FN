@@ -4,6 +4,7 @@ import { Trophy, Star, Target, Medal, Crown, Users } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import { progressManager } from "../lib/progress";
 import { authManager } from "../lib/auth";
+import { useLeaderboard, useUserProfile } from "../lib/api/hooks";
 
 interface LeaderboardEntry {
   username: string;
@@ -17,6 +18,10 @@ export default function LeaderboardPage() {
   const [userProgress, setUserProgress] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // API hooks
+  const { data: apiLeaderboard, loading: leaderboardLoading } = useLeaderboard();
+  const { data: userProfile, loading: profileLoading } = useUserProfile(currentUser?.id || '');
 
   useEffect(() => {
     const progress = progressManager.getProgress();
@@ -35,6 +40,9 @@ export default function LeaderboardPage() {
     { username: "AstroStudent", totalStars: 10, totalPoints: 1000, completedStages: 4, rank: 4 },
     { username: "UniverseSeeker", totalStars: 9, totalPoints: 900, completedStages: 3, rank: 5 },
   ];
+
+  // ใช้ API leaderboard หากมี หรือใช้ mock data
+  const leaderboardData = apiLeaderboard?.data || mockLeaderboard;
 
   const getRankIcon = (rank: number) => {
     switch(rank) {
@@ -117,17 +125,27 @@ export default function LeaderboardPage() {
           </h2>
           
           <div className="space-y-4">
-            {mockLeaderboard.map((entry, index) => (
+            {leaderboardData.map((entry, index) => {
+              // แปลง API data structure ให้เข้ากับ local structure
+              const displayEntry = apiLeaderboard?.data ? {
+                username: (entry as any).userName || (entry as any).username,
+                totalStars: (entry as any).totalScore || (entry as any).totalStars || 0,
+                totalPoints: (entry as any).totalScore || (entry as any).totalPoints || 0,
+                completedStages: (entry as any).totalAnswers || (entry as any).completedStages || 0,
+                rank: (entry as any).rank || index + 1
+              } : entry as LeaderboardEntry;
+              
+              return (
               <div
                 key={index}
-                className={`rounded-xl p-6 border transition-all duration-300 hover:scale-105 ${getRankColor(entry.rank)}`}
+                className={`rounded-xl p-6 border transition-all duration-300 hover:scale-105 ${getRankColor(displayEntry.rank)}`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    {getRankIcon(entry.rank)}
+                    {getRankIcon(displayEntry.rank)}
                     <div>
-                      <h3 className="text-xl font-bold text-white">{entry.username}</h3>
-                      <p className="text-gray-400">อันดับ {entry.rank}</p>
+                      <h3 className="text-xl font-bold text-white">{displayEntry.username}</h3>
+                      <p className="text-gray-400">อันดับ {displayEntry.rank}</p>
                     </div>
                   </div>
                   
@@ -135,7 +153,7 @@ export default function LeaderboardPage() {
                     <div className="text-center">
                       <div className="flex items-center justify-center mb-1">
                         <Star className="text-yellow-400 mr-1" size={16} />
-                        <span className="text-white font-semibold">{entry.totalStars}</span>
+                        <span className="text-white font-semibold">{displayEntry.totalStars}</span>
                       </div>
                       <p className="text-gray-400 text-xs">ดาว</p>
                     </div>
@@ -143,7 +161,7 @@ export default function LeaderboardPage() {
                     <div className="text-center">
                       <div className="flex items-center justify-center mb-1">
                         <Target className="text-green-400 mr-1" size={16} />
-                        <span className="text-white font-semibold">{entry.totalPoints}</span>
+                        <span className="text-white font-semibold">{displayEntry.totalPoints}</span>
                       </div>
                       <p className="text-gray-400 text-xs">คะแนน</p>
                     </div>
@@ -151,14 +169,15 @@ export default function LeaderboardPage() {
                     <div className="text-center">
                       <div className="flex items-center justify-center mb-1">
                         <Trophy className="text-purple-400 mr-1" size={16} />
-                        <span className="text-white font-semibold">{entry.completedStages}</span>
+                        <span className="text-white font-semibold">{displayEntry.completedStages}</span>
                       </div>
                       <p className="text-gray-400 text-xs">ด่าน</p>
                     </div>
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
 

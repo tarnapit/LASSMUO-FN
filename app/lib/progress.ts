@@ -103,6 +103,12 @@ class ProgressManager {
     return {
       totalStars: 0,
       totalPoints: 0,
+      totalXp: 0,
+      gems: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      hearts: 5,
+      maxHearts: 5,
       completedStages: [],
       currentStage: 1,
       stages: {
@@ -112,9 +118,17 @@ class ProgressManager {
           isCompleted: false,
           stars: 0,
           bestScore: 0,
-          attempts: 0
+          attempts: 0,
+          xpEarned: 0,
+          perfectRuns: 0,
+          averageTime: 0,
+          mistakeCount: 0,
+          hintsUsed: 0,
+          achievements: []
         }
       },
+      achievements: [],
+      badges: [],
       learningProgress: {
         completedModules: [],
         totalLearningTime: 0,
@@ -122,6 +136,26 @@ class ProgressManager {
       },
       quizProgress: {
         quizzes: {}
+      },
+      dailyGoal: {
+        xpTarget: 50,
+        currentXp: 0,
+        isCompleted: false,
+        streak: 0
+      },
+      weeklyProgress: {
+        mondayXp: 0,
+        tuesdayXp: 0,
+        wednesdayXp: 0,
+        thursdayXp: 0,
+        fridayXp: 0,
+        saturdayXp: 0,
+        sundayXp: 0
+      },
+      league: {
+        currentLeague: 'bronze',
+        position: 0,
+        xpThisWeek: 0
       }
     };
   }
@@ -401,7 +435,13 @@ class ProgressManager {
         isCompleted: false,
         stars: 0,
         bestScore: 0,
-        attempts: 0
+        attempts: 0,
+        xpEarned: 0,
+        perfectRuns: 0,
+        averageTime: 0,
+        mistakeCount: 0,
+        hintsUsed: 0,
+        achievements: []
       };
     }
 
@@ -442,7 +482,13 @@ class ProgressManager {
             isCompleted: false,
             stars: 0,
             bestScore: 0,
-            attempts: 0
+            attempts: 0,
+            xpEarned: 0,
+            perfectRuns: 0,
+            averageTime: 0,
+            mistakeCount: 0,
+            hintsUsed: 0,
+            achievements: []
           };
         } else {
           progress.stages[nextStageId].isUnlocked = true;
@@ -836,6 +882,127 @@ class ProgressManager {
       totalLearningTime: progress.learningProgress.totalLearningTime,
       averageModuleProgress: Math.round(averageProgress)
     };
+  }
+
+  // Migrate progress เมื่อ login - ย้ายข้อมูลจาก temp storage ไป user storage
+  migrateProgressOnLogin(): void {
+    if (typeof window === 'undefined') return;
+
+    const user = authManager.getCurrentUser();
+    if (!user) return;
+
+    // ดึง temp progress
+    const tempProgress = this.getTempProgress();
+    
+    // ดึง user progress ที่มีอยู่แล้ว (ถ้ามี)
+    const existingUserProgress = this.getUserProgress();
+    
+    // เปรียบเทียบและรวม progress
+    const mergedProgress = this.mergeProgress(existingUserProgress, tempProgress);
+    
+    // บันทึกเป็น user progress
+    this.saveUserProgress(mergedProgress);
+    
+    // ลบ temp progress
+    this.clearTempProgress();
+    
+    console.log('Progress migrated successfully on login');
+  }
+
+  // รวม progress 2 อัน โดยเอาค่าที่ดีกว่า
+  private mergeProgress(existing: PlayerProgress, temp: PlayerProgress): PlayerProgress {
+    const merged: PlayerProgress = { ...existing };
+
+    // รวม stars และ points
+    merged.totalStars = Math.max(existing.totalStars, temp.totalStars);
+    merged.totalPoints = Math.max(existing.totalPoints, temp.totalPoints);
+    merged.totalXp = Math.max(existing.totalXp || 0, temp.totalXp || 0);
+    merged.gems = Math.max(existing.gems || 0, temp.gems || 0);
+    
+    // รวม completed stages
+    const allCompletedStages = [...new Set([...existing.completedStages, ...temp.completedStages])];
+    merged.completedStages = allCompletedStages;
+    
+    // อัพเดท current stage เป็นค่าสูงสุด
+    merged.currentStage = Math.max(existing.currentStage, temp.currentStage);
+
+    // รวม stage progress
+    for (const stageId in temp.stages) {
+      const tempStage = temp.stages[stageId];
+      const existingStage = existing.stages[stageId];
+
+      if (!existingStage) {
+        merged.stages[stageId] = tempStage;
+      } else {
+        merged.stages[stageId] = {
+          ...existingStage,
+          isUnlocked: existingStage.isUnlocked || tempStage.isUnlocked,
+          isCompleted: existingStage.isCompleted || tempStage.isCompleted,
+          stars: Math.max(existingStage.stars, tempStage.stars),
+          bestScore: Math.max(existingStage.bestScore, tempStage.bestScore),
+          attempts: Math.max(existingStage.attempts, tempStage.attempts),
+          xpEarned: Math.max(existingStage.xpEarned || 0, tempStage.xpEarned || 0),
+          perfectRuns: Math.max(existingStage.perfectRuns || 0, tempStage.perfectRuns || 0),
+          averageTime: Math.max(existingStage.averageTime || 0, tempStage.averageTime || 0),
+          mistakeCount: Math.min(existingStage.mistakeCount || 0, tempStage.mistakeCount || 0),
+          hintsUsed: Math.min(existingStage.hintsUsed || 0, tempStage.hintsUsed || 0)
+        };
+      }
+    }
+
+    // รวม learning progress
+    if (temp.learningProgress && merged.learningProgress) {
+      // รวม completed modules
+      const allCompletedModules = [...new Set([
+        ...merged.learningProgress.completedModules,
+        ...temp.learningProgress.completedModules
+      ])];
+      merged.learningProgress.completedModules = allCompletedModules;
+
+      // รวม learning time
+      merged.learningProgress.totalLearningTime += temp.learningProgress.totalLearningTime;
+
+      // รวม module progress
+      for (const moduleId in temp.learningProgress.modules) {
+        const tempModule = temp.learningProgress.modules[moduleId];
+        const existingModule = merged.learningProgress.modules[moduleId];
+
+        if (!existingModule) {
+          merged.learningProgress.modules[moduleId] = tempModule;
+        } else {
+          merged.learningProgress.modules[moduleId] = {
+            ...existingModule,
+            isCompleted: existingModule.isCompleted || tempModule.isCompleted,
+            completedAt: existingModule.completedAt || tempModule.completedAt,
+            totalTimeSpent: Math.max(existingModule.totalTimeSpent, tempModule.totalTimeSpent)
+          };
+        }
+      }
+    }
+
+    // รวม quiz progress
+    if (temp.quizProgress && merged.quizProgress) {
+      for (const quizId in temp.quizProgress.quizzes) {
+        const tempQuiz = temp.quizProgress.quizzes[quizId];
+        const existingQuiz = merged.quizProgress.quizzes[quizId];
+
+        if (!existingQuiz) {
+          merged.quizProgress.quizzes[quizId] = tempQuiz;
+        } else {
+          merged.quizProgress.quizzes[quizId] = {
+            ...existingQuiz,
+            attempts: [...existingQuiz.attempts, ...tempQuiz.attempts],
+            totalAttempts: existingQuiz.totalAttempts + tempQuiz.totalAttempts,
+            bestScore: Math.max(existingQuiz.bestScore, tempQuiz.bestScore),
+            bestPercentage: Math.max(existingQuiz.bestPercentage, tempQuiz.bestPercentage),
+            passed: existingQuiz.passed || tempQuiz.passed,
+            lastAttemptAt: tempQuiz.lastAttemptAt || existingQuiz.lastAttemptAt
+          };
+        }
+      }
+    }
+
+    return merged;
   }
 }
 
