@@ -37,7 +37,7 @@ const navigation: NavigationItem[] = [
       level: module.level
     })),
   },
-  { name: "กับเพื่อน", href: "/friends" },
+  // { name: "กับเพื่อน", href: "/friends" },
   {
     name: "มินิเกม",
     href: "/mini-game",
@@ -51,7 +51,7 @@ const navigation: NavigationItem[] = [
   },
   { name: "บอร์ดผู้นำ", href: "/leaderboard" },
   // เพิ่มในโหมด development
-  ...(process.env.NODE_ENV === 'development' ? [{ name: "API Test", href: "/api-test" }] : []),
+  // ...(process.env.NODE_ENV === 'development' ? [{ name: "API Test", href: "/api-test" }] : []),
 ];
 
 export default function Navbar() {

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/quiz-animations.css";
+@import "./styles/enhanced-ui.css";
 
 :root {
   --background: #ffffff;
@@ -38,6 +39,55 @@ body {
 /* Progress Bar Styles */
 [data-progress] {
   width: calc(var(--progress, 0) * 1%);
+}
+
+/* Custom Progress Animation */
+.progress-animated {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Theme-specific backgrounds */
+.theme-space {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 25%, #1e293b 50%, #0f172a 100%);
+}
+
+.theme-galaxy {
+  background: linear-gradient(135deg, #7c3aed 0%, #3730a3 25%, #1e1b4b 50%, #0f172a 100%);
+}
+
+.theme-nebula {
+  background: linear-gradient(135deg, #ec4899 0%, #7c3aed 25%, #3730a3 50%, #1e1b4b 100%);
+}
+
+/* Glass morphism effects */
+.glass-card {
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Interactive elements */
+.interactive-glow:hover {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+}
+
+/* Floating animations */
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 /* Planet Color Styles */

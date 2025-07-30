@@ -323,21 +323,45 @@ export default function MiniGamePage() {
       <div className="container mx-auto px-4 sm:px-6 py-20 relative z-10">
         {/* Header Section */}
         <div className="text-center mb-16">
+          {/* Header Badge */}
           <div className="flex justify-center mb-6">
-            <div className="relative">
-              <Gamepad2 className="text-yellow-400 animate-bounce" size={64} />
-              <Sparkles
-                className="absolute -top-2 -right-2 text-blue-400"
-                size={24}
-              />
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full border border-purple-500/30">
+              <Gamepad2 className="w-5 h-5 text-purple-400 mr-2" />
+              <span className="text-purple-300 text-sm font-semibold">{text.trending}</span>
             </div>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
+
+          <div className="relative mb-6">
+            <Gamepad2 className="text-yellow-400 animate-bounce mx-auto" size={72} />
+            <div className="absolute -top-3 -right-3 p-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse">
+              <Sparkles className="text-white" size={20} />
+            </div>
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent leading-tight">
             {text.title}
           </h1>
-          <p className="text-gray-300 text-lg sm:text-xl max-w-2xl mx-auto">
+          <p className="text-gray-300 text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed">
             {text.subtitle}
           </p>
+
+          {/* Challenge Level Indicator */}
+          <div className="mt-8 flex justify-center">
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center">
+                <Target className="w-5 h-5 text-green-400 mr-2" />
+                <span className="text-green-300 font-medium">เริ่มต้น</span>
+              </div>
+              <div className="flex items-center">
+                <Flame className="w-5 h-5 text-yellow-400 mr-2" />
+                <span className="text-yellow-300 font-medium">ปานกลาง</span>
+              </div>
+              <div className="flex items-center">
+                <Crown className="w-5 h-5 text-red-400 mr-2" />
+                <span className="text-red-300 font-medium">ผู้เชี่ยวชาญ</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Progress Dashboard */}
@@ -391,6 +415,103 @@ export default function MiniGamePage() {
               <div className="text-4xl font-bold text-orange-400 mb-2">12</div>
               <div className="text-base text-gray-400">วันติดต่อกัน</div>
             </div>
+          </div>
+        </div>
+
+        {/* Game Categories */}
+        <div className="mb-16">
+          <h2 className="text-3xl font-bold text-white mb-8 text-center">
+            เลือกประเภทเกมที่คุณชื่นชอบ
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            {/* Knowledge Games */}
+            <div className="group bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border border-blue-500/30 rounded-2xl p-6 hover:border-blue-400/50 transition-all duration-300 cursor-pointer">
+              <div className="flex items-center justify-center mb-4">
+                <div className="p-3 bg-blue-500/20 rounded-full group-hover:scale-110 transition-transform duration-300">
+                  <Brain className="w-8 h-8 text-blue-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 text-center">เกมความรู้</h3>
+              <p className="text-gray-300 text-center text-sm mb-4">ทดสอบความรู้ด้านดาราศาสตร์</p>
+              <div className="flex justify-center space-x-2">
+                <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded-full">ควิซ</span>
+                <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full">ท้าทาย</span>
+              </div>
+            </div>
+
+            {/* Memory Games */}
+            <div className="group bg-gradient-to-br from-purple-500/10 to-pink-600/10 border border-purple-500/30 rounded-2xl p-6 hover:border-purple-400/50 transition-all duration-300 cursor-pointer">
+              <div className="flex items-center justify-center mb-4">
+                <div className="p-3 bg-purple-500/20 rounded-full group-hover:scale-110 transition-transform duration-300">
+                  <Zap className="w-8 h-8 text-purple-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 text-center">เกมความจำ</h3>
+              <p className="text-gray-300 text-center text-sm mb-4">ฝึกความจำและสมาธิ</p>
+              <div className="flex justify-center space-x-2">
+                <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-1 rounded-full">จับคู่</span>
+                <span className="text-xs bg-pink-500/20 text-pink-300 px-2 py-1 rounded-full">จำลำดับ</span>
+              </div>
+            </div>
+
+            {/* Puzzle Games */}
+            <div className="group bg-gradient-to-br from-orange-500/10 to-red-600/10 border border-orange-500/30 rounded-2xl p-6 hover:border-orange-400/50 transition-all duration-300 cursor-pointer">
+              <div className="flex items-center justify-center mb-4">
+                <div className="p-3 bg-orange-500/20 rounded-full group-hover:scale-110 transition-transform duration-300">
+                  <Puzzle className="w-8 h-8 text-orange-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 text-center">เกมปริศนา</h3>
+              <p className="text-gray-300 text-center text-sm mb-4">แก้ปัญหาและต่อจิ๊กซอว์</p>
+              <div className="flex justify-center space-x-2">
+                <span className="text-xs bg-orange-500/20 text-orange-300 px-2 py-1 rounded-full">กลุ่มดาว</span>
+                <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded-full">เรียงลำดับ</span>
+              </div>
+            </div>
+
+            {/* Action Games */}
+            <div className="group bg-gradient-to-br from-green-500/10 to-emerald-600/10 border border-green-500/30 rounded-2xl p-6 hover:border-green-400/50 transition-all duration-300 cursor-pointer">
+              <div className="flex items-center justify-center mb-4">
+                <div className="p-3 bg-green-500/20 rounded-full group-hover:scale-110 transition-transform duration-300">
+                  <Gamepad2 className="w-8 h-8 text-green-400" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2 text-center">เกมแอ็กชัน</h3>
+              <p className="text-gray-300 text-center text-sm mb-4">การผจญภัยในอวกาศ</p>
+              <div className="flex justify-center space-x-2">
+                <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded-full">หลบหลีก</span>
+                <span className="text-xs bg-teal-500/20 text-teal-300 px-2 py-1 rounded-full">สำรวจ</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Featured Games Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-center mb-8">
+            <div className="p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-3">
+              <Crown className="w-8 h-8 text-black" />
+            </div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+              เกมแนะนำ & ยอดนิยม
+            </h2>
+          </div>
+
+          {/* Filter Buttons */}
+          <div className="flex justify-center space-x-4 mb-8">
+            <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-full font-semibold hover:from-blue-400 hover:to-purple-400 transition-all duration-300 transform hover:scale-105">
+              ทั้งหมด
+            </button>
+            <button className="px-6 py-3 bg-slate-700 text-gray-300 rounded-full font-semibold hover:bg-slate-600 transition-all duration-300">
+              ง่าย
+            </button>
+            <button className="px-6 py-3 bg-slate-700 text-gray-300 rounded-full font-semibold hover:bg-slate-600 transition-all duration-300">
+              ปานกลาง
+            </button>
+            <button className="px-6 py-3 bg-slate-700 text-gray-300 rounded-full font-semibold hover:bg-slate-600 transition-all duration-300">
+              ยาก
+            </button>
           </div>
         </div>
 
