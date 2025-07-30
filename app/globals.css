@@ -27,6 +27,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Line clamp utility for consistent text heights */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 4.5rem; /* Ensures consistent height even with shorter text */
+}
+
 /* Navigation Styles */
 .nav-link {
   @apply text-white hover:text-yellow-300 transition-colors duration-300;
