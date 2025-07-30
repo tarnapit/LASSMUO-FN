@@ -275,9 +275,6 @@ export default function MiniGamePage() {
 
           <div className="relative mb-6">
             <Brain className="text-blue-400 animate-bounce mx-auto" size={72} />
-            <div className="absolute -top-3 -right-3 p-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full animate-pulse">
-              <CheckCircle className="text-white" size={20} />
-            </div>
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent leading-tight">
