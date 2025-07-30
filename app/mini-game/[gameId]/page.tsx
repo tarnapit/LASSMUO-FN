@@ -5,6 +5,8 @@ import { miniGames } from "../../data/mini-games";
 import { getQuestionsForMode, calculateTimeBonus } from "../../data/mini-game-questions";
 import { MiniGameQuestion, GameSession, type GameResult } from "../../types/mini-game";
 import Navbar from "../../components/layout/Navbar";
+import QuestionRenderer from "./components/QuestionRenderer";
+import { checkAnswer, getCategoryName, getDifficultyName } from "./utils/gameUtils";
 import { 
   ArrowLeft, 
   Clock, 
@@ -19,101 +21,335 @@ import {
   RotateCcw
 } from "lucide-react";
 import Link from "next/link";
+import "../../styles/mini-game-specific.css";
 
-// Import game components - Temporary implementations
-// import ScoreChallengeGame from "./components/ScoreChallengeGame";
-// import TimeRushGame from "./components/TimeRushGame";
-// import RandomQuizGame from "./components/RandomQuizGame";
-
-// Temporary Game Components
+// Score Challenge Game - โหมดสะสมคะแนน
 function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
-  const handleComplete = () => {
-    const result: GameResult = {
-      score: 120,
-      correctAnswers: 12,
-      totalQuestions: 15,
-      percentage: 80,
-      timeSpent: 180,
-      bonusPoints: 20,
-      gameMode: 'score-challenge',
-      breakdown: []
-    };
-    onGameFinish(result);
+  const [questions] = useState(() => getQuestionsForMode('score-challenge'));
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [score, setScore] = useState(0);
+  const [bonusPoints, setBonusPoints] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  const currentQuestion = questions[currentQuestionIndex];
+
+  const handleAnswer = (answer: any) => {
+    if (isAnswered) return;
+    
+    const timeSpent = (Date.now() - questionStartTime) / 1000;
+    const isCorrect = checkAnswer(currentQuestion, answer);
+    
+    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
+    setIsAnswered(true);
+    
+    if (isCorrect) {
+      const basePoints = currentQuestion.points;
+      const bonus = calculateTimeBonus(timeSpent, currentQuestion.timeBonus || 0);
+      setScore(prev => prev + basePoints + bonus);
+      setBonusPoints(prev => prev + bonus);
+    }
+    
+    setShowExplanation(true);
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setIsAnswered(false);
+      setShowExplanation(false);
+      setQuestionStartTime(Date.now());
+    } else {
+      // Game finished
+      const correctAnswers = Object.keys(answers).filter(questionId => {
+        const q = questions.find(q => q.id === questionId);
+        return q && checkAnswer(q, answers[questionId]);
+      }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
+      
+      const result: GameResult = {
+        score,
+        correctAnswers,
+        totalQuestions: questions.length,
+        percentage: Math.round((correctAnswers / questions.length) * 100),
+        timeSpent: (Date.now() - questionStartTime) / 1000,
+        bonusPoints,
+        gameMode: 'score-challenge',
+        breakdown: []
+      };
+      
+      onGameFinish(result);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-4">🏆 โหมดท้าทายคะแนน</h1>
-        <p className="text-gray-400 mb-8">เกมกำลังพัฒนา...</p>
-        <button 
-          onClick={handleComplete}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg"
-        >
-          ทดสอบผลลัพธ์
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        {/* Progress Bar */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <div className="flex justify-between text-white mb-2">
+            <span>คำถามที่ {currentQuestionIndex + 1} จาก {questions.length}</span>
+            <span>คะแนน: {score}</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div 
+              className={`bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300 progress-bar`}
+              style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+            <h2 className="text-2xl font-bold text-white mb-6">{currentQuestion.question}</h2>
+            
+            <QuestionRenderer 
+              question={currentQuestion}
+              onAnswer={handleAnswer}
+              disabled={isAnswered}
+              showResult={isAnswered}
+            />
+            
+            {showExplanation && currentQuestion.explanation && (
+              <div className="mt-6 p-4 bg-blue-500/20 rounded-xl border border-blue-500/30">
+                <h4 className="text-blue-300 font-semibold mb-2">คำอธิบาย:</h4>
+                <p className="text-gray-300">{currentQuestion.explanation}</p>
+              </div>
+            )}
+
+            {isAnswered && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={handleNextQuestion}
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 px-8 rounded-xl hover:scale-105 transition-all duration-300"
+                >
+                  {currentQuestionIndex < questions.length - 1 ? 'คำถามถัดไป' : 'ดูผลลัพธ์'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
+// Time Rush Game - โหมดแข่งกับเวลา
 function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
-  const handleComplete = () => {
-    const result: GameResult = {
-      score: 85,
-      correctAnswers: 17,
-      totalQuestions: 20,
-      percentage: 85,
-      timeSpent: 60,
-      bonusPoints: 15,
-      gameMode: 'time-rush',
-      breakdown: []
-    };
-    onGameFinish(result);
+  const [questions] = useState(() => getQuestionsForMode('time-rush'));
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState(60);
+  const [score, setScore] = useState(0);
+  const [correctAnswers, setCorrectAnswers] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          // Time's up!
+          const result: GameResult = {
+            score,
+            correctAnswers,
+            totalQuestions: currentQuestionIndex + 1,
+            percentage: Math.round((correctAnswers / Math.max(1, currentQuestionIndex + 1)) * 100),
+            timeSpent: 60,
+            bonusPoints: 0,
+            gameMode: 'time-rush',
+            breakdown: []
+          };
+          onGameFinish(result);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [score, correctAnswers, currentQuestionIndex, onGameFinish]);
+
+  const handleAnswer = (answer: any) => {
+    const isCorrect = checkAnswer(questions[currentQuestionIndex], answer);
+    
+    if (isCorrect) {
+      setScore(prev => prev + questions[currentQuestionIndex].points);
+      setCorrectAnswers(prev => prev + 1);
+    }
+    
+    // Move to next question immediately
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+    } else {
+      // No more questions
+      const finalCorrectAnswers = correctAnswers + (isCorrect ? 1 : 0);
+      const finalScore = score + (isCorrect ? questions[currentQuestionIndex].points : 0);
+      const result: GameResult = {
+        score: finalScore,
+        correctAnswers: finalCorrectAnswers,
+        totalQuestions: currentQuestionIndex + 1,
+        percentage: Math.round((finalCorrectAnswers / (currentQuestionIndex + 1)) * 100),
+        timeSpent: 60 - timeRemaining,
+        bonusPoints: 0,
+        gameMode: 'time-rush',
+        breakdown: []
+      };
+      onGameFinish(result);
+    }
   };
 
+  const currentQuestion = questions[currentQuestionIndex];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-4">⚡ โหมดแข่งกับเวลา</h1>
-        <p className="text-gray-400 mb-8">เกมกำลังพัฒนา...</p>
-        <button 
-          onClick={handleComplete}
-          className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg"
-        >
-          ทดสอบผลลัพธ์
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        {/* Timer and Score */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <div className="flex justify-between items-center text-white mb-4">
+            <div className="text-3xl font-bold text-red-400">
+              ⏰ {timeRemaining}s
+            </div>
+            <div className="text-xl">
+              คะแนน: {score} | ถูก: {correctAnswers}
+            </div>
+          </div>
+          <div className="text-center text-gray-300">
+            คำถามที่ {currentQuestionIndex + 1} | เหลือ {questions.length - currentQuestionIndex - 1} ข้อ
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+            <h2 className="text-2xl font-bold text-white mb-6">{currentQuestion.question}</h2>
+            
+            <QuestionRenderer 
+              question={currentQuestion}
+              onAnswer={handleAnswer}
+              disabled={false}
+              showResult={false}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
+// Random Quiz Game - โหมดทบทวนแบบสุ่ม
 function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
-  const handleComplete = () => {
-    const result: GameResult = {
-      score: 108,
-      correctAnswers: 9,
-      totalQuestions: 12,
-      percentage: 90,
-      timeSpent: 240,
-      bonusPoints: 8,
-      gameMode: 'random-quiz',
-      breakdown: []
-    };
-    onGameFinish(result);
+  const [questions] = useState(() => getQuestionsForMode('random-quiz'));
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [score, setScore] = useState(0);
+  const [bonusPoints, setBonusPoints] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [isAnswered, setIsAnswered] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  const currentQuestion = questions[currentQuestionIndex];
+
+  const handleAnswer = (answer: any) => {
+    if (isAnswered) return;
+    
+    const timeSpent = (Date.now() - questionStartTime) / 1000;
+    const isCorrect = checkAnswer(currentQuestion, answer);
+    
+    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
+    setIsAnswered(true);
+    
+    if (isCorrect) {
+      const basePoints = currentQuestion.points;
+      const bonus = calculateTimeBonus(timeSpent, currentQuestion.timeBonus || 0);
+      setScore(prev => prev + basePoints + bonus);
+      setBonusPoints(prev => prev + bonus);
+    }
+    
+    setShowExplanation(true);
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setIsAnswered(false);
+      setShowExplanation(false);
+      setQuestionStartTime(Date.now());
+    } else {
+      // Game finished
+      const correctAnswers = Object.keys(answers).filter(questionId => {
+        const q = questions.find(q => q.id === questionId);
+        return q && checkAnswer(q, answers[questionId]);
+      }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
+      
+      const result: GameResult = {
+        score,
+        correctAnswers,
+        totalQuestions: questions.length,
+        percentage: Math.round((correctAnswers / questions.length) * 100),
+        timeSpent: (Date.now() - questionStartTime) / 1000,
+        bonusPoints,
+        gameMode: 'random-quiz',
+        breakdown: []
+      };
+      
+      onGameFinish(result);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-white mb-4">🎯 โหมดทบทวนความรู้</h1>
-        <p className="text-gray-400 mb-8">เกมกำลังพัฒนา...</p>
-        <button 
-          onClick={handleComplete}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg"
-        >
-          ทดสอบผลลัพธ์
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+      <Navbar />
+      <div className="container mx-auto px-4 py-8">
+        {/* Progress Bar */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <div className="flex justify-between text-white mb-2">
+            <span>คำถามที่ {currentQuestionIndex + 1} จาก {questions.length}</span>
+            <span>คะแนน: {score}</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-3">
+            <div 
+              className={`bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-300 progress-bar`}
+              style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+            ></div>
+          </div>
+          <div className="text-center text-gray-300 mt-2">
+            หมวดหมู่: {getCategoryName(currentQuestion.category)} | ระดับ: {getDifficultyName(currentQuestion.difficulty)}
+          </div>
+        </div>
+
+        {/* Question Card */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+            <h2 className="text-2xl font-bold text-white mb-6">{currentQuestion.question}</h2>
+            
+            <QuestionRenderer 
+              question={currentQuestion}
+              onAnswer={handleAnswer}
+              disabled={isAnswered}
+              showResult={isAnswered}
+            />
+            
+            {showExplanation && currentQuestion.explanation && (
+              <div className="mt-6 p-4 bg-green-500/20 rounded-xl border border-green-500/30">
+                <h4 className="text-green-300 font-semibold mb-2">คำอธิบาย:</h4>
+                <p className="text-gray-300">{currentQuestion.explanation}</p>
+              </div>
+            )}
+
+            {isAnswered && (
+              <div className="mt-6 text-center">
+                <button
+                  onClick={handleNextQuestion}
+                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold py-3 px-8 rounded-xl hover:scale-105 transition-all duration-300"
+                >
+                  {currentQuestionIndex < questions.length - 1 ? 'คำถามถัดไป' : 'ดูผลลัพธ์'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -394,12 +630,13 @@ function GameResult({ result, gameId, onRestart, onBackToMenu }: {
               </div>
               <div className="w-full bg-gray-700 rounded-full h-4">
                 <div 
-                  className={`h-4 rounded-full transition-all duration-1000 progress-${Math.round(result.percentage / 10) * 10} ${
+                  className={`h-4 rounded-full transition-all duration-1000 ${
                     isExcellent ? 'bg-gradient-to-r from-yellow-400 to-orange-400' :
                     isGood ? 'bg-gradient-to-r from-green-400 to-blue-400' :
                     isPassed ? 'bg-gradient-to-r from-blue-400 to-purple-400' :
                     'bg-gradient-to-r from-gray-400 to-gray-500'
                   }`}
+                  style={{ width: `${result.percentage}%` }}
                 ></div>
               </div>
             </div>
