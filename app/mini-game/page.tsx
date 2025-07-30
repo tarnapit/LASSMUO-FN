@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { miniGames } from "../data/mini-games";
 import Navbar from "../components/layout/Navbar";
+import { MiniGameProgressHelper } from "../lib/mini-game-progress";
 import {
   Gamepad2,
   Clock,
@@ -24,61 +25,57 @@ import "../styles/mini-game-animations.css";
 
 export default function MiniGamePage() {
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
-  const [completedGames, setCompletedGames] = useState<string[]>([
-    "score-challenge",
-    "random-quiz",
-  ]); // Demo completed games
   const [isLoading, setIsLoading] = useState(true);
-  const [achievements, setAchievements] = useState([
-    {
-      id: "first-quiz",
-      name: "ผู้เริ่มต้น",
-      description: "เล่นแบบทดสอบครั้งแรก",
-      icon: "�",
-      unlocked: true,
-      reward: "+50 คะแนน",
-    },
-    {
-      id: "score-master",
-      name: "ปรมาจารย์คะแนน",
-      description: "ได้คะแนนเต็มใน Score Challenge",
-      icon: "🏆",
-      unlocked: true,
-      reward: "+200 คะแนน",
-    },
-    {
-      id: "speed-demon",
-      name: "ปีศาจความเร็ว",
-      description: "ตอบถูก 20 ข้อใน Time Rush",
-      icon: "⚡",
-      unlocked: false,
-      reward: "+300 คะแนน",
-    },
-    {
-      id: "knowledge-expert",
-      name: "ผู้เชี่ยวชาญความรู้",
-      description: "ผ่านทุกโหมดด้วยคะแนน 80%+",
-      icon: "🧠",
-      unlocked: false,
-      reward: "+500 คะแนน",
-    },
-    {
-      id: "quiz-champion",
-      name: "แชมป์แบบทดสอบ",
-      description: "ครองอันดับ 1 ในลีดเดอร์บอร์ด",
-      icon: "👑",
-      unlocked: false,
-      reward: "+1000 คะแนน",
-    },
-    {
-      id: "perfect-streak",
-      name: "สายฟ้าสมบูรณ์แบบ",
-      description: "ทำแบบทดสอบติดต่อกัน 7 วัน",
-      icon: "🔥",
-      unlocked: false,
-      reward: "+750 คะแนน",
+  
+  // ใช้ real data แทน mock data
+  const [gameStats, setGameStats] = useState(MiniGameProgressHelper.getGameStats());
+  const [achievements, setAchievements] = useState(MiniGameProgressHelper.getAchievementData());
+  
+  // คำนวณข้อมูลจริงจาก progress
+  const totalCompletedGames = MiniGameProgressHelper.getCompletedGamesCount();
+  const totalPoints = MiniGameProgressHelper.getTotalScore();
+  const streakDays = MiniGameProgressHelper.getStreakDays();
+
+  // Update progress data when component mounts and when progress changes
+  useEffect(() => {
+    const updateProgressData = () => {
+      setGameStats(MiniGameProgressHelper.getGameStats());
+      setAchievements(MiniGameProgressHelper.getAchievementData());
+    };
+
+    updateProgressData();
+
+    // Listen for progress updates
+    if (typeof window !== 'undefined') {
+      window.addEventListener('progressUpdated', updateProgressData);
+      return () => window.removeEventListener('progressUpdated', updateProgressData);
     }
-  ]);
+  }, []);
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    // Update progress bar width
+    const progressBar = document.querySelector(
+      ".progress-animated"
+    ) as HTMLElement;
+    if (progressBar) {
+      progressBar.style.setProperty(
+        "--progress-width",
+        `${(totalCompletedGames / miniGames.length) * 100}%`
+      );
+      progressBar.style.width = `${
+        (totalCompletedGames / miniGames.length) * 100
+      }%`;
+    }
+  }, [totalCompletedGames]);
 
   const text = {
     title: "แบบทดสอบดาราศาสตร์",
@@ -182,12 +179,7 @@ export default function MiniGamePage() {
     }
   };
 
-  const isGameCompleted = (gameId: string) => completedGames.includes(gameId);
-  const totalCompletedGames = completedGames.length;
-  const totalPoints = completedGames.reduce((sum, gameId) => {
-    const game = miniGames.find((g) => g.id === gameId);
-    return sum + (game?.points || 0);
-  }, 0);
+  const isGameCompleted = (gameId: string) => MiniGameProgressHelper.hasCompleted(gameId);
 
   const isNewGame = (gameId: string) =>
     [
@@ -200,31 +192,6 @@ export default function MiniGamePage() {
   const hasBonus = (gameId: string) =>
     ["time-rush"].includes(gameId);
   const isExclusive = (gameId: string) => false; // ไม่มีเกมพิเศษ
-
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    // Update progress bar width
-    const progressBar = document.querySelector(
-      ".progress-animated"
-    ) as HTMLElement;
-    if (progressBar) {
-      progressBar.style.setProperty(
-        "--progress-width",
-        `${(totalCompletedGames / miniGames.length) * 100}%`
-      );
-      progressBar.style.width = `${
-        (totalCompletedGames / miniGames.length) * 100
-      }%`;
-    }
-  }, [totalCompletedGames]);
 
   if (isLoading) {
     return (
@@ -368,7 +335,7 @@ export default function MiniGamePage() {
                 </span>
                 <Flame className="text-orange-400" size={24} />
               </div>
-              <div className="text-4xl font-bold text-orange-400 mb-2">12</div>
+              <div className="text-4xl font-bold text-orange-400 mb-2">{streakDays}</div>
               <div className="text-base text-gray-400">วันติดต่อกัน</div>
             </div>
           </div>
@@ -628,38 +595,42 @@ export default function MiniGamePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
             <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-8 border border-blue-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-blue-400 mb-4">🌟</div>
-              <div className="text-4xl font-bold text-white mb-3">1,247</div>
+              <div className="text-4xl font-bold text-white mb-3">{gameStats?.gamesPlayed || 0}</div>
               <div className="text-gray-400 text-base mb-2">
                 ครั้งที่เล่นทั้งหมด
               </div>
-              <div className="text-green-400 text-sm">+23% จากเดือนที่แล้ว</div>
+              <div className="text-green-400 text-sm">เริ่มต้นการผจญภัย!</div>
             </div>
 
             <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl p-8 border border-green-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-green-400 mb-4">⏱️</div>
-              <div className="text-4xl font-bold text-white mb-3">4.2 นาที</div>
+              <div className="text-4xl font-bold text-white mb-3">
+                {gameStats?.gamesPlayed ? Math.round(gameStats.totalTimeSpent / gameStats.gamesPlayed) : 0} วินาที
+              </div>
               <div className="text-gray-400 text-base mb-2">
                 เวลาเฉลี่ยต่อเกม
               </div>
-              <div className="text-blue-400 text-sm">ลดลง 18% จากเดิม</div>
+              <div className="text-blue-400 text-sm">กำลังปรับปรุง!</div>
             </div>
 
             <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-2xl p-8 border border-yellow-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-yellow-400 mb-4">🏆</div>
-              <div className="text-4xl font-bold text-white mb-3">2,850</div>
+              <div className="text-4xl font-bold text-white mb-3">{gameStats?.bestScore || 0}</div>
               <div className="text-gray-400 text-base mb-2">
-                คะแนนสูงสุดในวัน
+                คะแนนสูงสุด
               </div>
-              <div className="text-purple-400 text-sm">สถิติใหม่!</div>
+              <div className="text-purple-400 text-sm">เป้าหมายใหม่!</div>
             </div>
 
             <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-8 border border-purple-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-purple-400 mb-4">🎯</div>
-              <div className="text-4xl font-bold text-white mb-3">92%</div>
+              <div className="text-4xl font-bold text-white mb-3">
+                {gameStats?.gamesPlayed ? Math.round(gameStats.attempts.reduce((sum, a) => sum + a.percentage, 0) / gameStats.gamesPlayed) : 0}%
+              </div>
               <div className="text-gray-400 text-base mb-2">
                 อัตราผ่านเฉลี่ย
               </div>
-              <div className="text-green-400 text-sm">เพิ่มขึ้น 5%</div>
+              <div className="text-green-400 text-sm">เก่งขึ้นทุกวัน!</div>
             </div>
           </div>
 

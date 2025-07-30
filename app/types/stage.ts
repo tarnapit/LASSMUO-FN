@@ -1,5 +1,6 @@
 import { ModuleProgress } from './learning';
 import { QuizProgress } from './quiz';
+import { GameStats } from './mini-game';
 
 export interface BaseQuestion {
   id: number;
@@ -140,6 +141,8 @@ export interface PlayerProgress {
   quizProgress?: {
     quizzes: Record<string, QuizProgress>;
   };
+  // เพิ่ม mini-game stats
+  miniGameStats?: GameStats;
   // Duolingo-style features
   dailyGoal: {
     xpTarget: number;

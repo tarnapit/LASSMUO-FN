@@ -70,6 +70,7 @@ export interface GameStats {
   totalTimeSpent: number;
   streakDays: number;
   achievements: string[];
+  attempts: MiniGameAttempt[];
   lastPlayedAt?: Date;
   scoreChallengeBest: number;
   timeRushBest: number;

@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { miniGames } from "../../data/mini-games";
 import { getQuestionsForMode, calculateTimeBonus } from "../../data/mini-game-questions";
 import { MiniGameQuestion, GameSession, type GameResult } from "../../types/mini-game";
+import { MiniGameProgressHelper } from "../../lib/mini-game-progress";
 import Navbar from "../../components/layout/Navbar";
 import QuestionRenderer from "./components/QuestionRenderer";
 import { checkAnswer, getCategoryName, getDifficultyName } from "./utils/gameUtils";
@@ -24,10 +25,11 @@ import Link from "next/link";
 import "../../styles/mini-game-specific.css";
 
 // Score Challenge Game - โหมดสะสมคะแนน
-function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
+function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResult, answers: Record<string, any>, questionTimes: Record<string, number>) => void }) {
   const [questions] = useState(() => getQuestionsForMode('score-challenge'));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
   const [score, setScore] = useState(0);
   const [bonusPoints, setBonusPoints] = useState(0);
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
@@ -66,6 +68,7 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
     const isCorrect = answer !== null && checkAnswer(currentQuestion, answer);
     
     setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
+    setQuestionTimes(prev => ({ ...prev, [currentQuestion.id]: timeSpent }));
     setIsAnswered(true);
     
     if (isCorrect) {
@@ -123,7 +126,7 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
         breakdown: []
       };
       
-      onGameFinish(result);
+      onGameFinish(result, answers, questionTimes);
     }
   };
 
@@ -279,9 +282,11 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
 }
 
 // Time Rush Game - โหมดแข่งกับเวลา
-function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
+function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult, answers: Record<string, any>, questionTimes: Record<string, number>) => void }) {
   const [questions] = useState(() => getQuestionsForMode('time-rush'));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [score, setScore] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
@@ -291,6 +296,7 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
   const [speedBonus, setSpeedBonus] = useState(0);
   const [showSpeedBonus, setShowSpeedBonus] = useState(false);
   const [questionsPerMinute, setQuestionsPerMinute] = useState(0);
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -307,7 +313,7 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
             gameMode: 'time-rush',
             breakdown: []
           };
-          onGameFinish(result);
+          onGameFinish(result, answers, questionTimes);
           return 0;
         }
         return prev - 1;
@@ -326,10 +332,16 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
   }, [currentQuestionIndex, timeRemaining]);
 
   const handleAnswer = (answer: any) => {
-    const isCorrect = checkAnswer(questions[currentQuestionIndex], answer);
+    const timeSpent = (Date.now() - questionStartTime) / 1000;
+    const currentQuestion = questions[currentQuestionIndex];
+    const isCorrect = checkAnswer(currentQuestion, answer);
+    
+    // บันทึก answer และเวลาที่ใช้
+    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
+    setQuestionTimes(prev => ({ ...prev, [currentQuestion.id]: timeSpent }));
     
     if (isCorrect) {
-      const basePoints = questions[currentQuestionIndex].points;
+      const basePoints = currentQuestion.points;
       const comboMultiplier = Math.min(combo + 1, 5); // Max 5x multiplier
       const comboPoints = Math.floor(basePoints * (comboMultiplier * 0.2));
       const totalPoints = basePoints + comboPoints;
@@ -359,6 +371,7 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
     // Move to next question immediately
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
+      setQuestionStartTime(Date.now()); // Reset timer for next question
     } else {
       // No more questions
       const finalCorrectAnswers = correctAnswers + (isCorrect ? 1 : 0);
@@ -373,7 +386,7 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
         gameMode: 'time-rush',
         breakdown: []
       };
-      onGameFinish(result);
+      onGameFinish(result, answers, questionTimes);
     }
   };
 
@@ -531,12 +544,15 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
 }
 
 // Random Quiz Game - โหมดทบทวนแบบสุ่ม
-function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
+function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult, answers: Record<string, any>, questionTimes: Record<string, number>) => void }) {
   const [questions] = useState(() => getQuestionsForMode('random-quiz'));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
   const [score, setScore] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
   const [startTime] = useState(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showResult, setShowResult] = useState(false);
   const [userAnswer, setUserAnswer] = useState<any>(null);
   const [learningStreak, setLearningStreak] = useState(0);
@@ -575,7 +591,13 @@ function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) =
   }, [currentQuestionIndex, correctAnswers, questions]);
 
   const handleAnswer = (answer: any) => {
+    const timeSpent = (Date.now() - questionStartTime) / 1000;
     const isCorrect = checkAnswer(currentQuestion, answer);
+    
+    // บันทึก answer และเวลาที่ใช้
+    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
+    setQuestionTimes(prev => ({ ...prev, [currentQuestion.id]: timeSpent }));
+    
     setUserAnswer(answer);
     setShowResult(true);
 
@@ -617,6 +639,7 @@ function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) =
 
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
+      setQuestionStartTime(Date.now()); // Reset timer for next question
     } else {
       // Game finished
       const result: GameResult = {
@@ -629,7 +652,7 @@ function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) =
         gameMode: 'random-quiz',
         breakdown: []
       };
-      onGameFinish(result);
+      onGameFinish(result, answers, questionTimes);
     }
   };
 
@@ -1182,7 +1205,15 @@ export default function MiniGamePlayPage() {
     setGameState('playing');
   };
 
-  const handleGameFinish = (result: GameResult) => {
+  const handleGameFinish = (result: GameResult, answers: Record<string, any> = {}, questionTimes: Record<string, number> = {}) => {
+    // บันทึก progress ด้วย MiniGameProgressHelper
+    MiniGameProgressHelper.saveGameResult(gameId, result.gameMode, result, answers, questionTimes);
+    
+    // Dispatch event to update progress in other components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('progressUpdated'));
+    }
+    
     setGameResult(result);
     setGameState('finished');
   };
