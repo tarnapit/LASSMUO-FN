@@ -68,12 +68,16 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
         return q && checkAnswer(q, answers[questionId]);
       }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
       
+      const totalTimeSpent = Object.keys(answers).reduce((total, questionId) => {
+        return total + 10; // Average time per question (can be improved with actual tracking)
+      }, 0) + ((Date.now() - questionStartTime) / 1000);
+      
       const result: GameResult = {
         score,
         correctAnswers,
         totalQuestions: questions.length,
         percentage: Math.round((correctAnswers / questions.length) * 100),
-        timeSpent: (Date.now() - questionStartTime) / 1000,
+        timeSpent: totalTimeSpent,
         bonusPoints,
         gameMode: 'score-challenge',
         breakdown: []
@@ -283,12 +287,16 @@ function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) =
         return q && checkAnswer(q, answers[questionId]);
       }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
       
+      const totalTimeSpent = Object.keys(answers).reduce((total, questionId) => {
+        return total + 10; // Average time per question
+      }, 0) + ((Date.now() - questionStartTime) / 1000);
+      
       const result: GameResult = {
         score,
         correctAnswers,
         totalQuestions: questions.length,
         percentage: Math.round((correctAnswers / questions.length) * 100),
-        timeSpent: (Date.now() - questionStartTime) / 1000,
+        timeSpent: totalTimeSpent,
         bonusPoints,
         gameMode: 'random-quiz',
         breakdown: []
