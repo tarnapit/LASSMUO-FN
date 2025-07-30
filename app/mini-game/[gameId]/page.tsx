@@ -33,23 +33,62 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [isAnswered, setIsAnswered] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [streak, setStreak] = useState(0);
+  const [showStreakBonus, setShowStreakBonus] = useState(false);
+  const [questionTimeLeft, setQuestionTimeLeft] = useState(30);
+  const [showCorrectAnimation, setShowCorrectAnimation] = useState(false);
+  const [showIncorrectAnimation, setShowIncorrectAnimation] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
+
+  // Question timer
+  useEffect(() => {
+    if (isAnswered) return;
+    
+    const timer = setInterval(() => {
+      setQuestionTimeLeft(prev => {
+        if (prev <= 1) {
+          // Auto-answer as incorrect when time runs out
+          handleAnswer(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [currentQuestionIndex, isAnswered]);
 
   const handleAnswer = (answer: any) => {
     if (isAnswered) return;
     
     const timeSpent = (Date.now() - questionStartTime) / 1000;
-    const isCorrect = checkAnswer(currentQuestion, answer);
+    const isCorrect = answer !== null && checkAnswer(currentQuestion, answer);
     
     setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
     setIsAnswered(true);
     
     if (isCorrect) {
       const basePoints = currentQuestion.points;
-      const bonus = calculateTimeBonus(timeSpent, currentQuestion.timeBonus || 0);
-      setScore(prev => prev + basePoints + bonus);
-      setBonusPoints(prev => prev + bonus);
+      const timeBonus = calculateTimeBonus(timeSpent, currentQuestion.timeBonus || 0);
+      const streakBonus = streak >= 3 ? Math.floor(basePoints * 0.5) : 0;
+      const totalBonus = timeBonus + streakBonus;
+      
+      setScore(prev => prev + basePoints + totalBonus);
+      setBonusPoints(prev => prev + totalBonus);
+      setStreak(prev => prev + 1);
+      setShowCorrectAnimation(true);
+      
+      if (streakBonus > 0) {
+        setShowStreakBonus(true);
+        setTimeout(() => setShowStreakBonus(false), 2000);
+      }
+      
+      setTimeout(() => setShowCorrectAnimation(false), 1000);
+    } else {
+      setStreak(0);
+      setShowIncorrectAnimation(true);
+      setTimeout(() => setShowIncorrectAnimation(false), 1000);
     }
     
     setShowExplanation(true);
@@ -61,6 +100,7 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
       setIsAnswered(false);
       setShowExplanation(false);
       setQuestionStartTime(Date.now());
+      setQuestionTimeLeft(30);
     } else {
       // Game finished
       const correctAnswers = Object.keys(answers).filter(questionId => {
@@ -69,7 +109,7 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
       }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
       
       const totalTimeSpent = Object.keys(answers).reduce((total, questionId) => {
-        return total + 10; // Average time per question (can be improved with actual tracking)
+        return total + 10;
       }, 0) + ((Date.now() - questionStartTime) / 1000);
       
       const result: GameResult = {
@@ -87,27 +127,109 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
     }
   };
 
+  const getTimeColor = () => {
+    if (questionTimeLeft <= 5) return "text-red-400 animate-pulse";
+    if (questionTimeLeft <= 10) return "text-orange-400";
+    return "text-green-400";
+  };
+
+  const getStreakMessage = () => {
+    if (streak >= 10) return "🔥 LEGENDARY STREAK! 🔥";
+    if (streak >= 7) return "⚡ INCREDIBLE STREAK! ⚡";
+    if (streak >= 5) return "🌟 AMAZING STREAK! 🌟";
+    if (streak >= 3) return "💪 GREAT STREAK! 💪";
+    return "";
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 relative">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        {/* Progress Bar */}
+      
+      {/* Background Animation Effects */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {showCorrectAnimation && (
+          <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
+        )}
+        {showIncorrectAnimation && (
+          <div className="absolute inset-0 bg-red-500/20 animate-pulse"></div>
+        )}
+        
+        {/* Floating particles */}
+        <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+        <div className="absolute top-1/3 right-1/4 w-1 h-1 bg-purple-400 rounded-full animate-ping"></div>
+        <div className="absolute bottom-1/4 left-1/3 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse"></div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        {/* Challenge Header */}
         <div className="max-w-4xl mx-auto mb-6">
-          <div className="flex justify-between text-white mb-2">
-            <span>คำถามที่ {currentQuestionIndex + 1} จาก {questions.length}</span>
-            <span>คะแนน: {score}</span>
+          <div className="flex justify-between items-center text-white mb-4">
+            <div className="flex items-center gap-4">
+              <span className="text-lg">คำถามที่ {currentQuestionIndex + 1} จาก {questions.length}</span>
+              {streak > 0 && (
+                <div className="bg-gradient-to-r from-orange-500 to-red-500 px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+                  🔥 Streak x{streak}
+                </div>
+              )}
+            </div>
+            <div className="text-2xl font-bold text-yellow-400">
+              💎 {score}
+            </div>
           </div>
+          
+          {/* Time Challenge Bar */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className={`text-lg font-bold ${getTimeColor()}`}>
+              ⏱️ {questionTimeLeft}s
+            </div>
+            <div className="flex-1 bg-gray-700 rounded-full h-2">
+              <div 
+                className={`h-2 rounded-full transition-all duration-1000 ${
+                  questionTimeLeft <= 5 ? 'bg-red-500' : 
+                  questionTimeLeft <= 10 ? 'bg-orange-500' : 'bg-green-500'
+                }`}
+                style={{ width: `${(questionTimeLeft / 30) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
           <div className="w-full bg-gray-700 rounded-full h-3">
             <div 
-              className={`bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300 progress-bar`}
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300 progress-bar"
               style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
             ></div>
           </div>
+          
+          {/* Streak Message */}
+          {streak >= 3 && (
+            <div className="text-center mt-2">
+              <span className="text-orange-400 font-bold animate-bounce">
+                {getStreakMessage()}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Question Card */}
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+          <div className={`bg-white/10 backdrop-blur-sm rounded-3xl p-8 border-2 transition-all duration-300 ${
+            showCorrectAnimation ? 'border-green-500 shadow-lg shadow-green-500/50' :
+            showIncorrectAnimation ? 'border-red-500 shadow-lg shadow-red-500/50' :
+            'border-white/20'
+          }`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`w-3 h-3 rounded-full ${
+                currentQuestion.difficulty === 'easy' ? 'bg-green-400' :
+                currentQuestion.difficulty === 'medium' ? 'bg-yellow-400' : 'bg-red-400'
+              }`}></div>
+              <span className="text-gray-400 text-sm uppercase tracking-wide">
+                {getCategoryName(currentQuestion.category)} • {getDifficultyName(currentQuestion.difficulty)}
+              </span>
+              <div className="text-blue-400 font-bold">
+                💎 {currentQuestion.points}pts
+              </div>
+            </div>
+            
             <h2 className="text-2xl font-bold text-white mb-6">{currentQuestion.question}</h2>
             
             <QuestionRenderer 
@@ -118,8 +240,14 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
             />
             
             {showExplanation && currentQuestion.explanation && (
-              <div className="mt-6 p-4 bg-blue-500/20 rounded-xl border border-blue-500/30">
-                <h4 className="text-blue-300 font-semibold mb-2">คำอธิบาย:</h4>
+              <div className={`mt-6 p-4 rounded-xl border transition-all duration-500 ${
+                showCorrectAnimation ? 'bg-green-500/20 border-green-500/30' : 'bg-blue-500/20 border-blue-500/30'
+              }`}>
+                <h4 className={`font-semibold mb-2 ${
+                  showCorrectAnimation ? 'text-green-300' : 'text-blue-300'
+                }`}>
+                  {showCorrectAnimation ? '🎉 ถูกต้อง! คำอธิบาย:' : '💡 คำอธิบาย:'}
+                </h4>
                 <p className="text-gray-300">{currentQuestion.explanation}</p>
               </div>
             )}
@@ -128,14 +256,23 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
               <div className="mt-6 text-center">
                 <button
                   onClick={handleNextQuestion}
-                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 px-8 rounded-xl hover:scale-105 transition-all duration-300"
+                  className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 px-8 rounded-xl hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
                 >
-                  {currentQuestionIndex < questions.length - 1 ? 'คำถามถัดไป' : 'ดูผลลัพธ์'}
+                  {currentQuestionIndex < questions.length - 1 ? '🚀 คำถามถัดไป' : '🏆 ดูผลลัพธ์'}
                 </button>
               </div>
             )}
           </div>
         </div>
+
+        {/* Streak Bonus Popup */}
+        {showStreakBonus && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white px-8 py-4 rounded-2xl font-bold text-xl animate-bounce shadow-2xl">
+              🔥 STREAK BONUS! +{Math.floor(currentQuestion.points * 0.5)} pts! 🔥
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -148,6 +285,12 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
   const [timeRemaining, setTimeRemaining] = useState(60);
   const [score, setScore] = useState(0);
   const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [combo, setCombo] = useState(0);
+  const [maxCombo, setMaxCombo] = useState(0);
+  const [showComboEffect, setShowComboEffect] = useState(false);
+  const [speedBonus, setSpeedBonus] = useState(0);
+  const [showSpeedBonus, setShowSpeedBonus] = useState(false);
+  const [questionsPerMinute, setQuestionsPerMinute] = useState(0);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -160,7 +303,7 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
             totalQuestions: currentQuestionIndex + 1,
             percentage: Math.round((correctAnswers / Math.max(1, currentQuestionIndex + 1)) * 100),
             timeSpent: 60,
-            bonusPoints: 0,
+            bonusPoints: speedBonus,
             gameMode: 'time-rush',
             breakdown: []
           };
@@ -172,14 +315,45 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [score, correctAnswers, currentQuestionIndex, onGameFinish]);
+  }, [score, correctAnswers, currentQuestionIndex, onGameFinish, speedBonus]);
+
+  // Calculate questions per minute
+  useEffect(() => {
+    const elapsedTime = 60 - timeRemaining;
+    if (elapsedTime > 0) {
+      setQuestionsPerMinute(Math.round((currentQuestionIndex + 1) / (elapsedTime / 60)));
+    }
+  }, [currentQuestionIndex, timeRemaining]);
 
   const handleAnswer = (answer: any) => {
     const isCorrect = checkAnswer(questions[currentQuestionIndex], answer);
     
     if (isCorrect) {
-      setScore(prev => prev + questions[currentQuestionIndex].points);
+      const basePoints = questions[currentQuestionIndex].points;
+      const comboMultiplier = Math.min(combo + 1, 5); // Max 5x multiplier
+      const comboPoints = Math.floor(basePoints * (comboMultiplier * 0.2));
+      const totalPoints = basePoints + comboPoints;
+      
+      setScore(prev => prev + totalPoints);
       setCorrectAnswers(prev => prev + 1);
+      setCombo(prev => {
+        const newCombo = prev + 1;
+        setMaxCombo(max => Math.max(max, newCombo));
+        return newCombo;
+      });
+      setSpeedBonus(prev => prev + comboPoints);
+      
+      if (comboPoints > 0) {
+        setShowSpeedBonus(true);
+        setTimeout(() => setShowSpeedBonus(false), 1500);
+      }
+      
+      if (combo >= 4) {
+        setShowComboEffect(true);
+        setTimeout(() => setShowComboEffect(false), 1000);
+      }
+    } else {
+      setCombo(0);
     }
     
     // Move to next question immediately
@@ -195,7 +369,7 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
         totalQuestions: currentQuestionIndex + 1,
         percentage: Math.round((finalCorrectAnswers / (currentQuestionIndex + 1)) * 100),
         timeSpent: 60 - timeRemaining,
-        bonusPoints: 0,
+        bonusPoints: speedBonus,
         gameMode: 'time-rush',
         breakdown: []
       };
@@ -204,29 +378,134 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
   };
 
   const currentQuestion = questions[currentQuestionIndex];
+  
+  const getTimeColor = () => {
+    if (timeRemaining <= 10) return "text-red-500 animate-pulse";
+    if (timeRemaining <= 20) return "text-orange-500";
+    return "text-green-500";
+  };
+
+  const getComboMessage = () => {
+    if (combo >= 10) return "🚀 UNSTOPPABLE! 🚀";
+    if (combo >= 7) return "⚡ LIGHTNING FAST! ⚡";
+    if (combo >= 5) return "🔥 ON FIRE! 🔥";
+    if (combo >= 3) return "💥 COMBO! 💥";
+    return "";
+  };
+
+  const getSpeedLevel = () => {
+    if (questionsPerMinute >= 20) return { level: "🚀 ROCKET SPEED", color: "text-purple-400" };
+    if (questionsPerMinute >= 15) return { level: "⚡ LIGHTNING", color: "text-yellow-400" };
+    if (questionsPerMinute >= 10) return { level: "🔥 BLAZING", color: "text-orange-400" };
+    if (questionsPerMinute >= 5) return { level: "💨 FAST", color: "text-blue-400" };
+    return { level: "🐌 WARMING UP", color: "text-gray-400" };
+  };
+
+  const speedLevel = getSpeedLevel();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 relative overflow-hidden">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        {/* Timer and Score */}
+      
+      {/* Background Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        {showComboEffect && (
+          <div className="absolute inset-0 bg-gradient-radial from-yellow-500/30 to-transparent animate-ping"></div>
+        )}
+        
+        {/* Speed lines */}
+        {combo > 3 && (
+          <>
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500 to-transparent animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent animate-pulse"></div>
+          </>
+        )}
+      </div>
+
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        {/* Intense Header */}
         <div className="max-w-4xl mx-auto mb-6">
-          <div className="flex justify-between items-center text-white mb-4">
-            <div className="text-3xl font-bold text-red-400">
-              ⏰ {timeRemaining}s
+          {/* Main Timer */}
+          <div className="text-center mb-4">
+            <div className={`text-6xl font-bold ${getTimeColor()} drop-shadow-lg`}>
+              {timeRemaining}
             </div>
-            <div className="text-xl">
-              คะแนน: {score} | ถูก: {correctAnswers}
+            <div className="text-red-400 font-bold text-lg animate-pulse">
+              ⚡ SECONDS LEFT ⚡
             </div>
           </div>
+
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+            <div className="bg-blue-500/20 rounded-xl p-3 border border-blue-500/30 text-center">
+              <div className="text-2xl font-bold text-blue-400">{score}</div>
+              <div className="text-blue-300 text-sm">💎 SCORE</div>
+            </div>
+            <div className="bg-green-500/20 rounded-xl p-3 border border-green-500/30 text-center">
+              <div className="text-2xl font-bold text-green-400">{correctAnswers}</div>
+              <div className="text-green-300 text-sm">✅ CORRECT</div>
+            </div>
+            <div className="bg-purple-500/20 rounded-xl p-3 border border-purple-500/30 text-center">
+              <div className="text-2xl font-bold text-purple-400">{combo}</div>
+              <div className="text-purple-300 text-sm">🔥 COMBO</div>
+            </div>
+            <div className="bg-yellow-500/20 rounded-xl p-3 border border-yellow-500/30 text-center">
+              <div className={`text-2xl font-bold ${speedLevel.color}`}>{questionsPerMinute}</div>
+              <div className="text-yellow-300 text-sm">⚡ Q/MIN</div>
+            </div>
+          </div>
+
+          {/* Speed Level & Combo */}
+          <div className="flex justify-between items-center mb-4">
+            <div className={`font-bold ${speedLevel.color}`}>
+              {speedLevel.level}
+            </div>
+            {combo > 0 && (
+              <div className="text-center">
+                <div className="text-orange-400 font-bold animate-bounce">
+                  {getComboMessage()}
+                </div>
+                <div className="text-sm text-gray-400">
+                  Max Combo: {maxCombo}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Progress Info */}
           <div className="text-center text-gray-300">
-            คำถามที่ {currentQuestionIndex + 1} | เหลือ {questions.length - currentQuestionIndex - 1} ข้อ
+            <span className="font-bold">Question {currentQuestionIndex + 1}</span> • 
+            <span className="ml-2">{questions.length - currentQuestionIndex - 1} remaining</span>
           </div>
         </div>
 
         {/* Question Card */}
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+          <div className={`bg-white/10 backdrop-blur-sm rounded-3xl p-8 border-2 transition-all duration-300 ${
+            combo >= 5 ? 'border-yellow-500 shadow-lg shadow-yellow-500/50 animate-pulse' :
+            combo >= 3 ? 'border-orange-500 shadow-lg shadow-orange-500/30' :
+            'border-white/20'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  currentQuestion.difficulty === 'easy' ? 'bg-green-400' :
+                  currentQuestion.difficulty === 'medium' ? 'bg-yellow-400' : 'bg-red-400'
+                }`}></div>
+                <span className="text-gray-400 text-sm uppercase tracking-wide">
+                  {getDifficultyName(currentQuestion.difficulty)}
+                </span>
+              </div>
+              <div className="text-yellow-400 font-bold">
+                💎 {currentQuestion.points}pts
+                {combo > 0 && (
+                  <span className="text-orange-400 ml-2">
+                    +{Math.floor(currentQuestion.points * (Math.min(combo, 5) * 0.2))}
+                  </span>
+                )}
+              </div>
+            </div>
+            
             <h2 className="text-2xl font-bold text-white mb-6">{currentQuestion.question}</h2>
             
             <QuestionRenderer 
@@ -237,6 +516,15 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
             />
           </div>
         </div>
+
+        {/* Speed Bonus Popup */}
+        {showSpeedBonus && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+            <div className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-2xl font-bold text-xl animate-bounce shadow-2xl">
+              ⚡ SPEED BONUS! +{Math.floor(currentQuestion.points * (Math.min(combo, 5) * 0.2))} pts! ⚡
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -246,118 +534,301 @@ function TimeRushGame({ onGameFinish }: { onGameFinish: (result: GameResult) => 
 function RandomQuizGame({ onGameFinish }: { onGameFinish: (result: GameResult) => void }) {
   const [questions] = useState(() => getQuestionsForMode('random-quiz'));
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
   const [score, setScore] = useState(0);
-  const [bonusPoints, setBonusPoints] = useState(0);
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
-  const [isAnswered, setIsAnswered] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
+  const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [startTime] = useState(Date.now());
+  const [showResult, setShowResult] = useState(false);
+  const [userAnswer, setUserAnswer] = useState<any>(null);
+  const [learningStreak, setLearningStreak] = useState(0);
+  const [maxStreak, setMaxStreak] = useState(0);
+  const [masteryLevel, setMasteryLevel] = useState(0);
+  const [showMasteryBonus, setShowMasteryBonus] = useState(false);
+  const [difficultyProgress, setDifficultyProgress] = useState({ easy: 0, medium: 0, hard: 0 });
+  const [topicMastery, setTopicMastery] = useState<{[key: string]: number}>({});
+  const [adaptiveDifficulty, setAdaptiveDifficulty] = useState(0.5); // 0=easy, 1=hard
+  const [showLearningTip, setShowLearningTip] = useState(false);
 
   const currentQuestion = questions[currentQuestionIndex];
 
+  // Calculate mastery metrics
+  useEffect(() => {
+    const easyCnt = questions.slice(0, currentQuestionIndex).filter(q => q.difficulty === 'easy').length;
+    const mediumCnt = questions.slice(0, currentQuestionIndex).filter(q => q.difficulty === 'medium').length;
+    const hardCnt = questions.slice(0, currentQuestionIndex).filter(q => q.difficulty === 'hard').length;
+    
+    setDifficultyProgress({
+      easy: easyCnt,
+      medium: mediumCnt,
+      hard: hardCnt
+    });
+
+    // Update topic mastery
+    const topicCounts: {[key: string]: number} = {};
+    questions.slice(0, currentQuestionIndex).forEach(q => {
+      topicCounts[q.category] = (topicCounts[q.category] || 0) + 1;
+    });
+    setTopicMastery(topicCounts);
+
+    // Calculate overall mastery level
+    const totalMastery = Math.min(100, Math.round((correctAnswers / Math.max(1, currentQuestionIndex)) * 100));
+    setMasteryLevel(totalMastery);
+  }, [currentQuestionIndex, correctAnswers, questions]);
+
   const handleAnswer = (answer: any) => {
-    if (isAnswered) return;
-    
-    const timeSpent = (Date.now() - questionStartTime) / 1000;
     const isCorrect = checkAnswer(currentQuestion, answer);
-    
-    setAnswers(prev => ({ ...prev, [currentQuestion.id]: answer }));
-    setIsAnswered(true);
-    
+    setUserAnswer(answer);
+    setShowResult(true);
+
     if (isCorrect) {
       const basePoints = currentQuestion.points;
-      const bonus = calculateTimeBonus(timeSpent, currentQuestion.timeBonus || 0);
-      setScore(prev => prev + basePoints + bonus);
-      setBonusPoints(prev => prev + bonus);
+      const difficultyMultiplier = currentQuestion.difficulty === 'hard' ? 1.5 : 
+                                   currentQuestion.difficulty === 'medium' ? 1.2 : 1.0;
+      const streakBonus = Math.min(learningStreak * 2, 20);
+      const masteryBonus = masteryLevel >= 80 ? 10 : masteryLevel >= 60 ? 5 : 0;
+      
+      const totalPoints = Math.round(basePoints * difficultyMultiplier + streakBonus + masteryBonus);
+      
+      setScore(prev => prev + totalPoints);
+      setCorrectAnswers(prev => prev + 1);
+      setLearningStreak(prev => {
+        const newStreak = prev + 1;
+        setMaxStreak(max => Math.max(max, newStreak));
+        return newStreak;
+      });
+
+      // Adaptive difficulty adjustment
+      setAdaptiveDifficulty(prev => Math.min(1, prev + 0.05));
+
+      if (masteryBonus > 0) {
+        setShowMasteryBonus(true);
+        setTimeout(() => setShowMasteryBonus(false), 2000);
+      }
+    } else {
+      setLearningStreak(0);
+      setAdaptiveDifficulty(prev => Math.max(0, prev - 0.1));
+      setShowLearningTip(true);
     }
-    
-    setShowExplanation(true);
   };
 
-  const handleNextQuestion = () => {
+  const handleNext = () => {
+    setShowResult(false);
+    setUserAnswer(null);
+    setShowLearningTip(false);
+
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
-      setIsAnswered(false);
-      setShowExplanation(false);
-      setQuestionStartTime(Date.now());
     } else {
       // Game finished
-      const correctAnswers = Object.keys(answers).filter(questionId => {
-        const q = questions.find(q => q.id === questionId);
-        return q && checkAnswer(q, answers[questionId]);
-      }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
-      
-      const totalTimeSpent = Object.keys(answers).reduce((total, questionId) => {
-        return total + 10; // Average time per question
-      }, 0) + ((Date.now() - questionStartTime) / 1000);
-      
       const result: GameResult = {
         score,
         correctAnswers,
         totalQuestions: questions.length,
         percentage: Math.round((correctAnswers / questions.length) * 100),
-        timeSpent: totalTimeSpent,
-        bonusPoints,
+        timeSpent: Math.round((Date.now() - startTime) / 1000),
+        bonusPoints: learningStreak * 2,
         gameMode: 'random-quiz',
         breakdown: []
       };
-      
       onGameFinish(result);
     }
   };
 
+  const getMasteryColor = () => {
+    if (masteryLevel >= 90) return "text-purple-400";
+    if (masteryLevel >= 80) return "text-blue-400";
+    if (masteryLevel >= 70) return "text-green-400";
+    if (masteryLevel >= 60) return "text-yellow-400";
+    return "text-red-400";
+  };
+
+  const getMasteryTitle = () => {
+    if (masteryLevel >= 90) return "🧠 GENIUS";
+    if (masteryLevel >= 80) return "🎓 EXPERT";
+    if (masteryLevel >= 70) return "⭐ SCHOLAR";
+    if (masteryLevel >= 60) return "📚 STUDENT";
+    return "🌱 LEARNER";
+  };
+
+  const getStreakMessage = () => {
+    if (learningStreak >= 10) return "🚀 KNOWLEDGE MASTER!";
+    if (learningStreak >= 7) return "🔥 LEARNING MACHINE!";
+    if (learningStreak >= 5) return "⚡ BRAIN POWER!";
+    if (learningStreak >= 3) return "💡 ON A ROLL!";
+    return "";
+  };
+
+  const getDifficultyRecommendation = () => {
+    if (adaptiveDifficulty >= 0.8) return "💪 Try harder questions!";
+    if (adaptiveDifficulty >= 0.6) return "📈 You're improving!";
+    if (adaptiveDifficulty >= 0.4) return "🎯 Finding your level...";
+    return "🌟 Building confidence!";
+  };
+
+  const getLearningTip = () => {
+    const tips = [
+      "💡 Take your time to read the question carefully",
+      "🧠 Think about what you already know about this topic",
+      "📚 Consider reviewing this topic later",
+      "🎯 Focus on understanding the concept, not just memorizing",
+      "⭐ Every mistake is a learning opportunity!"
+    ];
+    return tips[Math.floor(Math.random() * tips.length)];
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 relative overflow-hidden">
       <Navbar />
-      <div className="container mx-auto px-4 py-8">
-        {/* Progress Bar */}
+      
+      {/* Background Learning Effects */}
+      <div className="absolute inset-0 pointer-events-none">
+        {learningStreak >= 5 && (
+          <div className="absolute inset-0 bg-gradient-radial from-blue-500/20 to-transparent animate-pulse"></div>
+        )}
+        
+        {/* Knowledge particles */}
+        {masteryLevel >= 70 && (
+          <>
+            <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-yellow-400 rounded-full animate-bounce opacity-60"></div>
+            <div className="absolute top-3/4 right-1/4 w-1 h-1 bg-blue-400 rounded-full animate-ping opacity-60"></div>
+            <div className="absolute bottom-1/3 left-1/3 w-1.5 h-1.5 bg-purple-400 rounded-full animate-pulse opacity-60"></div>
+          </>
+        )}
+      </div>
+
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        {/* Learning Dashboard */}
         <div className="max-w-4xl mx-auto mb-6">
-          <div className="flex justify-between text-white mb-2">
-            <span>คำถามที่ {currentQuestionIndex + 1} จาก {questions.length}</span>
-            <span>คะแนน: {score}</span>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Mastery Level */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+              <div className="text-center">
+                <div className={`text-3xl font-bold ${getMasteryColor()}`}>{masteryLevel}%</div>
+                <div className={`font-bold ${getMasteryColor()}`}>{getMasteryTitle()}</div>
+                <div className="text-gray-300 text-sm">Mastery Level</div>
+              </div>
+            </div>
+
+            {/* Learning Streak */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-orange-400">{learningStreak}</div>
+                <div className="text-orange-300 font-bold text-sm">🔥 STREAK</div>
+                <div className="text-gray-300 text-sm">Max: {maxStreak}</div>
+              </div>
+            </div>
+
+            {/* Progress */}
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-400">{currentQuestionIndex + 1}</div>
+                <div className="text-green-300 font-bold text-sm">OF {questions.length}</div>
+                <div className="text-gray-300 text-sm">Questions</div>
+              </div>
+            </div>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-3">
-            <div 
-              className={`bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-300 progress-bar`}
-              style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
-            ></div>
+
+          {/* Difficulty Progress */}
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20 mb-4">
+            <div className="text-white font-bold mb-3">📊 Knowledge Areas</div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-400">{difficultyProgress.easy}</div>
+                <div className="text-green-300 text-sm">🟢 Easy</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-400">{difficultyProgress.medium}</div>
+                <div className="text-yellow-300 text-sm">🟡 Medium</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-400">{difficultyProgress.hard}</div>
+                <div className="text-red-300 text-sm">🔴 Hard</div>
+              </div>
+            </div>
           </div>
-          <div className="text-center text-gray-300 mt-2">
-            หมวดหมู่: {getCategoryName(currentQuestion.category)} | ระดับ: {getDifficultyName(currentQuestion.difficulty)}
+
+          {/* Adaptive Learning Status */}
+          <div className="text-center mb-4">
+            {learningStreak > 0 && (
+              <div className="text-orange-400 font-bold animate-pulse mb-2">
+                {getStreakMessage()}
+              </div>
+            )}
+            <div className="text-purple-300 font-medium">
+              {getDifficultyRecommendation()}
+            </div>
           </div>
         </div>
 
         {/* Question Card */}
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20">
+          <div className={`bg-white/10 backdrop-blur-sm rounded-3xl p-8 border-2 transition-all duration-300 ${
+            learningStreak >= 7 ? 'border-purple-500 shadow-lg shadow-purple-500/50' :
+            learningStreak >= 5 ? 'border-blue-500 shadow-lg shadow-blue-500/30' :
+            learningStreak >= 3 ? 'border-green-500 shadow-lg shadow-green-500/30' :
+            'border-white/20'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-3 h-3 rounded-full ${
+                  currentQuestion.difficulty === 'easy' ? 'bg-green-400' :
+                  currentQuestion.difficulty === 'medium' ? 'bg-yellow-400' : 'bg-red-400'
+                }`}></div>
+                <span className="text-gray-400 text-sm uppercase tracking-wide">
+                  {getDifficultyName(currentQuestion.difficulty)}
+                </span>
+                <span className="text-gray-500">•</span>
+                <span className="text-gray-400 text-sm">
+                  {getCategoryName(currentQuestion.category)}
+                </span>
+              </div>
+              <div className="text-blue-400 font-bold">
+                📖 {currentQuestion.points}pts
+                {learningStreak > 0 && (
+                  <span className="text-orange-400 ml-2">
+                    +{Math.min(learningStreak * 2, 20)} streak
+                  </span>
+                )}
+              </div>
+            </div>
+            
             <h2 className="text-2xl font-bold text-white mb-6">{currentQuestion.question}</h2>
             
             <QuestionRenderer 
               question={currentQuestion}
               onAnswer={handleAnswer}
-              disabled={isAnswered}
-              showResult={isAnswered}
+              disabled={showResult}
+              showResult={showResult}
+              userAnswer={userAnswer}
             />
-            
-            {showExplanation && currentQuestion.explanation && (
-              <div className="mt-6 p-4 bg-green-500/20 rounded-xl border border-green-500/30">
-                <h4 className="text-green-300 font-semibold mb-2">คำอธิบาย:</h4>
-                <p className="text-gray-300">{currentQuestion.explanation}</p>
-              </div>
-            )}
 
-            {isAnswered && (
-              <div className="mt-6 text-center">
-                <button
-                  onClick={handleNextQuestion}
-                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold py-3 px-8 rounded-xl hover:scale-105 transition-all duration-300"
-                >
-                  {currentQuestionIndex < questions.length - 1 ? 'คำถามถัดไป' : 'ดูผลลัพธ์'}
-                </button>
+            {showResult && (
+              <div className="mt-6 pt-6 border-t border-white/20">
+                <div className="flex justify-between items-center">
+                  {showLearningTip && (
+                    <div className="text-blue-300 italic flex-1 mr-4">
+                      {getLearningTip()}
+                    </div>
+                  )}
+                  <button
+                    onClick={handleNext}
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 transform hover:scale-105 shadow-lg"
+                  >
+                    {currentQuestionIndex < questions.length - 1 ? 'Continue Learning 📚' : 'View Results 🎯'}
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
+
+        {/* Mastery Bonus Popup */}
+        {showMasteryBonus && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-8 py-4 rounded-2xl font-bold text-xl animate-bounce shadow-2xl">
+              🧠 MASTERY BONUS! +{masteryLevel >= 80 ? 10 : 5} pts! 🧠
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
