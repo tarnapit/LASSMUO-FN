@@ -15,11 +15,90 @@ export interface Chapter {
   estimatedTime: string;
 }
 
+// กิจกรรมอินเตอร์แอคทีฟสำหรับการเรียนรู้
+export interface InteractiveActivity {
+  id: string;
+  title: string;
+  type: 'matching' | 'fill-blanks' | 'multiple-choice' | 'image-identification' | 'true-false' | 'sentence-ordering' | 'range-answer';
+  instruction: string;
+  data: MatchingData | FillBlanksData | MultipleChoiceData | ImageIdentificationData | TrueFalseData | SentenceOrderingData | RangeAnswerData;
+  points?: number;
+  timeLimit?: number; // วินาที
+  feedback?: {
+    correct: string;
+    incorrect: string;
+  };
+}
+
+// ข้อมูลสำหรับเกมจับคู่
+export interface MatchingData {
+  pairs: Array<{
+    left: string;
+    right: string;
+    explanation?: string;
+  }>;
+}
+
+// ข้อมูลสำหรับเติมคำในช่องว่าง
+export interface FillBlanksData {
+  sentence: string; // ประโยคที่มี {blank} แทนช่องว่าง
+  options: string[];
+  correctAnswers: string[];
+  explanation?: string;
+}
+
+// ข้อมูลสำหรับปรนัยหลายตัวเลือก
+export interface MultipleChoiceData {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+  image?: string;
+}
+
+// ข้อมูลสำหรับการระบุจากภาพ
+export interface ImageIdentificationData {
+  image: string;
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+}
+
+// ข้อมูลสำหรับคำถามถูกผิด
+export interface TrueFalseData {
+  statement: string;
+  correctAnswer: boolean;
+  explanation?: string;
+  image?: string;
+}
+
+// ข้อมูลสำหรับการเรียงลำดับประโยค
+export interface SentenceOrderingData {
+  instruction: string;
+  sentences: string[];
+  correctOrder: number[];
+  explanation?: string;
+}
+
+// ข้อมูลสำหรับคำตอบตามช่วง
+export interface RangeAnswerData {
+  question: string;
+  min: number;
+  max: number;
+  correctAnswer: number;
+  tolerance?: number; // ค่าความผิดพลาดที่ยอมรับได้
+  unit?: string;
+  explanation?: string;
+}
+
 export interface ChapterContent {
-  type: 'text' | 'image' | 'video' | 'interactive';
+  type: 'text' | 'image' | 'video' | 'interactive' | 'matching' | 'fill-blanks' | 'multiple-choice' | 'image-identification' | 'true-false' | 'sentence-ordering' | 'range-answer';
   content: string;
   imageUrl?: string;
   videoUrl?: string;
+  // สำหรับกิจกรรมอินเตอร์แอคทีฟ
+  activity?: InteractiveActivity;
 }
 
 export interface LearningProgress {

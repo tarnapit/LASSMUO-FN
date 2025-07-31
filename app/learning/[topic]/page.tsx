@@ -7,7 +7,8 @@ import { LearningModule, Chapter } from "../../types/learning";
 import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import ProgressBar from "../../components/ui/ProgressBar";
-import { ChevronLeft, ChevronRight, BookOpen, Clock, ArrowLeft, CheckCircle, Brain, Trophy } from "lucide-react";
+import InteractiveActivityComponent from "../../components/learning/InteractiveActivity";
+import { ChevronLeft, ChevronRight, BookOpen, Clock, ArrowLeft, CheckCircle, Brain, Trophy, Star, Zap } from "lucide-react";
 import Link from "next/link";
 
 export default function LearningTopicPage() {
@@ -20,6 +21,8 @@ export default function LearningTopicPage() {
   const [startTime, setStartTime] = useState<Date>(new Date());
   const [chapterProgress, setChapterProgress] = useState<Record<string, any>>({});
   const [moduleCompleted, setModuleCompleted] = useState(false);
+  const [activityScores, setActivityScores] = useState<Record<string, number>>({});
+  const [totalScore, setTotalScore] = useState(0);
 
   useEffect(() => {
     if (params.topic) {
@@ -158,6 +161,26 @@ export default function LearningTopicPage() {
     }
   };
 
+  // จัดการเมื่อเสร็จสิ้นกิจกรรมอินเตอร์แอคทีฟ
+  const handleActivityComplete = (activityId: string, score: number, timeSpent: number) => {
+    console.log(`Activity ${activityId} completed with score ${score} in ${timeSpent} seconds`);
+    
+    // บันทึกคะแนนกิจกรรม
+    setActivityScores(prev => {
+      const newScores = { ...prev, [activityId]: score };
+      const newTotal = Object.values(newScores).reduce((sum, s) => sum + s, 0);
+      setTotalScore(newTotal);
+      return newScores;
+    });
+    
+    // อัพเดท progress
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('progressUpdated', { 
+        detail: { type: 'activity', activityId, score, timeSpent }
+      }));
+    }
+  };
+
   const renderContent = () => {
     if (!currentContent) return null;
 
@@ -189,6 +212,23 @@ export default function LearningTopicPage() {
               <p className="text-sm text-gray-400">{currentContent.imageUrl}</p>
             )}
           </div>
+        );
+      
+      // กิจกรรมอินเตอร์แอคทีฟแต่ละประเภท
+      case 'multiple-choice':
+      case 'matching':
+      case 'fill-blanks':
+      case 'image-identification':
+      case 'true-false':
+      case 'sentence-ordering':
+      case 'range-answer':
+        return currentContent.activity ? (
+          <InteractiveActivityComponent
+            activity={currentContent.activity}
+            onComplete={(score, timeSpent) => handleActivityComplete(currentContent.activity!.id, score, timeSpent)}
+          />
+        ) : (
+          <div className="text-red-400">ข้อมูลกิจกรรมไม่ถูกต้อง</div>
         );
       
       case 'interactive':
@@ -267,16 +307,34 @@ export default function LearningTopicPage() {
             กลับไปหน้าบทเรียน
           </Link>
           
-          <h1 className="text-4xl font-bold text-white mb-2">{module.title}</h1>
-          <div className="flex items-center space-x-4 text-gray-400">
-            <div className="flex items-center">
-              <BookOpen size={16} className="mr-1" />
-              <span>บทที่ {currentChapterIndex + 1}: {currentChapter.title}</span>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2">{module.title}</h1>
+              <div className="flex items-center space-x-4 text-gray-400">
+                <div className="flex items-center">
+                  <BookOpen size={16} className="mr-1" />
+                  <span>บทที่ {currentChapterIndex + 1}: {currentChapter.title}</span>
+                </div>
+                <div className="flex items-center">
+                  <Clock size={16} className="mr-1" />
+                  <span>{currentChapter.estimatedTime}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center">
-              <Clock size={16} className="mr-1" />
-              <span>{currentChapter.estimatedTime}</span>
-            </div>
+            
+            {/* Score Display */}
+            {totalScore > 0 && (
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-xl p-4 border border-yellow-500/30">
+                <div className="flex items-center space-x-3">
+                  <Star className="text-yellow-400" size={24} />
+                  <div>
+                    <div className="text-yellow-400 font-bold text-lg">{totalScore} แต้ม</div>
+                    <div className="text-yellow-300 text-sm">คะแนนรวม</div>
+                  </div>
+                  <Zap className="text-orange-400" size={20} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
