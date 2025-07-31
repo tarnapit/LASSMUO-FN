@@ -25,11 +25,16 @@ export const learningModules: LearningModule[] = [
           {
             type: 'multiple-choice',
             content: 'มาทดสอบความเข้าใจเกี่ยวกับระบบสุริยะกันเถอะ!',
+            required: true,
+            minimumScore: 10,
             activity: {
               id: 'solar-intro-mc1',
               title: 'ทดสอบความรู้เบื้องต้น',
               type: 'multiple-choice',
               instruction: 'เลือกคำตอบที่ถูกต้องที่สุด',
+              difficulty: 'easy',
+              maxAttempts: 3,
+              passingScore: 10,
               data: {
                 question: 'ระบบสุริยะประกอบด้วยดาวเคราะห์ทั้งหมดกี่ดวง?',
                 options: ['7 ดวง', '8 ดวง', '9 ดวง', '10 ดวง'],
@@ -39,7 +44,8 @@ export const learningModules: LearningModule[] = [
               points: 10,
               feedback: {
                 correct: 'เยี่ยม! คุณจำได้ถูกต้องว่าระบบสุริยะมีดาวเคราะห์ 8 ดวง',
-                incorrect: 'ไม่ถูกต้อง ระบบสุริยะมีดาวเคราะห์ 8 ดวง หลังจากที่ดาวพลูโตถูกจัดเป็นดาวเคราะห์แคระ'
+                incorrect: 'ไม่ถูกต้อง ระบบสุริยะมีดาวเคราะห์ 8 ดวง หลังจากที่ดาวพลูโตถูกจัดเป็นดาวเคราะห์แคระ',
+                hint: 'คิดถึงดาวเคราะห์ตั้งแต่ดาวพุธไปจนถึงดาวเนปจูน ลองนับดูสิ'
               }
             }
           },
@@ -50,11 +56,17 @@ export const learningModules: LearningModule[] = [
           {
             type: 'fill-blanks',
             content: 'ทดสอบความจำเกี่ยวกับดาวอาทิตย์',
+            required: true,
+            minimumScore: 15,
             activity: {
               id: 'solar-intro-fill1',
               title: 'เติมคำในช่องว่าง',
               type: 'fill-blanks',
               instruction: 'เลือกคำที่เหมาะสมมาเติมในช่องว่าง',
+              difficulty: 'medium',
+              maxAttempts: 3,
+              passingScore: 15,
+              timeLimit: 60,
               data: {
                 sentence: 'ดาวอาทิตย์เป็น {blank} ที่อยู่ใจกลางของระบบสุริยะ และมีมวลคิดเป็นประมาณ {blank} ของมวลทั้งหมดในระบบ',
                 options: ['ดาวฤกษ์', 'ดาวเคราะห์', '99.86%', '50%', 'ดาวเทียม', '75%'],
@@ -63,7 +75,8 @@ export const learningModules: LearningModule[] = [
               points: 15,
               feedback: {
                 correct: 'ถูกต้อง! ดาวอาทิตย์เป็นดาวฤกษ์และมีมวลมากถึง 99.86% ของระบบ',
-                incorrect: 'ลองใหม่อีกครั้ง คิดถึงประเภทของดาวอาทิตย์และสัดส่วนมวลของมัน'
+                incorrect: 'ลองใหม่อีกครั้ง คิดถึงประเภทของดาวอาทิตย์และสัดส่วนมวลของมัน',
+                hint: 'ดาวอาทิตย์เป็นดาวที่ส่องแสงได้เอง และมีมวลมากกว่า 99% ของระบบสุริยะ'
               }
             }
           }
@@ -81,11 +94,17 @@ export const learningModules: LearningModule[] = [
           {
             type: 'matching',
             content: 'มาจับคู่ดาวเคราะห์กับคุณสมบัติเด่นของมันกันเถอะ!',
+            required: true,
+            minimumScore: 16,
             activity: {
               id: 'planets-matching1',
               title: 'จับคู่ดาวเคราะห์กับคุณสมบัติ',
               type: 'matching',
               instruction: 'คลิกเพื่อจับคู่ดาวเคราะห์กับคุณสมบัติที่ถูกต้อง',
+              difficulty: 'medium',
+              maxAttempts: 2,
+              passingScore: 16,
+              timeLimit: 120,
               data: {
                 pairs: [
                   {
@@ -113,7 +132,8 @@ export const learningModules: LearningModule[] = [
               points: 20,
               feedback: {
                 correct: 'เยี่ยมมาก! คุณจับคู่ดาวเคราะห์กับคุณสมบัติได้ถูกต้องทั้งหมด',
-                incorrect: 'ลองดูใหม่อีกครั้ง คิดถึงคุณสมบัติเด่นของแต่ละดาวเคราะห์'
+                incorrect: 'ลองดูใหม่อีกครั้ง คิดถึงคุณสมบัติเด่นของแต่ละดาวเคราะห์',
+                hint: 'ดาวพุธใกล้ดวงอาทิตย์ ดาวศุกร์ร้อน โลกมีชีวิต ดาวอังคารสีแดง'
               }
             }
           },
@@ -129,11 +149,17 @@ export const learningModules: LearningModule[] = [
           {
             type: 'sentence-ordering',
             content: 'ทดสอบความเข้าใจเกี่ยวกับลำดับดาวเคราะห์',
+            required: true,
+            minimumScore: 12,
             activity: {
               id: 'planets-order1',
               title: 'เรียงลำดับดาวเคราะห์ภายใน',
               type: 'sentence-ordering',
               instruction: 'เรียงลำดับดาวเคราะห์ภายในจากใกล้ดวงอาทิตย์ที่สุดไปไกลที่สุด',
+              difficulty: 'hard',
+              maxAttempts: 2,
+              passingScore: 12,
+              timeLimit: 60,
               data: {
                 instruction: 'เรียงลำดับดาวเคราะห์ภายในจากใกล้ไปไกล',
                 sentences: ['ดาวพุธ', 'ดาวศุกร์', 'โลก', 'ดาวอังคาร'],
@@ -142,7 +168,8 @@ export const learningModules: LearningModule[] = [
               points: 15,
               feedback: {
                 correct: 'ถูกต้อง! ลำดับดาวเคราะห์ภายในคือ พุธ ศุกร์ โลก อังคาร',
-                incorrect: 'ไม่ถูกต้อง ลองนึกถึงระยะห่างจากดวงอาทิตย์อีกครั้ง'
+                incorrect: 'ไม่ถูกต้อง ลองนึกถึงระยะห่างจากดวงอาทิตย์อีกครั้ง',
+                hint: 'เริ่มจากดาวที่ใกล้ดวงอาทิตย์ที่สุด (พุธ) แล้วออกไปเรื่อยๆ'
               }
             }
           },
@@ -158,6 +185,8 @@ export const learningModules: LearningModule[] = [
               title: 'ถูกหรือผิด: ดาวเคราะห์แก๊ส',
               type: 'true-false',
               instruction: 'พิจารณาข้อความต่อไปนี้ว่าถูกหรือผิด',
+              difficulty: 'medium',
+              maxAttempts: 2,
               data: {
                 statement: 'ดาวพฤหัสบดีเป็นดาวเคราะห์ที่ใหญ่ที่สุดในระบบสุริยะและมีแรงโน้มถ่วงมากกว่าโลกหลายเท่า',
                 correctAnswer: true,
@@ -166,7 +195,8 @@ export const learningModules: LearningModule[] = [
               points: 10,
               feedback: {
                 correct: 'ถูกต้อง! ดาวพฤหัสบดีใหญ่และหนักมากจริงๆ',
-                incorrect: 'ไม่ถูกต้อง ดาวพฤหัสบดีเป็นดาวเคราะห์ที่ใหญ่ที่สุดในระบบสุริยะ'
+                incorrect: 'ไม่ถูกต้อง ดาวพฤหัสบดีเป็นดาวเคราะห์ที่ใหญ่ที่สุดในระบบสุริยะ',
+                hint: 'ดาวพฤหัสบดีเป็น "ยักษ์ใหญ่" ของระบบสุริยะ'
               }
             }
           }
@@ -184,11 +214,17 @@ export const learningModules: LearningModule[] = [
           {
             type: 'image-identification',
             content: 'ทดสอบการจำแนกดาวเคราะห์จากคุณลักษณะพิเศษ',
+            required: true,
+            minimumScore: 12,
             activity: {
               id: 'planet-features1',
               title: 'จำแนกดาวเคราะห์จากคุณลักษณะ',
               type: 'image-identification',
               instruction: 'ดูรูปภาพและเลือกดาวเคราะห์ที่ตรงกัน',
+              difficulty: 'hard',
+              maxAttempts: 2,
+              passingScore: 12,
+              timeLimit: 45,
               data: {
                 image: 'ดาวเคราะห์ที่มีวงแหวนสวยงามล้อมรอบ',
                 question: 'ดาวเคราะห์ในภาพคือดาวใด?',
@@ -199,7 +235,8 @@ export const learningModules: LearningModule[] = [
               points: 15,
               feedback: {
                 correct: 'ถูกต้อง! ดาวเสาร์มีวงแหวนที่สวยงามและโดดเด่นที่สุด',
-                incorrect: 'ไม่ถูกต้อง วงแหวนที่เห็นได้ชัดเจนนี้เป็นของดาวเสาร์'
+                incorrect: 'ไม่ถูกต้อง วงแหวนที่เห็นได้ชัดเจนนี้เป็นของดาวเสาร์',
+                hint: 'ดาวเคราะห์ที่มีวงแหวนสวยงามที่มองเห็นได้ง่ายที่สุดคือ?'
               }
             }
           },
@@ -211,6 +248,7 @@ export const learningModules: LearningModule[] = [
               title: 'ทายขนาดดาวเคราะห์',
               type: 'range-answer',
               instruction: 'ทายขนาดเส้นผ่านศูนย์กลางของโลกเป็นกิโลเมตร',
+              difficulty: 'medium',
               data: {
                 question: 'โลกมีเส้นผ่านศูนย์กลางประมาณกี่กิโลเมตร?',
                 min: 10000,
@@ -259,11 +297,17 @@ export const learningModules: LearningModule[] = [
           {
             type: 'sentence-ordering',
             content: 'ทดสอบความเข้าใจเกี่ยวกับลำดับชั้นของโลก',
+            required: true,
+            minimumScore: 12,
             activity: {
               id: 'earth-layers-order1',
               title: 'เรียงลำดับชั้นของโลก',
               type: 'sentence-ordering',
               instruction: 'เรียงลำดับชั้นของโลกจากชั้นนอกสุดไปชั้นในสุด',
+              difficulty: 'medium',
+              maxAttempts: 3,
+              passingScore: 12,
+              timeLimit: 90,
               data: {
                 instruction: 'เรียงลำดับชั้นของโลกจากภายนอกไปภายใน',
                 sentences: ['เปลือกโลก', 'เนื้อโลก', 'แกนกลางชั้นนอก', 'แกนกลางชั้นใน'],
@@ -272,7 +316,8 @@ export const learningModules: LearningModule[] = [
               points: 15,
               feedback: {
                 correct: 'ถูกต้อง! ลำดับชั้นโลกคือ เปลือกโลก เนื้อโลก แกนกลางชั้นนอก แกนกลางชั้นใน',
-                incorrect: 'ไม่ถูกต้อง ลองคิดถึงการเรียงลำดับจากชั้นนอกไปชั้นในอีกครั้ง'
+                incorrect: 'ไม่ถูกต้อง ลองคิดถึงการเรียงลำดับจากชั้นนอกไปชั้นในอีกครั้ง',
+                hint: 'เริ่มจากชั้นที่เราอยู่ (เปลือกโลก) แล้วลึกลงไปเรื่อยๆ จนถึงใจกลางโลก'
               }
             }
           }
@@ -290,11 +335,17 @@ export const learningModules: LearningModule[] = [
           {
             type: 'multiple-choice',
             content: 'ทดสอบความรู้เกี่ยวกับชั้นบรรยากาศ',
+            required: true,
+            minimumScore: 8,
             activity: {
               id: 'atmosphere-mc1',
               title: 'ทดสอบความรู้ชั้นบรรยากาศ',
               type: 'multiple-choice',
               instruction: 'เลือกคำตอบที่ถูกต้องเกี่ยวกับชั้นบรรยากาศ',
+              difficulty: 'hard',
+              maxAttempts: 2,
+              passingScore: 8,
+              timeLimit: 30,
               data: {
                 question: 'ชั้นบรรยากาศใดที่มีโอโซนส่วนใหญ่อยู่?',
                 options: ['โทรโปสเฟียร์', 'สตราโตสเฟียร์', 'มีโซสเฟียร์', 'เทอร์โมสเฟียร์'],
@@ -304,7 +355,8 @@ export const learningModules: LearningModule[] = [
               points: 10,
               feedback: {
                 correct: 'ถูกต้อง! สตราโตสเฟียร์มีชั้นโอโซนที่สำคัญ',
-                incorrect: 'ไม่ถูกต้อง ชั้นโอโซนอยู่ในสตราโตสเฟียร์'
+                incorrect: 'ไม่ถูกต้อง ชั้นโอโซนอยู่ในสตราโตสเฟียร์',
+                hint: 'ชั้นที่มี "โอโซน" ปกป้องเราจากรังสี UV คือชั้นที่ 2 นับจากล่าง'
               }
             }
           }
@@ -318,145 +370,37 @@ export const learningModules: LearningModule[] = [
           {
             type: 'text',
             content: 'สนามแม่เหล็กโลกเกิดจากการเคลื่อนไหวของเหล็กเหลวในแกนกลางชั้นนอก ทำหน้าที่ปกป้องโลกจากรังสีอันตรายจากอวกาศ'
-          }
-        ]
-      },
-      {
-        id: 'chapter-4',
-        title: 'Exercise and Review',
-        estimatedTime: '10 minutes',
-        content: [
+          },
           {
-            type: 'text',
-            content: 'ตอนนี้คุณได้เรียนรู้เกี่ยวกับโครงสร้างโลกแล้ว ลองทำแบบฝึกหัดเพื่อทบทวนความรู้กัน'
+            type: 'fill-blanks',
+            content: 'ทดสอบความเข้าใจเกี่ยวกับสนามแม่เหล็กโลก',
+            required: true,
+            minimumScore: 12,
+            activity: {
+              id: 'magnetic-field-fill1',
+              title: 'เติมคำเกี่ยวกับสนามแม่เหล็ก',
+              type: 'fill-blanks',
+              instruction: 'เติมคำที่เหมาะสมเกี่ยวกับสนามแม่เหล็กโลก',
+              difficulty: 'hard',
+              maxAttempts: 2,
+              passingScore: 12,
+              timeLimit: 45,
+              data: {
+                sentence: 'สนามแม่เหล็กโลกเกิดจาก {blank} ที่เคลื่อนไหวในแกนกลางชั้นนอก และช่วยปกป้องโลกจาก {blank} จากอวกาศ',
+                options: ['เหล็กเหลว', 'หินหลอมเหลว', 'รังสีอันตราย', 'อุกกาบาต', 'ก๊าซร้อน', 'คลื่นแสง'],
+                correctAnswers: ['เหล็กเหลว', 'รังสีอันตราย']
+              },
+              points: 15,
+              feedback: {
+                correct: 'ถูกต้อง! เหล็กเหลวสร้างสนามแม่เหล็กที่ปกป้องเราจากรังสี',
+                incorrect: 'ลองใหม่ คิดถึงสิ่งที่อยู่ในแกนกลางและสิ่งที่สนามแม่เหล็กปกป้อง',
+                hint: 'แกนกลางชั้นนอกเป็นโลหะเหลว และสนามแม่เหล็กปกป้องจากรังสีจากอวกาศ'
+              }
+            }
           },
           {
             type: 'interactive',
-            content: 'แบบฝึกหัด: ทดสอบความรู้เกี่ยวกับชั้นโลกและสนามแม่เหล็ก'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'stellar-evolution',
-    title: 'Stellar Evolution',
-    description: 'Journey of stars from birth to death, understanding the lifecycle of stellar objects',
-    level: 'Intermediate',
-    estimatedTime: '70 minutes',
-    chapters: [
-      {
-        id: 'chapter-1',
-        title: 'Star Formation',
-        estimatedTime: '20 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'ดาวฤกษ์เกิดขึ้นจากการยุบตัวของเมฆก๊าซและฝุ่นในอวกาศ เมื่อความหนาแน่นและอุณหภูมิสูงขึ้นจนเกิดปฏิกิริยานิวเคลียร์ฟิวชัน'
-          },
-          {
-            type: 'image',
-            content: 'Stellar Nebula Formation',
-            imageUrl: '/images/star-formation.jpg'
-          }
-        ]
-      },
-      {
-        id: 'chapter-2',
-        title: 'Main Sequence Stars',
-        estimatedTime: '20 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'ระยะ Main Sequence เป็นช่วงที่ดาวฤกษ์เผาไฮโดรเจนเป็นฮีเลียม ซึ่งเป็นช่วงที่ยาวนานที่สุดในชีวิตของดาวฤกษ์'
-          }
-        ]
-      },
-      {
-        id: 'chapter-3',
-        title: 'Stellar Death',
-        estimatedTime: '20 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'ดาวฤกษ์ขนาดเล็กจะกลายเป็น White Dwarf ส่วนดาวฤกษ์ขนาดใหญ่จะระเบิดเป็น Supernova และอาจกลายเป็น Neutron Star หรือ Black Hole'
-          }
-        ]
-      },
-      {
-        id: 'chapter-4',
-        title: 'Exercise and Review',
-        estimatedTime: '10 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'ตอนนี้คุณได้เรียนรู้เกี่ยวกับวิวัฒนาการของดาวฤกษ์แล้ว ลองทำแบบฝึกหัดเพื่อทบทวนความรู้กัน'
-          },
-          {
-            type: 'interactive',
-            content: 'แบบฝึกหัด: ทดสอบความรู้เกี่ยวกับการเกิดและการตายของดาวฤกษ์'
-          }
-        ]
-      }
-    ]
-  },
-  {
-    id: 'galaxies-universe',
-    title: 'Galaxies and Universe',
-    description: 'Explore the vast cosmos, from our Milky Way galaxy to the observable universe',
-    level: 'Advanced',
-    estimatedTime: '85 minutes',
-    chapters: [
-      {
-        id: 'chapter-1',
-        title: 'Types of Galaxies',
-        estimatedTime: '25 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'กาแล็กซีแบ่งออกเป็น 3 ประเภทหลัก คือ กาแล็กซีเกลียว (Spiral) กาแล็กซีรีรูป (Elliptical) และกาแล็กซีไม่ปกติ (Irregular)'
-          },
-          {
-            type: 'image',
-            content: 'Galaxy Types',
-            imageUrl: '/images/galaxy-types.jpg'
-          }
-        ]
-      },
-      {
-        id: 'chapter-2',
-        title: 'The Milky Way',
-        estimatedTime: '25 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'ทางช้างเผือกเป็นกาแล็กซีเกลียวที่เรามีขนาดใหญ่ มีดาวฤกษ์ประมาณ 200-400 พันล้านดวง และมีเส้นผ่านศูนย์กลางประมาณ 100,000 ปีแสง'
-          }
-        ]
-      },
-      {
-        id: 'chapter-3',
-        title: 'Cosmology and Big Bang',
-        estimatedTime: '25 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'จักรวาลเกิดขึ้นจากเหตุการณ์ Big Bang เมื่อประมาณ 13.8 พันล้านปีที่แล้ว และกำลังขยายตัวอย่างต่อเนื่อง'
-          }
-        ]
-      },
-      {
-        id: 'chapter-4',
-        title: 'Exercise and Review',
-        estimatedTime: '10 minutes',
-        content: [
-          {
-            type: 'text',
-            content: 'ตอนนี้คุณได้เรียนรู้เกี่ยวกับกาแล็กซีและจักรวาลแล้ว ลองทำแบบฝึกหัดเพื่อทบทวนความรู้กัน'
-          },
-          {
-            type: 'interactive',
-            content: 'แบบฝึกหัด: ทดสอบความรู้เกี่ยวกับประเภทกาแล็กซีและทฤษฎี Big Bang'
+            content: 'ทบทวนความรู้และไปทำแบบทดสอบ'
           }
         ]
       }
@@ -464,11 +408,10 @@ export const learningModules: LearningModule[] = [
   }
 ];
 
-export const getLearningModuleById = (id: string): LearningModule | undefined => {
+export function getLearningModuleById(id: string): LearningModule | undefined {
   return learningModules.find(module => module.id === id);
-};
+}
 
-export const getChapterById = (moduleId: string, chapterId: string) => {
-  const module = getLearningModuleById(moduleId);
-  return module?.chapters.find(chapter => chapter.id === chapterId);
-};
+export function getAllLearningModules(): LearningModule[] {
+  return learningModules;
+}

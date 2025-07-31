@@ -24,9 +24,13 @@ export interface InteractiveActivity {
   data: MatchingData | FillBlanksData | MultipleChoiceData | ImageIdentificationData | TrueFalseData | SentenceOrderingData | RangeAnswerData;
   points?: number;
   timeLimit?: number; // วินาที
+  difficulty?: 'easy' | 'medium' | 'hard'; // ระดับความยาก
+  maxAttempts?: number; // จำนวนครั้งที่ลองได้สูงสุด
+  passingScore?: number; // คะแนนขั้นต่ำที่ต้องได้
   feedback?: {
     correct: string;
     incorrect: string;
+    hint?: string; // คำใบ้เมื่อตอบผิด
   };
 }
 
@@ -99,6 +103,10 @@ export interface ChapterContent {
   videoUrl?: string;
   // สำหรับกิจกรรมอินเตอร์แอคทีฟ
   activity?: InteractiveActivity;
+  // บังคับให้ต้องทำกิจกรรมก่อนไปต่อ
+  required?: boolean;
+  // คะแนนขั้นต่ำที่ต้องได้เพื่อผ่าน
+  minimumScore?: number;
 }
 
 export interface LearningProgress {

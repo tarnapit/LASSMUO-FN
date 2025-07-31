@@ -5,16 +5,21 @@ import { CheckCircle, XCircle, Clock, Star, Trophy, RotateCcw } from "lucide-rea
 
 interface InteractiveActivityProps {
   activity: InteractiveActivity;
-  onComplete: (score: number, timeSpent: number) => void;
+  onComplete: (score: number, timeSpent: number, passed: boolean) => void;
+  required?: boolean;
+  minimumScore?: number;
 }
 
-export default function InteractiveActivityComponent({ activity, onComplete }: InteractiveActivityProps) {
+export default function InteractiveActivityComponent({ activity, onComplete, required = false, minimumScore = 0 }: InteractiveActivityProps) {
   const [startTime] = useState(new Date());
   const [isCompleted, setIsCompleted] = useState(false);
   const [score, setScore] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(activity.timeLimit || 0);
+  const [attempts, setAttempts] = useState(0);
+  const [passed, setPassed] = useState(false);
+  const [showHint, setShowHint] = useState(false);
 
   // Timer effect
   useEffect(() => {
@@ -38,25 +43,43 @@ export default function InteractiveActivityComponent({ activity, onComplete }: I
     setIsCompleted(true);
     setShowFeedback(true);
     setIsCorrect(false);
+    setPassed(false);
     const timeSpent = Math.round((new Date().getTime() - startTime.getTime()) / 1000);
-    onComplete(0, timeSpent);
+    onComplete(0, timeSpent, false);
   };
 
   const handleAnswer = (correct: boolean, earnedScore: number = 0) => {
-    setIsCompleted(true);
-    setIsCorrect(correct);
-    setScore(earnedScore);
-    setShowFeedback(true);
+    const newAttempts = attempts + 1;
+    setAttempts(newAttempts);
     
     const timeSpent = Math.round((new Date().getTime() - startTime.getTime()) / 1000);
-    onComplete(earnedScore, timeSpent);
+    const finalScore = correct ? earnedScore : 0;
+    const activityPassed = finalScore >= (activity.passingScore || minimumScore);
+    
+    setIsCorrect(correct);
+    setScore(finalScore);
+    setPassed(activityPassed);
+    setShowFeedback(true);
+    
+    // ถ้าผ่านแล้วหรือใช้ครั้งครบ
+    if (activityPassed || (activity.maxAttempts && newAttempts >= activity.maxAttempts)) {
+      setIsCompleted(true);
+      onComplete(finalScore, timeSpent, activityPassed);
+    } else {
+      // แสดงคำใบ้ถ้ามี
+      if (activity.feedback?.hint && !correct) {
+        setShowHint(true);
+      }
+    }
   };
 
   const resetActivity = () => {
     setIsCompleted(false);
     setShowFeedback(false);
     setScore(0);
+    setShowHint(false);
     setTimeRemaining(activity.timeLimit || 0);
+    // ไม่รีเซ็ต attempts เพื่อให้นับสะสม
   };
 
   const renderActivity = () => {
@@ -81,32 +104,72 @@ export default function InteractiveActivityComponent({ activity, onComplete }: I
   };
 
   return (
-    <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl p-8 border border-purple-500/30">
+    <div className={`bg-gradient-to-br rounded-2xl p-8 border transition-all ${
+      required 
+        ? 'from-purple-600/30 to-pink-600/30 border-purple-500/50 shadow-lg shadow-purple-500/20' 
+        : 'from-purple-500/20 to-blue-500/20 border-purple-500/30'
+    }`}>
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-2xl font-bold text-white flex items-center">
             <Star className="text-yellow-400 mr-2" size={24} />
             {activity.title}
-          </h3>
-          {activity.timeLimit && (
-            <div className={`flex items-center px-3 py-1 rounded-lg ${
-              timeRemaining <= 10 ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
-            }`}>
-              <Clock size={16} className="mr-1" />
-              <span className="font-mono font-bold">
-                {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+            {required && (
+              <span className="ml-3 px-2 py-1 bg-red-500/20 border border-red-500/40 rounded text-red-300 text-sm font-normal">
+                บังคับ
               </span>
+            )}
+            {activity.difficulty && (
+              <span className={`ml-2 px-2 py-1 rounded text-sm font-normal ${
+                activity.difficulty === 'easy' ? 'bg-green-500/20 border border-green-500/40 text-green-300' :
+                activity.difficulty === 'medium' ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' :
+                'bg-red-500/20 border border-red-500/40 text-red-300'
+              }`}>
+                {activity.difficulty === 'easy' ? 'ง่าย' : activity.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'}
+              </span>
+            )}
+          </h3>
+          
+          <div className="flex items-center space-x-3">
+            {activity.timeLimit && (
+              <div className={`flex items-center px-3 py-1 rounded-lg ${
+                timeRemaining <= 10 ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
+              }`}>
+                <Clock size={16} className="mr-1" />
+                <span className="font-mono font-bold">
+                  {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                </span>
+              </div>
+            )}
+            
+            {activity.maxAttempts && (
+              <div className="flex items-center px-3 py-1 rounded-lg bg-orange-500/20 text-orange-400">
+                <span className="text-sm">
+                  ลองได้: {attempts}/{activity.maxAttempts}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <p className="text-gray-300">{activity.instruction}</p>
+        
+        <div className="flex items-center mt-3 space-x-4">
+          {activity.points && (
+            <div className="flex items-center text-yellow-400 text-sm">
+              <Trophy size={16} className="mr-1" />
+              คะแนนเต็ม: {activity.points} แต้ม
+            </div>
+          )}
+          
+          {(activity.passingScore || minimumScore > 0) && (
+            <div className="flex items-center text-green-400 text-sm">
+              <CheckCircle size={16} className="mr-1" />
+              ผ่าน: {activity.passingScore || minimumScore} แต้ม
             </div>
           )}
         </div>
-        <p className="text-gray-300">{activity.instruction}</p>
-        {activity.points && (
-          <div className="flex items-center mt-2 text-yellow-400 text-sm">
-            <Trophy size={16} className="mr-1" />
-            คะแนน: {activity.points} แต้ม
-          </div>
-        )}
       </div>
 
       {/* Activity Content */}
@@ -116,35 +179,56 @@ export default function InteractiveActivityComponent({ activity, onComplete }: I
 
       {/* Feedback */}
       {showFeedback && (
-        <div className={`p-4 rounded-lg border ${
-          isCorrect 
+        <div className={`p-4 rounded-lg border mb-4 ${
+          passed 
             ? 'bg-green-500/20 border-green-500/40 text-green-300' 
             : 'bg-red-500/20 border-red-500/40 text-red-300'
         }`}>
           <div className="flex items-center mb-2">
-            {isCorrect ? (
+            {passed ? (
               <CheckCircle size={20} className="mr-2 text-green-400" />
             ) : (
               <XCircle size={20} className="mr-2 text-red-400" />
             )}
             <span className="font-semibold">
-              {isCorrect ? 'ถูกต้อง!' : 'ไม่ถูกต้อง'}
+              {passed ? 'ผ่าน!' : (isCorrect ? 'ถูกต้อง แต่คะแนนไม่พอ' : 'ไม่ถูกต้อง')}
             </span>
-            {isCorrect && score > 0 && (
+            {score > 0 && (
               <span className="ml-2 text-yellow-400 font-bold">+{score} แต้ม</span>
             )}
           </div>
-          <p className="text-sm">
-            {isCorrect ? activity.feedback?.correct : activity.feedback?.incorrect}
+          
+          <p className="text-sm mb-2">
+            {passed ? activity.feedback?.correct : activity.feedback?.incorrect}
           </p>
           
-          <button
-            onClick={resetActivity}
-            className="mt-3 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm flex items-center"
-          >
-            <RotateCcw size={16} className="mr-2" />
-            ลองใหม่
-          </button>
+          {showHint && activity.feedback?.hint && (
+            <div className="mt-3 p-3 bg-blue-500/20 border border-blue-500/40 rounded text-blue-300">
+              <div className="flex items-center mb-1">
+                <span className="text-sm font-semibold">💡 คำใบ้:</span>
+              </div>
+              <p className="text-sm">{activity.feedback.hint}</p>
+            </div>
+          )}
+          
+          {!passed && !isCompleted && (
+            <button
+              onClick={resetActivity}
+              className="mt-3 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm flex items-center"
+            >
+              <RotateCcw size={16} className="mr-2" />
+              ลองใหม่
+            </button>
+          )}
+          
+          {required && !passed && isCompleted && (
+            <div className="mt-3 p-3 bg-red-600/20 border border-red-600/40 rounded text-red-300">
+              <div className="flex items-center">
+                <XCircle size={16} className="mr-2" />
+                <span className="text-sm font-semibold">ต้องผ่านกิจกรรมนี้ก่อนถึงจะไปต่อได้</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
