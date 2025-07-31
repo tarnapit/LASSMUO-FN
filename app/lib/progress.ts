@@ -1,6 +1,7 @@
 import { PlayerProgress, StageProgress } from '../types/stage';
 import { ModuleProgress, LearningProgress } from '../types/learning';
 import { QuizProgress, QuizAttempt } from '../types/quiz';
+import { MiniGameAttempt, GameStats } from '../types/mini-game';
 import { authManager } from './auth';
 
 class ProgressManager {
@@ -137,6 +138,20 @@ class ProgressManager {
       quizProgress: {
         quizzes: {}
       },
+      miniGameStats: {
+        gamesPlayed: 0,
+        totalScore: 0,
+        averageScore: 0,
+        bestScore: 0,
+        totalTimeSpent: 0,
+        streakDays: 0,
+        achievements: [],
+        scoreChallengeBest: 0,
+        timeRushBest: 0,
+        randomQuizBest: 0,
+        attempts: [],
+        lastPlayedAt: undefined
+      },
       dailyGoal: {
         xpTarget: 50,
         currentXp: 0,
@@ -256,7 +271,166 @@ class ProgressManager {
     this.saveProgress(progress);
   }
 
-  // มิเกรตข้อมูล quiz จาก localStorage เก่า
+  // ====== Mini-Game Progress Methods ======
+  
+  // บันทึกผลลัพธ์ mini-game
+  saveMiniGameAttempt(attempt: MiniGameAttempt): void {
+    const progress = this.getProgress();
+    
+    // สร้าง mini-game stats structure ถ้ายังไม่มี
+    if (!progress.miniGameStats) {
+      progress.miniGameStats = {
+        gamesPlayed: 0,
+        totalScore: 0,
+        averageScore: 0,
+        bestScore: 0,
+        totalTimeSpent: 0,
+        streakDays: 0,
+        achievements: [],
+        attempts: [],
+        scoreChallengeBest: 0,
+        timeRushBest: 0,
+        randomQuizBest: 0
+      };
+    }
+    
+    const stats = progress.miniGameStats;
+    
+    // เพิ่ม attempt ใหม่
+    stats.attempts.push(attempt);
+    stats.gamesPlayed = stats.attempts.length;
+    stats.lastPlayedAt = attempt.completedAt || new Date();
+    
+    // อัพเดทคะแนนรวม
+    stats.totalScore += attempt.score;
+    stats.averageScore = Math.round(stats.totalScore / stats.gamesPlayed);
+    stats.bestScore = Math.max(stats.bestScore, attempt.score);
+    stats.totalTimeSpent += attempt.timeSpent;
+    
+    // อัพเดทคะแนนสูงสุดแต่ละโหมด
+    switch (attempt.gameMode) {
+      case 'score-challenge':
+        stats.scoreChallengeBest = Math.max(stats.scoreChallengeBest, attempt.score);
+        break;
+      case 'time-rush':
+        stats.timeRushBest = Math.max(stats.timeRushBest, attempt.score);
+        break;
+      case 'random-quiz':
+        stats.randomQuizBest = Math.max(stats.randomQuizBest, attempt.score);
+        break;
+    }
+    
+    // อัพเดท XP และคะแนนรวม
+    const xpGained = Math.floor(attempt.score / 10) + (attempt.percentage >= 80 ? 20 : 0);
+    progress.totalXp += xpGained;
+    progress.totalPoints += attempt.score;
+    
+    // เช็ค achievements
+    this.checkMiniGameAchievements(stats);
+    
+    // อัพเดท daily goal
+    progress.dailyGoal.currentXp += xpGained;
+    if (progress.dailyGoal.currentXp >= progress.dailyGoal.xpTarget && !progress.dailyGoal.isCompleted) {
+      progress.dailyGoal.isCompleted = true;
+      progress.dailyGoal.streak += 1;
+      progress.currentStreak = progress.dailyGoal.streak;
+      progress.longestStreak = Math.max(progress.longestStreak, progress.currentStreak);
+    }
+    
+    this.saveProgress(progress);
+    
+    // Trigger event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('progressUpdated', { 
+        detail: { type: 'miniGame', gameMode: attempt.gameMode, score: attempt.score }
+      }));
+    }
+  }
+  
+  // ตรวจสอบ achievements สำหรับ mini-game
+  private checkMiniGameAchievements(stats: GameStats): void {
+    const newAchievements: string[] = [];
+    
+    // First game achievement
+    if (stats.gamesPlayed === 1 && !stats.achievements.includes('first-game')) {
+      newAchievements.push('first-game');
+    }
+    
+    // Perfect score achievement
+    if (stats.attempts.some(a => a.percentage === 100) && !stats.achievements.includes('perfect-score')) {
+      newAchievements.push('perfect-score');
+    }
+    
+    // Speed demon achievement (score > 1000 in time-rush)
+    if (stats.timeRushBest >= 1000 && !stats.achievements.includes('speed-demon')) {
+      newAchievements.push('speed-demon');
+    }
+    
+    // Score master achievement (score > 1500 in score-challenge)
+    if (stats.scoreChallengeBest >= 1500 && !stats.achievements.includes('score-master')) {
+      newAchievements.push('score-master');
+    }
+    
+    // Knowledge expert achievement (80%+ in all three modes)
+    const hasGoodScoreInAllModes = 
+      stats.attempts.some(a => a.gameMode === 'score-challenge' && a.percentage >= 80) &&
+      stats.attempts.some(a => a.gameMode === 'time-rush' && a.percentage >= 80) &&
+      stats.attempts.some(a => a.gameMode === 'random-quiz' && a.percentage >= 80);
+    
+    if (hasGoodScoreInAllModes && !stats.achievements.includes('knowledge-expert')) {
+      newAchievements.push('knowledge-expert');
+    }
+    
+    // Add new achievements
+    stats.achievements.push(...newAchievements);
+  }
+  
+  // ดึงสถิติ mini-game
+  getMiniGameStats(): GameStats | null {
+    const progress = this.getProgress();
+    return progress.miniGameStats || null;
+  }
+  
+  // ดึงประวัติการเล่นในโหมดที่ระบุ
+  getMiniGameHistory(gameMode?: string): MiniGameAttempt[] {
+    const stats = this.getMiniGameStats();
+    if (!stats) return [];
+    
+    if (gameMode) {
+      return stats.attempts.filter(a => a.gameMode === gameMode);
+    }
+    
+    return stats.attempts;
+  }
+  
+  // ตรวจสอบว่าเคยเล่นโหมดนี้หรือยัง
+  hasPlayedGameMode(gameMode: string): boolean {
+    const stats = this.getMiniGameStats();
+    if (!stats) return false;
+    
+    return stats.attempts.some(a => a.gameMode === gameMode);
+  }
+  
+  // รีเซ็ต mini-game stats (สำหรับการพัฒนา/ทดสอบ)
+  resetMiniGameStats(): void {
+    const progress = this.getProgress();
+    progress.miniGameStats = {
+      gamesPlayed: 0,
+      totalScore: 0,
+      averageScore: 0,
+      bestScore: 0,
+      totalTimeSpent: 0,
+      streakDays: 0,
+      achievements: [],
+      attempts: [],
+      scoreChallengeBest: 0,
+      timeRushBest: 0,
+      randomQuizBest: 0
+    };
+    this.saveProgress(progress);
+  }
+
+  // ====== Helper Methods ======
   migrateOldQuizData(): void {
     if (typeof window === 'undefined') return;
 

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Rocket, Users, BookOpen, Gamepad2, Star, Trophy, Target, Clock, GraduationCap } from "lucide-react";
+import { Rocket, Users, BookOpen, Gamepad2, Star, Trophy, Target, Clock, GraduationCap, PlayCircle, Brain } from "lucide-react";
 import Navbar from "./components/layout/Navbar";
 import ApiStatusIndicator from "./components/ui/ApiStatusIndicator";
 import { progressManager } from "./lib/progress";
@@ -67,98 +67,183 @@ export default function HomePage() {
       <Navbar />
 
       {/* Hero Section */}
-      <div className="flex flex-col items-center justify-center px-8 py-20">
-        <div className="text-center max-w-4xl">
-          <p className="text-yellow-300 text-lg mb-4 tracking-wide">
-            {text.explore}
-          </p>
+      <div className="flex flex-col items-center justify-center px-8 py-16">
+        <div className="text-center max-w-6xl">
+          {/* Hero Badge */}
+          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full border border-blue-500/30 mb-6">
+            <Rocket className="w-4 h-4 text-blue-400 mr-2" />
+            <span className="text-blue-300 text-sm font-medium">{text.explore}</span>
+          </div>
 
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-8 leading-tight">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 leading-tight">
             {text.learning}
           </h1>
 
-          <h2 className="text-5xl md:text-6xl font-bold text-white mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent mb-8">
             {text.forFun}
           </h2>
 
-          <div className="flex flex-col gap-4 justify-center items-center">
+          <p className="text-gray-300 text-lg md:text-xl mb-12 max-w-3xl mx-auto leading-relaxed">
+            เรียนรู้ดาราศาสตร์ผ่านการสำรวจ การทดลอง และการเล่นเกม 
+            พร้อมระบบการเรียนรู้แบบปฏิบัติที่เน้นประสบการณ์จริง
+          </p>
+
+          {/* Action Cards */}
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
+            {/* Start Journey Card */}
             <Link href="/stage">
-              <button className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-semibold px-12 py-4 rounded-lg text-xl hover:from-yellow-300 hover:to-yellow-400 transform hover:scale-105 transition-all duration-300 shadow-2xl">
-                {text.getStart}
-              </button>
+              <div className="group bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-2xl p-8 hover:border-yellow-400/50 transition-all duration-300 transform hover:scale-105 cursor-pointer">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full">
+                    <Target className="w-8 h-8 text-black" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">{text.getStart}</h3>
+                <p className="text-gray-300 mb-4">เริ่มต้นการผจญภัยในอวกาศ ผ่านด่านต่างๆ และสะสมดาว</p>
+                <div className="flex items-center justify-center text-yellow-400 font-semibold">
+                  เริ่มเลย <PlayCircle className="ml-2 w-5 h-5" />
+                </div>
+              </div>
+            </Link>
+
+            {/* Learning Card */}
+            <Link href="/learning">
+              <div className="group bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-2xl p-8 hover:border-purple-400/50 transition-all duration-300 transform hover:scale-105 cursor-pointer">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full">
+                    <BookOpen className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+                <h3 className="text-2xl font-bold text-white mb-3">เรียนรู้เนื้อหา</h3>
+                <p className="text-gray-300 mb-4">สำรวจความรู้ดาราศาสตร์ผ่านบทเรียนแบบปฏิบัติ</p>
+                <div className="flex items-center justify-center text-purple-400 font-semibold">
+                  เริ่มเรียน <GraduationCap className="ml-2 w-5 h-5" />
+                </div>
+              </div>
+            </Link>
+          </div>
+
+          {/* Quick Access Features */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <Link href="/mini-game" className="group">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-4 hover:border-green-500/50 transition-all duration-300">
+                <Gamepad2 className="w-8 h-8 text-green-400 mx-auto mb-2" />
+                <p className="text-white text-sm font-medium">เกมพิเศษ</p>
+              </div>
             </Link>
             
-            <Link href="/learning">
-              <button className="bg-gradient-to-r from-purple-500 to-purple-600 text-white font-semibold px-12 py-4 rounded-lg text-xl hover:from-purple-400 hover:to-purple-500 transform hover:scale-105 transition-all duration-300 shadow-2xl flex items-center justify-center">
-                <BookOpen className="mr-2" size={20} />
-                เรียนรู้เนื้อหา
-              </button>
+            <Link href="/quiz" className="group">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-4 hover:border-blue-500/50 transition-all duration-300">
+                <Brain className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+                <p className="text-white text-sm font-medium">ทดสอบ</p>
+              </div>
+            </Link>
+            
+            <Link href="/leaderboard" className="group">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-4 hover:border-yellow-500/50 transition-all duration-300">
+                <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+                <p className="text-white text-sm font-medium">อันดับ</p>
+              </div>
+            </Link>
+            
+            <Link href="/friends" className="group">
+              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-4 hover:border-pink-500/50 transition-all duration-300">
+                <Users className="w-8 h-8 text-pink-400 mx-auto mb-2" />
+                <p className="text-white text-sm font-medium">เพื่อน</p>
+              </div>
             </Link>
           </div>
 
           {/* Progress Display */}
           {progress && (progress.totalStars > 0 || progress.completedStages.length > 0 || 
                        (learningStats && learningStats.totalModulesStarted > 0)) && (
-            <div className="mt-8 bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700">
-              <h3 className="text-white text-xl font-semibold mb-4 text-center">
-                ความคืบหน้าของคุณ
-              </h3>
+            <div className="mt-12 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-md rounded-2xl p-8 border border-slate-700/50 shadow-2xl max-w-5xl mx-auto">
+              <div className="flex items-center justify-center mb-6">
+                <div className="p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-3">
+                  <Trophy className="w-6 h-6 text-black" />
+                </div>
+                <h3 className="text-white text-2xl font-bold">
+                  ความคืบหน้าของคุณ
+                </h3>
+              </div>
               
-              {/* Stage Progress */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Star className="text-yellow-400 mr-2" size={24} />
-                    <span className="text-2xl font-bold text-white">{progress.totalStars}</span>
+              {/* Stage Progress Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-6 text-center">
+                  <div className="flex items-center justify-center mb-3">
+                    <div className="p-2 bg-yellow-400/20 rounded-full">
+                      <Star className="text-yellow-400 w-8 h-8" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm">ดาวที่เก็บได้</p>
+                  <span className="text-3xl font-bold text-white block">{progress.totalStars}</span>
+                  <p className="text-yellow-300 text-sm font-medium mt-1">ดาวที่เก็บได้</p>
                 </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Trophy className="text-green-400 mr-2" size={24} />
-                    <span className="text-2xl font-bold text-white">{progress.completedStages.length}</span>
+
+                <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-6 text-center">
+                  <div className="flex items-center justify-center mb-3">
+                    <div className="p-2 bg-green-400/20 rounded-full">
+                      <Trophy className="text-green-400 w-8 h-8" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm">ด่านที่ผ่าน</p>
+                  <span className="text-3xl font-bold text-white block">{progress.completedStages.length}</span>
+                  <p className="text-green-300 text-sm font-medium mt-1">ด่านที่ผ่าน</p>
                 </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center mb-2">
-                    <Target className="text-blue-400 mr-2" size={24} />
-                    <span className="text-2xl font-bold text-white">{progress.totalPoints}</span>
+
+                <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-6 text-center">
+                  <div className="flex items-center justify-center mb-3">
+                    <div className="p-2 bg-blue-400/20 rounded-full">
+                      <Target className="text-blue-400 w-8 h-8" />
+                    </div>
                   </div>
-                  <p className="text-gray-300 text-sm">คะแนนรวม</p>
+                  <span className="text-3xl font-bold text-white block">{progress.totalPoints}</span>
+                  <p className="text-blue-300 text-sm font-medium mt-1">คะแนนรวม</p>
                 </div>
               </div>
 
               {/* Learning Progress */}
               {learningStats && learningStats.totalModulesStarted > 0 && (
                 <>
-                  <div className="border-t border-slate-600 pt-4">
-                    <h4 className="text-white text-lg font-semibold mb-3 text-center flex items-center justify-center">
-                      <BookOpen className="text-purple-400 mr-2" size={20} />
-                      ความคืบหน้าการเรียนรู้
-                    </h4>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <GraduationCap className="text-purple-400 mr-2" size={24} />
-                          <span className="text-2xl font-bold text-white">{learningStats.totalModulesCompleted}</span>
-                          <span className="text-gray-400 text-lg">/{learningStats.totalModulesStarted}</span>
-                        </div>
-                        <p className="text-gray-300 text-sm">บทเรียนที่จบ</p>
+                  <div className="border-t border-slate-600/50 pt-6">
+                    <div className="flex items-center justify-center mb-6">
+                      <div className="p-2 bg-purple-500/20 rounded-full mr-3">
+                        <BookOpen className="text-purple-400 w-5 h-5" />
                       </div>
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <Clock className="text-orange-400 mr-2" size={24} />
-                          <span className="text-2xl font-bold text-white">{learningStats.totalLearningTime}</span>
+                      <h4 className="text-white text-xl font-semibold">
+                        ความคืบหน้าการเรียนรู้
+                      </h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border border-purple-500/30 rounded-xl p-6 text-center">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="p-2 bg-purple-400/20 rounded-full">
+                            <GraduationCap className="text-purple-400 w-8 h-8" />
+                          </div>
                         </div>
-                        <p className="text-gray-300 text-sm">นาทีเรียน</p>
+                        <div className="flex items-center justify-center">
+                          <span className="text-3xl font-bold text-white">{learningStats.totalModulesCompleted}</span>
+                          <span className="text-gray-400 text-xl ml-1">/{learningStats.totalModulesStarted}</span>
+                        </div>
+                        <p className="text-purple-300 text-sm font-medium mt-1">บทเรียนที่จบ</p>
                       </div>
-                      <div className="text-center">
-                        <div className="flex items-center justify-center mb-2">
-                          <Target className="text-cyan-400 mr-2" size={24} />
-                          <span className="text-2xl font-bold text-white">{learningStats.averageModuleProgress}%</span>
+
+                      <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-6 text-center">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="p-2 bg-orange-400/20 rounded-full">
+                            <Clock className="text-orange-400 w-8 h-8" />
+                          </div>
                         </div>
-                        <p className="text-gray-300 text-sm">ความคืบหน้าเฉลี่ย</p>
+                        <span className="text-3xl font-bold text-white block">{learningStats.totalLearningTime}</span>
+                        <p className="text-orange-300 text-sm font-medium mt-1">นาทีเรียน</p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-xl p-6 text-center">
+                        <div className="flex items-center justify-center mb-3">
+                          <div className="p-2 bg-cyan-400/20 rounded-full">
+                            <Target className="text-cyan-400 w-8 h-8" />
+                          </div>
+                        </div>
+                        <span className="text-3xl font-bold text-white block">{learningStats.averageModuleProgress}%</span>
+                        <p className="text-cyan-300 text-sm font-medium mt-1">ความคืบหน้าเฉลี่ย</p>
                       </div>
                     </div>
                   </div>
@@ -166,17 +251,17 @@ export default function HomePage() {
               )}
               
               {/* Save Status */}
-              <div className="mt-4 text-center border-t border-slate-600 pt-4">
+              <div className="mt-6 text-center border-t border-slate-600/50 pt-6">
                 {isLoggedIn ? (
-                  <p className="text-green-400 text-sm flex items-center justify-center">
-                    <Star className="mr-1" size={16} />
-                    ข้อมูลถูกบันทึกถาวรแล้ว
-                  </p>
+                  <div className="inline-flex items-center px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full">
+                    <Star className="mr-2 w-4 h-4 text-green-400" />
+                    <span className="text-green-300 text-sm font-medium">ข้อมูลถูกบันทึกถาวรแล้ว</span>
+                  </div>
                 ) : (
-                  <p className="text-yellow-400 text-sm flex items-center justify-center">
-                    <Target className="mr-1" size={16} />
-                    ข้อมูลชั่วคราว - ล็อกอินเพื่อบันทึกข้อมูล
-                  </p>
+                  <div className="inline-flex items-center px-4 py-2 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
+                    <Target className="mr-2 w-4 h-4 text-yellow-400" />
+                    <span className="text-yellow-300 text-sm font-medium">ข้อมูลชั่วคราว - ล็อกอินเพื่อบันทึกข้อมูล</span>
+                  </div>
                 )}
               </div>
             </div>

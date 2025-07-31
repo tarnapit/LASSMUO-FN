@@ -169,18 +169,43 @@ export default function StagePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+    <div className="min-h-screen bg-gradient-to-br from-black via-slate-900 to-indigo-900 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-10 w-2 h-2 bg-blue-400 rounded-full animate-pulse opacity-60"></div>
+        <div className="absolute top-40 right-20 w-1 h-1 bg-purple-400 rounded-full animate-ping opacity-40"></div>
+        <div className="absolute bottom-32 left-20 w-1.5 h-1.5 bg-yellow-400 rounded-full animate-pulse delay-200 opacity-50"></div>
+        <div className="absolute bottom-20 right-32 w-1 h-1 bg-green-400 rounded-full animate-ping delay-300 opacity-60"></div>
+        <div className="absolute top-60 left-1/3 w-1 h-1 bg-red-400 rounded-full animate-pulse delay-500 opacity-40"></div>
+        <div className="absolute top-80 right-1/4 w-2 h-2 bg-orange-400 rounded-full animate-ping delay-700 opacity-50"></div>
+      </div>
+
       {/* Navigation */}
       <Navbar />
 
       {/* Main Content */}
-      <div className="container mx-auto px-8 py-12">
+      <div className="container mx-auto px-8 py-12 relative z-10">
+        {/* Hero Header */}
+        <div className="text-center mb-16 max-w-6xl mx-auto">
+          {/* Header Badge */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full border border-indigo-500/30">
+              <Award className="w-5 h-5 text-indigo-400 mr-2" />
+              <span className="text-indigo-300 text-sm font-semibold">ระบบการเรียนรู้แบบขั้นตอน</span>
+            </div>
+          </div>
+
         {/* Title */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
-            Solar System
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            การผจญภัยในอวกาศ
           </h1>
-          <p className="text-xl text-gray-300">เลือกด่านที่ต้องการเรียนรู้</p>
+          
+          <p className="text-gray-300 text-xl md:text-2xl max-w-4xl mx-auto leading-relaxed mb-12">
+            เริ่มต้นการเดินทางสู่ความรู้ดาราศาสตร์ผ่านด่านต่างๆ 
+            <br />
+            <span className="text-purple-400 font-semibold">ปลดล็อคเนื้อหาใหม่เมื่อผ่านด่าน!</span>
+          </p>
 
           {/* Player Progress Summary */}
           <div className="flex justify-center items-center space-x-6 mt-6 text-white">
@@ -554,6 +579,7 @@ export default function StagePage() {
             className={`absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse`}
           />
         ))}
+      </div>
       </div>
     </div>
   );

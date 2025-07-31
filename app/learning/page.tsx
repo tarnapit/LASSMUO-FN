@@ -219,20 +219,74 @@ export default function LearningPage() {
       <Navbar />
 
       <div className="container mx-auto px-6 py-20">
+        {/* Hero Section */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-white mb-4">{text.lesson}</h1>
-          <p className="text-gray-300 text-lg mb-6">
-            เลือกบทเรียนที่คุณสนใจเพื่อเริ่มการเรียนรู้
+          {/* Badge */}
+          <div className="flex justify-center mb-6">
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
+              <BookOpen className="w-5 h-5 text-purple-400 mr-2" />
+              <span className="text-purple-300 text-sm font-semibold">การเรียนรู้แบบปฏิบัติ</span>
+            </div>
+          </div>
+
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+            {text.lesson}
+          </h1>
+          
+          <p className="text-gray-300 text-xl max-w-4xl mx-auto leading-relaxed mb-8">
+            เรียนรู้ดาราศาสตร์ผ่านการทดลอง การสำรวจ และการลงมือทำ
+            <br />
+            <span className="text-purple-400 font-semibold">ปฏิบัติจริง ไม่ใช่แค่ท่องจำ</span>
           </p>
 
+          {/* Learning Approach Highlights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-12">
+            <div className="bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-6">
+              <div className="flex items-center justify-center mb-3">
+                <div className="p-3 bg-blue-500/20 rounded-full">
+                  <BarChart3 className="w-6 h-6 text-blue-400" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">สำรวจและทดลอง</h3>
+              <p className="text-gray-300 text-sm">เรียนรู้ผ่านการทดลองและการค้นพบด้วยตนเอง</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-6">
+              <div className="flex items-center justify-center mb-3">
+                <div className="p-3 bg-green-500/20 rounded-full">
+                  <Brain className="w-6 h-6 text-green-400" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">ทดสอบความเข้าใจ</h3>
+              <p className="text-gray-300 text-sm">แบบทดสอบที่เน้นการคิดวิเคราะห์</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/30 rounded-xl p-6">
+              <div className="flex items-center justify-center mb-3">
+                <div className="p-3 bg-orange-500/20 rounded-full">
+                  <PlayCircle className="w-6 h-6 text-orange-400" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">ประยุกต์ใช้จริง</h3>
+              <p className="text-gray-300 text-sm">นำความรู้ไปประยุกต์ในสถานการณ์จริง</p>
+            </div>
+          </div>
+
           {/* Quick Actions */}
-          <div className="flex justify-center space-x-4 mb-8">
+          <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8">
             <Link
               href="/quiz"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold"
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-semibold hover:from-blue-400 hover:to-purple-400 transition-all duration-300 transform hover:scale-105"
             >
               <Brain size={20} className="mr-2" />
-              ดูแบบทดสอบทั้งหมด
+              ทดสอบความรู้ทันที
+            </Link>
+            <Link
+              href="/mini-game"
+              className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:from-green-400 hover:to-emerald-400 transition-all duration-300 transform hover:scale-105"
+            >
+              <PlayCircle size={20} className="mr-2" />
+              เล่นเกมเสริมการเรียน
             </Link>
           </div>
         </div>
@@ -245,12 +299,26 @@ export default function LearningPage() {
 
             return (
               <div key={module.id} className="group h-full">
-                <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-all duration-300 transform hover:scale-105 border border-white/20 h-full flex flex-col min-h-[420px]">
-                  <div className="flex items-center justify-between mb-4">
-                    {getModuleStatusIcon(module.id)}
+                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl p-6 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105 border border-slate-700/50 h-full flex flex-col min-h-[500px] shadow-xl">
+                  {/* Header with Status */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      {getModuleStatusIcon(module.id)}
+                      <div className="flex flex-col">
+                        <span className={`text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
+                          {getModuleStatusText(module.id)}
+                        </span>
+                        <span className={`text-xs ${getLevelColor(module.level)}`}>
+                          {getLevelText(module.level)}
+                        </span>
+                      </div>
+                    </div>
+                    
                     <div className="flex items-center space-x-2">
                       {moduleProgresses[module.id]?.isStarted && (
-                        <BarChart3 className="text-blue-400" size={20} />
+                        <div className="p-2 bg-blue-500/20 rounded-full">
+                          <BarChart3 className="text-blue-400" size={16} />
+                        </div>
                       )}
                       <Star
                         className="text-gray-400 group-hover:text-yellow-400 transition-colors"
@@ -263,16 +331,39 @@ export default function LearningPage() {
                     href={`/learning/${module.id}`}
                     className="flex-1 flex flex-col"
                   >
-                    <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-yellow-400 transition-colors">
+                    <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-purple-400 transition-colors leading-tight">
                       {module.title}
                     </h3>
 
-                    <div className="flex-grow mb-4 h-20 flex items-start">
+                    <div className="flex-grow mb-6">
                       <p className="text-gray-300 leading-relaxed text-sm">
-                        {module.description.length > 120
-                          ? module.description.substring(0, 120) + "..."
+                        {module.description.length > 150
+                          ? module.description.substring(0, 150) + "..."
                           : module.description}
                       </p>
+                    </div>
+
+                    {/* Activity Types */}
+                    <div className="mb-6">
+                      <h4 className="text-white text-sm font-semibold mb-3">กิจกรรมการเรียนรู้:</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
+                          <BookOpen className="w-4 h-4 text-blue-400" />
+                          <span className="text-xs text-blue-300">เนื้อหาหลัก</span>
+                        </div>
+                        <div className="flex items-center space-x-2 bg-green-500/10 border border-green-500/30 rounded-lg p-2">
+                          <Brain className="w-4 h-4 text-green-400" />
+                          <span className="text-xs text-green-300">ทดสอบความเข้าใจ</span>
+                        </div>
+                        <div className="flex items-center space-x-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
+                          <PlayCircle className="w-4 h-4 text-purple-400" />
+                          <span className="text-xs text-purple-300">แบบฝึกหัด</span>
+                        </div>
+                        <div className="flex items-center space-x-2 bg-orange-500/10 border border-orange-500/30 rounded-lg p-2">
+                          <BarChart3 className="w-4 h-4 text-orange-400" />
+                          <span className="text-xs text-orange-300">ประเมินผล</span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Progress Bar */}
@@ -296,18 +387,12 @@ export default function LearningPage() {
                           <div
                             className={`h-2 rounded-full transition-all duration-300 absolute left-0 top-0 ${
                               progressManager.isModulePerfect(module.id)
-                                ? "bg-green-500"
+                                ? styles.progressFillGreen
                                 : progressManager.isModulePassed(module.id)
-                                ? "bg-green-400"
-                                : "bg-blue-400"
+                                ? styles.progressFillYellow
+                                : styles.progressFillPurple
                             }`}
-                            style={{
-                              width: `${Math.min(
-                                moduleProgresses[module.id]
-                                  .completionPercentage,
-                                100
-                              )}%`,
-                            }}
+                            data-progress={moduleProgresses[module.id].completionPercentage}
                           />
                         </div>
                         {/* แสดงข้อมูลเพิ่มเติมเกี่ยวกับสิ่งที่ต้องทำ */}

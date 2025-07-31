@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { miniGames } from "../data/mini-games";
 import Navbar from "../components/layout/Navbar";
+import { MiniGameProgressHelper } from "../lib/mini-game-progress";
 import {
   Gamepad2,
   Clock,
@@ -24,114 +25,61 @@ import "../styles/mini-game-animations.css";
 
 export default function MiniGamePage() {
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
-  const [completedGames, setCompletedGames] = useState<string[]>([
-    "planet-match",
-    "solar-quiz",
-    "constellation-connect",
-  ]); // Demo completed games
   const [isLoading, setIsLoading] = useState(true);
-  const [achievements, setAchievements] = useState([
-    {
-      id: "first-game",
-      name: "ผู้เริ่มต้น",
-      description: "เล่นเกมแรก",
-      icon: "🎮",
-      unlocked: true,
-      reward: "+50 คะแนน, ปลดล็อคระบบแจ้งเตือน",
-    },
-    {
-      id: "memory-master",
-      name: "ปรมาจารย์ความจำ",
-      description: "เล่นเกมความจำได้คะแนนเต็ม 3 ครั้ง",
-      icon: "🧠",
-      unlocked: true,
-      reward: "+200 คะแนน, โหมดความจำแฟลช",
-    },
-    {
-      id: "quiz-expert",
-      name: "ผู้เชี่ยวชาญแบบทดสอบ",
-      description: "ตอบคำถามถูก 50 ข้อติดต่อกัน",
-      icon: "🏆",
-      unlocked: true,
-      reward: "+300 คะแนน, คำใบ้พิเศษ",
-    },
-    {
-      id: "speed-runner",
-      name: "นักวิ่งความเร็วแสง",
-      description: "เล่นเกมจบภายใน 2 นาที พร้อมได้คะแนน 80%+",
-      icon: "⚡",
-      unlocked: false,
-      reward: "+500 คะแนน, ยานอวกาศเร็ว",
-    },
-    {
-      id: "explorer",
-      name: "นักสำรวจกาแล็กซี่",
-      description: "เล่นเกมครบทุกประเภทและผ่านทุกด่าน",
-      icon: "🌌",
-      unlocked: false,
-      reward: "+750 คะแนน, เกมโบนัสลับ",
-    },
-    {
-      id: "perfectionist",
-      name: "นักสมบูรณ์แบบ",
-      description: "ได้คะแนนเต็มในเกมใดก็ได้ 10 ครั้ง",
-      icon: "💎",
-      unlocked: false,
-      reward: "+1000 คะแนน, โหมดเซน",
-    },
-    {
-      id: "constellation-artist",
-      name: "ศิลปินกลุ่มดาว",
-      description: "สร้างกลุ่มดาวครบทั้งหมดโดยไม่ใช้คำใบ้",
-      icon: "⭐",
-      unlocked: false,
-      reward: "+600 คะแนน, กลุ่มดาวลับ",
-    },
-    {
-      id: "black-hole-survivor",
-      name: "ผู้รอดหลุมดำ",
-      description: "หลบหลีกจากหลุมดำได้สำเร็จใน 1 ครั้ง",
-      icon: "�️",
-      unlocked: false,
-      reward: "+800 คะแนน, เทคโนโลยีวาร์ป",
-    },
-    {
-      id: "time-master",
-      name: "นักเดินทางเวลา",
-      description: "เล่นเกมต่อเนื่อง 30 วันติดต่อกัน",
-      icon: "⏰",
-      unlocked: false,
-      reward: "+2000 คะแนน, เครื่องจักรเวลา",
-    },
-    {
-      id: "cosmic-champion",
-      name: "แชมป์จักรวาล",
-      description: "ครองอันดับ 1 ในลีดเดอร์บอร์ด",
-      icon: "👑",
-      unlocked: false,
-      reward: "ตัวละครพิเศษ + 3000 คะแนน",
-    },
-    {
-      id: "night-owl",
-      name: "นกฮูกกลางคืน",
-      description: "เล่นเกมตั้งแต่ 22:00-06:00 เป็นเวลา 7 วัน",
-      icon: "🦉",
-      unlocked: false,
-      reward: "+400 คะแนน, โหมดกลางคืน",
-    },
-    {
-      id: "cosmic-legend",
-      name: "ตำนานแห่งจักรวาล",
-      description: "ได้รับ achievement ครบทุกรายการ",
-      icon: "🌟",
-      unlocked: false,
-      reward: "+5000 คะแนน, ตำแหน่งมาสเตอร์",
-    },
-  ]);
+  
+  // ใช้ real data แทน mock data
+  const [gameStats, setGameStats] = useState(MiniGameProgressHelper.getGameStats());
+  const [achievements, setAchievements] = useState(MiniGameProgressHelper.getAchievementData());
+  
+  // คำนวณข้อมูลจริงจาก progress
+  const totalCompletedGames = MiniGameProgressHelper.getCompletedGamesCount();
+  const totalPoints = MiniGameProgressHelper.getTotalScore();
+  const streakDays = MiniGameProgressHelper.getStreakDays();
+
+  // Update progress data when component mounts and when progress changes
+  useEffect(() => {
+    const updateProgressData = () => {
+      setGameStats(MiniGameProgressHelper.getGameStats());
+      setAchievements(MiniGameProgressHelper.getAchievementData());
+    };
+
+    updateProgressData();
+
+    // Listen for progress updates
+    if (typeof window !== 'undefined') {
+      window.addEventListener('progressUpdated', updateProgressData);
+      return () => window.removeEventListener('progressUpdated', updateProgressData);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    // Update progress bar width
+    const progressBar = document.querySelector(
+      ".progress-animated"
+    ) as HTMLElement;
+    if (progressBar) {
+      progressBar.style.setProperty(
+        "--progress-width",
+        `${(totalCompletedGames / miniGames.length) * 100}%`
+      );
+      progressBar.style.width = `${
+        (totalCompletedGames / miniGames.length) * 100
+      }%`;
+    }
+  }, [totalCompletedGames]);
 
   const text = {
-    title: "มินิเกม",
-    subtitle: "เรียนรู้ไปกับเกมสนุกๆ พร้อมท้าทายความรู้ของคุณ",
+    title: "แบบทดสอบดาราศาสตร์",
+    subtitle: "ทดสอบความรู้และทักษะด้านดาราศาสตร์ผ่าน 3 โหมดการเล่น",
     difficulty: "ความยาก:",
     time: "เวลา:",
     points: "คะแนน:",
@@ -143,14 +91,14 @@ export default function MiniGamePage() {
     hard: "ยาก",
     achievements: "ความสำเร็จ",
     yourProgress: "ความคืบหน้าของคุณ",
-    gamesCompleted: "เกมที่เล่นแล้ว",
+    gamesCompleted: "โหมดที่เล่นแล้ว",
     totalPoints: "คะแนนรวม",
     streakDays: "วันติดต่อกัน",
     newGame: "เกมใหม่!",
     popular: "ยอดนิยม",
     exclusive: "พิเศษ!",
     bonus: "โบนัส x2",
-    trending: "กำลังฮิต",
+    trending: "แนะนำ",
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -183,14 +131,8 @@ export default function MiniGamePage() {
     switch (category) {
       case "Knowledge":
         return <Brain className="text-blue-400" size={20} />;
-      case "Memory":
-        return <Zap className="text-purple-400" size={20} />;
-      case "Puzzle":
-        return <Puzzle className="text-orange-400" size={20} />;
-      case "Action":
-        return <Gamepad2 className="text-red-400" size={20} />;
       default:
-        return <Star className="text-blue-400" size={20} />;
+        return <Brain className="text-blue-400" size={20} />;
     }
   };
 
@@ -237,52 +179,19 @@ export default function MiniGamePage() {
     }
   };
 
-  const isGameCompleted = (gameId: string) => completedGames.includes(gameId);
-  const totalCompletedGames = completedGames.length;
-  const totalPoints = completedGames.reduce((sum, gameId) => {
-    const game = miniGames.find((g) => g.id === gameId);
-    return sum + (game?.points || 0);
-  }, 0);
+  const isGameCompleted = (gameId: string) => MiniGameProgressHelper.hasCompleted(gameId);
 
   const isNewGame = (gameId: string) =>
     [
-      "constellation-connect",
-      "asteroid-dodge",
-      "galaxy-explorer",
-      "black-hole-escape",
+      "time-rush",
     ].includes(gameId);
   const isPopularGame = (gameId: string) =>
-    ["solar-quiz", "planet-match", "space-memory"].includes(gameId);
+    ["score-challenge", "random-quiz"].includes(gameId);
   const isTrendingGame = (gameId: string) =>
-    ["constellation-connect", "galaxy-explorer"].includes(gameId);
+    ["score-challenge"].includes(gameId);
   const hasBonus = (gameId: string) =>
-    ["black-hole-escape", "asteroid-dodge"].includes(gameId);
-  const isExclusive = (gameId: string) => ["galaxy-explorer"].includes(gameId);
-
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    // Update progress bar width
-    const progressBar = document.querySelector(
-      ".progress-animated"
-    ) as HTMLElement;
-    if (progressBar) {
-      progressBar.style.setProperty(
-        "--progress-width",
-        `${(totalCompletedGames / miniGames.length) * 100}%`
-      );
-      progressBar.style.width = `${
-        (totalCompletedGames / miniGames.length) * 100
-      }%`;
-    }
-  }, [totalCompletedGames]);
+    ["time-rush"].includes(gameId);
+  const isExclusive = (gameId: string) => false; // ไม่มีเกมพิเศษ
 
   if (isLoading) {
     return (
@@ -323,21 +232,59 @@ export default function MiniGamePage() {
       <div className="container mx-auto px-4 sm:px-6 py-20 relative z-10">
         {/* Header Section */}
         <div className="text-center mb-16">
+          {/* Header Badge */}
           <div className="flex justify-center mb-6">
-            <div className="relative">
-              <Gamepad2 className="text-yellow-400 animate-bounce" size={64} />
-              <Sparkles
-                className="absolute -top-2 -right-2 text-blue-400"
-                size={24}
-              />
+            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full border border-blue-500/30">
+              <Brain className="w-5 h-5 text-blue-400 mr-2" />
+              <span className="text-blue-300 text-sm font-semibold">ระบบทดสอบความรู้</span>
             </div>
           </div>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 bg-clip-text text-transparent">
+
+          <div className="relative mb-6">
+            <Brain className="text-blue-400 animate-bounce mx-auto" size={72} />
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent leading-tight">
             {text.title}
           </h1>
-          <p className="text-gray-300 text-lg sm:text-xl max-w-2xl mx-auto">
+          <p className="text-gray-300 text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed">
             {text.subtitle}
           </p>
+
+          {/* Mode Description */}
+          <div className="mt-8 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/30 rounded-xl p-6">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="p-3 bg-blue-500/20 rounded-full">
+                    <Trophy className="w-8 h-8 text-blue-400" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 text-center">สะสมคะแนน</h3>
+                <p className="text-gray-300 text-center text-sm">หลายตัวเลือก, เติมคำ, จับคู่</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-xl p-6">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="p-3 bg-red-500/20 rounded-full">
+                    <Clock className="w-8 h-8 text-red-400" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 text-center">ท้าทายเวลา</h3>
+                <p className="text-gray-300 text-center text-sm">60 วินาที ตอบให้เร็วที่สุด</p>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-6">
+                <div className="flex items-center justify-center mb-3">
+                  <div className="p-3 bg-green-500/20 rounded-full">
+                    <Target className="w-8 h-8 text-green-400" />
+                  </div>
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2 text-center">ทบทวนแบบสุ่ม</h3>
+                <p className="text-gray-300 text-center text-sm">คำถามจากทุกบทเรียน</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Progress Dashboard */}
@@ -356,12 +303,12 @@ export default function MiniGamePage() {
                 <CheckCircle className="text-green-400" size={24} />
               </div>
               <div className="text-4xl font-bold text-white mb-2">
-                {totalCompletedGames}/{miniGames.length}
+                {totalCompletedGames}/3
               </div>
               <div className="w-full bg-gray-700 rounded-full h-3 mt-4">
                 <div
                   className={`bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-500 progress-animated`}
-                  data-progress={(totalCompletedGames / miniGames.length) * 100}
+                  data-progress={(totalCompletedGames / 3) * 100}
                 ></div>
               </div>
             </div>
@@ -388,14 +335,26 @@ export default function MiniGamePage() {
                 </span>
                 <Flame className="text-orange-400" size={24} />
               </div>
-              <div className="text-4xl font-bold text-orange-400 mb-2">12</div>
+              <div className="text-4xl font-bold text-orange-400 mb-2">{streakDays}</div>
               <div className="text-base text-gray-400">วันติดต่อกัน</div>
             </div>
           </div>
         </div>
 
-        {/* Mini Games Grid */}
-        <div className="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 sm:gap-10 max-w-7xl mx-auto mb-16 mt-8">
+        {/* Quiz Modes Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-center mb-8">
+            <div className="p-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mr-3">
+              <Brain className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              โหมดทดสอบความรู้
+            </h2>
+          </div>
+        </div>
+
+        {/* Quiz Modes Grid */}
+        <div className="grid sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 max-w-7xl mx-auto mb-16 mt-8">
           {miniGames.map((game, index) => {
             const completed = isGameCompleted(game.id);
             const isHovered = hoveredGame === game.id;
@@ -413,7 +372,8 @@ export default function MiniGamePage() {
                   relative bg-white/10 backdrop-blur-sm rounded-3xl p-10 
                   hover:bg-white/20 transition-all duration-500 
                   transform hover:scale-105 hover:-translate-y-2
-                  border border-white/20 h-full game-card-glow min-h-[420px] overflow-visible
+                  border border-white/20 h-full game-card-glow min-h-[580px] max-h-[580px] overflow-visible
+                  flex flex-col justify-between
                   ${completed ? "ring-2 ring-green-500/50" : ""}
                   ${isHovered ? "shadow-2xl shadow-yellow-500/20" : ""}
                 `}
@@ -460,7 +420,7 @@ export default function MiniGamePage() {
                     </div>
 
                     {/* Game Header */}
-                    <div className="flex items-center justify-between mb-8 mt-8">
+                    <div className="flex items-center justify-between mb-6 mt-8">
                       <div className="text-6xl transform transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12 float-animation">
                         {game.thumbnail}
                       </div>
@@ -475,74 +435,80 @@ export default function MiniGamePage() {
                       </div>
                     </div>
 
-                    {/* Game Title */}
-                    <h3 className="text-3xl font-bold text-white mb-4 group-hover:text-yellow-400 transition-colors leading-tight">
-                      {game.title}
-                    </h3>
+                    {/* Game Content Container - Flex layout for consistent height */}
+                    <div className="flex-1 flex flex-col justify-between">
+                      {/* Game Title */}
+                      <h3 className="text-3xl font-bold text-white mb-4 group-hover:text-yellow-400 transition-colors leading-tight">
+                        {game.title}
+                      </h3>
 
-                    {/* Game Description */}
-                    <p className="text-gray-300 mb-8 leading-relaxed text-base">
-                      {game.description}
-                    </p>
+                      {/* Game Description */}
+                      <p className="text-gray-300 mb-6 leading-relaxed text-base line-clamp-3">
+                        {game.description}
+                      </p>
 
-                    {/* Game Stats */}
-                    <div className="space-y-4 mb-8">
-                      <div className="flex items-center justify-between text-base">
-                        <div className="flex items-center">
-                          <Clock size={18} className="text-gray-400 mr-3" />
-                          <span className="text-gray-400 font-medium">
-                            {text.time}
-                          </span>
-                        </div>
-                        <span className="text-gray-300 font-semibold">
-                          {game.estimatedTime}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-base">
-                        <div className="flex items-center">
-                          <Trophy size={18} className="text-yellow-400 mr-3" />
-                          <span className="text-gray-400 font-medium">
-                            {text.points}
-                          </span>
-                        </div>
-                        <span className="text-yellow-400 font-bold text-lg">
-                          {game.points}
-                          {hasBonus(game.id) ? " x2" : ""}
-                        </span>
-                      </div>
-
-                      {/* Additional Game Info */}
-                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/10">
-                        <div className="text-center">
-                          <div className="text-blue-400 font-bold text-lg">
-                            {Math.floor(Math.random() * 2000) + 500}
+                      {/* Bottom Section */}
+                      <div className="mt-auto">
+                        {/* Game Stats */}
+                        <div className="space-y-4 mb-6">
+                          <div className="flex items-center justify-between text-base">
+                            <div className="flex items-center">
+                              <Clock size={18} className="text-gray-400 mr-3" />
+                              <span className="text-gray-400 font-medium">
+                                {text.time}
+                              </span>
+                            </div>
+                            <span className="text-gray-300 font-semibold">
+                              {game.estimatedTime}
+                            </span>
                           </div>
-                          <div className="text-xs text-gray-400">ผู้เล่น</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-green-400 font-bold text-lg flex items-center justify-center gap-1">
-                            ⭐ {(4.2 + Math.random() * 0.7).toFixed(1)}
+
+                          <div className="flex items-center justify-between text-base">
+                            <div className="flex items-center">
+                              <Trophy size={18} className="text-yellow-400 mr-3" />
+                              <span className="text-gray-400 font-medium">
+                                {text.points}
+                              </span>
+                            </div>
+                            <span className="text-yellow-400 font-bold text-lg">
+                              {game.points}
+                              {hasBonus(game.id) ? " x2" : ""}
+                            </span>
                           </div>
-                          <div className="text-xs text-gray-400">คะแนน</div>
+
+                          {/* Additional Game Info */}
+                          <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/10">
+                            <div className="text-center">
+                              <div className="text-blue-400 font-bold text-lg">
+                                {Math.floor(Math.random() * 2000) + 500}
+                              </div>
+                              <div className="text-xs text-gray-400">ผู้เล่น</div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-green-400 font-bold text-lg flex items-center justify-center gap-1">
+                                ⭐ {(4.2 + Math.random() * 0.7).toFixed(1)}
+                              </div>
+                              <div className="text-xs text-gray-400">คะแนน</div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Play Button */}
+                        <div
+                          className={`
+                        flex items-center justify-center gap-2 font-semibold py-3 px-6 rounded-xl text-center transition-all duration-300 text-base
+                        ${
+                          completed
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400"
+                            : "bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:from-yellow-400 hover:to-orange-400"
+                        }
+                        transform group-hover:scale-105 shadow-lg
+                      `}
+                        >
+                          <PlayCircle size={18} />
+                          {completed ? text.completed : text.play}
                         </div>
                       </div>
-                    </div>
-
-                    {/* Play Button */}
-                    <div
-                      className={`
-                    flex items-center justify-center gap-3 font-bold py-5 px-8 rounded-2xl text-center transition-all duration-300 text-lg
-                    ${
-                      completed
-                        ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white hover:from-green-400 hover:to-emerald-400"
-                        : "bg-gradient-to-r from-yellow-500 to-orange-500 text-black hover:from-yellow-400 hover:to-orange-400"
-                    }
-                    transform group-hover:scale-105 shadow-lg
-                  `}
-                    >
-                      <PlayCircle size={24} />
-                      {completed ? text.completed : text.play}
                     </div>
 
                     {/* Hover Effect Overlay */}
@@ -629,38 +595,42 @@ export default function MiniGamePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 max-w-7xl mx-auto">
             <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 rounded-2xl p-8 border border-blue-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-blue-400 mb-4">🌟</div>
-              <div className="text-4xl font-bold text-white mb-3">1,247</div>
+              <div className="text-4xl font-bold text-white mb-3">{gameStats?.gamesPlayed || 0}</div>
               <div className="text-gray-400 text-base mb-2">
                 ครั้งที่เล่นทั้งหมด
               </div>
-              <div className="text-green-400 text-sm">+23% จากเดือนที่แล้ว</div>
+              <div className="text-green-400 text-sm">เริ่มต้นการผจญภัย!</div>
             </div>
 
             <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-2xl p-8 border border-green-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-green-400 mb-4">⏱️</div>
-              <div className="text-4xl font-bold text-white mb-3">4.2 นาที</div>
+              <div className="text-4xl font-bold text-white mb-3">
+                {gameStats?.gamesPlayed ? Math.round(gameStats.totalTimeSpent / gameStats.gamesPlayed) : 0} วินาที
+              </div>
               <div className="text-gray-400 text-base mb-2">
                 เวลาเฉลี่ยต่อเกม
               </div>
-              <div className="text-blue-400 text-sm">ลดลง 18% จากเดิม</div>
+              <div className="text-blue-400 text-sm">กำลังปรับปรุง!</div>
             </div>
 
             <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-2xl p-8 border border-yellow-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-yellow-400 mb-4">🏆</div>
-              <div className="text-4xl font-bold text-white mb-3">2,850</div>
+              <div className="text-4xl font-bold text-white mb-3">{gameStats?.bestScore || 0}</div>
               <div className="text-gray-400 text-base mb-2">
-                คะแนนสูงสุดในวัน
+                คะแนนสูงสุด
               </div>
-              <div className="text-purple-400 text-sm">สถิติใหม่!</div>
+              <div className="text-purple-400 text-sm">เป้าหมายใหม่!</div>
             </div>
 
             <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-8 border border-purple-500/20 hover:scale-105 transition-transform">
               <div className="text-5xl text-purple-400 mb-4">🎯</div>
-              <div className="text-4xl font-bold text-white mb-3">92%</div>
+              <div className="text-4xl font-bold text-white mb-3">
+                {gameStats?.gamesPlayed ? Math.round(gameStats.attempts.reduce((sum, a) => sum + a.percentage, 0) / gameStats.gamesPlayed) : 0}%
+              </div>
               <div className="text-gray-400 text-base mb-2">
                 อัตราผ่านเฉลี่ย
               </div>
-              <div className="text-green-400 text-sm">เพิ่มขึ้น 5%</div>
+              <div className="text-green-400 text-sm">เก่งขึ้นทุกวัน!</div>
             </div>
           </div>
 
@@ -694,79 +664,43 @@ export default function MiniGamePage() {
             {/* Enhanced Pro Tips Section */}
             <div className="bg-gradient-to-r from-yellow-500/10 via-orange-500/10 to-red-500/10 rounded-xl p-8 mt-8 border border-yellow-500/20">
               <h4 className="text-2xl font-bold text-yellow-400 mb-6 flex items-center gap-3 text-center justify-center">
-                <span>💡</span> เคล็ดลับการเล่น Pro - เป็นมาสเตอร์อวกาศ
+                <span>💡</span> เคล็ดลับการทำแบบทดสอบ
               </h4>
 
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+              <div className="grid md:grid-cols-3 gap-6 mb-6">
                 <div className="bg-blue-900/30 rounded-lg p-4 border border-blue-500/30">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">🧠</span>
-                    <h5 className="font-bold text-white">เทคนิคความจำ</h5>
+                    <span className="text-2xl">🎯</span>
+                    <h5 className="font-bold text-white">Score Challenge</h5>
                   </div>
                   <ul className="text-sm text-gray-300 space-y-2">
-                    <li>• สร้างเรื่องราวเชื่อมโยงดาวเคราะห์</li>
-                    <li>• ใช้คำกลอนจำลำดับ "พุ ศุ โล อัง พฤ เส ยู เน"</li>
-                    <li>• เล่นก่อนนอน 30 นาที เพื่อให้สมองจำ</li>
+                    <li>• อ่านคำถามให้จบก่อนตอบ</li>
+                    <li>• เริ่มต้นด้วยข้อที่มั่นใจที่สุด</li>
+                    <li>• ใช้การกำจัดตัวเลือกที่ผิดชัด</li>
                   </ul>
                 </div>
 
                 <div className="bg-green-900/30 rounded-lg p-4 border border-green-500/30">
                   <div className="flex items-center gap-3 mb-3">
                     <span className="text-2xl">⚡</span>
-                    <h5 className="font-bold text-white">เพิ่มความเร็ว</h5>
+                    <h5 className="font-bold text-white">Time Rush</h5>
                   </div>
                   <ul className="text-sm text-gray-300 space-y-2">
-                    <li>• อ่านคำถามก่อนดูตัวเลือก</li>
-                    <li>• ใช้การกำจัดตัวเลือกที่ผิดก่อน</li>
-                    <li>• เล่นเกมความจำในโหมดฝึกหัดเร็ว</li>
+                    <li>• ตอบด้วยสัญชาตญาณ</li>
+                    <li>• อ่านคำสำคัญในคำถาม</li>
+                    <li>• ข้ามข้อยากไปทำข้อง่ายก่อน</li>
                   </ul>
                 </div>
 
                 <div className="bg-purple-900/30 rounded-lg p-4 border border-purple-500/30">
                   <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">🎯</span>
-                    <h5 className="font-bold text-white">เพิ่มความแม่นยำ</h5>
+                    <span className="text-2xl">🎲</span>
+                    <h5 className="font-bold text-white">Random Quiz</h5>
                   </div>
                   <ul className="text-sm text-gray-300 space-y-2">
-                    <li>• อ่านข้อมูลดาวเคราะห์ก่อนเล่น</li>
-                    <li>• เล่นเกมง่ายก่อน แล้วค่อยเพิ่มความยาก</li>
-                    <li>• หยุดพักเมื่อเริ่มสับสน</li>
-                  </ul>
-                </div>
-
-                <div className="bg-orange-900/30 rounded-lg p-4 border border-orange-500/30">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">🏆</span>
-                    <h5 className="font-bold text-white">เก็บคะแนนสูง</h5>
-                  </div>
-                  <ul className="text-sm text-gray-300 space-y-2">
-                    <li>• เล่นให้จบทุกเกม แม้ผิดก็ได้โบนัส</li>
-                    <li>• เล่นเกมที่ถนัดก่อน เพื่อความมั่นใจ</li>
-                    <li>• ใช้คำใบ้ในเกมยากเมื่อจำเป็นเท่านั้น</li>
-                  </ul>
-                </div>
-
-                <div className="bg-pink-900/30 rounded-lg p-4 border border-pink-500/30">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">🔥</span>
-                    <h5 className="font-bold text-white">สร้าง Streak</h5>
-                  </div>
-                  <ul className="text-sm text-gray-300 space-y-2">
-                    <li>• เล่นทุกวันในเวลาเดียวกัน</li>
-                    <li>• ตั้งเป้า 1 เกม/วัน เริ่มจากเป้าเล็กๆ</li>
-                    <li>• ใช้การแจ้งเตือนช่วยเตือน</li>
-                  </ul>
-                </div>
-
-                <div className="bg-cyan-900/30 rounded-lg p-4 border border-cyan-500/30">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-2xl">🌟</span>
-                    <h5 className="font-bold text-white">ผู้เชี่ยวชาญ</h5>
-                  </div>
-                  <ul className="text-sm text-gray-300 space-y-2">
-                    <li>• อ่านข้อเท็จจริงเพิ่มเติมหลังเล่น</li>
-                    <li>• ท้าทายเพื่อนมาแข่งขัน</li>
-                    <li>• ปลดล็อคเกมโบนัสหลังผ่านทุกเกม</li>
+                    <li>• เหมาะสำหรับการทบทวน</li>
+                    <li>• ไม่ควรใช้เดาคำตอบ</li>
+                    <li>• อ่านคำอธิบายเมื่อตอบผิด</li>
                   </ul>
                 </div>
               </div>
@@ -774,54 +708,54 @@ export default function MiniGamePage() {
               {/* Special Tips */}
               <div className="bg-gradient-to-r from-indigo-800/50 to-purple-800/50 rounded-lg p-6 border border-indigo-400/30">
                 <h5 className="text-lg font-bold text-indigo-300 mb-4 flex items-center gap-2">
-                  <span>🎖️</span> เคล็ดลับลับจาก Master Players
+                  <span>🎖️</span> เคล็ดลับการเรียนรู้
                 </h5>
                 <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-300">
                   <div>
                     <span className="text-yellow-400 font-semibold">
-                      � Easter Egg:
+                      📚 การทบทวน:
                     </span>
                     <p>
-                      ลองพิมพ์ "COSMOS" ในเกม Black Hole Escape เพื่อโหมดพิเศษ
+                      ทำแบบทดสอบสม่ำเสมอจะช่วยเสริมสร้างความจำระยะยาว
                     </p>
                   </div>
                   <div>
                     <span className="text-green-400 font-semibold">
-                      🚀 Speed Run:
+                      🧠 การเข้าใจ:
                     </span>
-                    <p>จับเวลาเล่นทุกเกม แล้วพยายามทำลายสถิติของตัวเอง</p>
+                    <p>อ่านคำอธิบายหลังตอบผิดเพื่อเข้าใจแนวคิดที่ถูกต้อง</p>
                   </div>
                   <div>
                     <span className="text-blue-400 font-semibold">
-                      🌌 Perfect Run:
+                      📊 การติดตาม:
                     </span>
                     <p>
-                      เล่นให้ผิดพลาด 0 ครั้งในเกม Planet Match เพื่อโบนัส x2
+                      ดูความก้าวหน้าของตัวเองเพื่อปรับปรุงจุดที่ยังไม่แข็งแกร่ง
                     </p>
                   </div>
                   <div>
                     <span className="text-purple-400 font-semibold">
-                      ⭐ Constellation Master:
+                      🎯 การฝึกฝน:
                     </span>
-                    <p>จำรูปแบบกลุ่มดาวได้ครบทั้งหมดแล้วปิดคำใบ้เล่น</p>
+                    <p>ฝึกทำแบบทดสอบแต่ละโหมดเพื่อเชี่ยวชาญทุกแบบ</p>
                   </div>
                 </div>
               </div>
 
-              {/* Daily Challenges */}
+              {/* Daily Goals */}
               <div className="mt-6 text-center">
                 <h5 className="text-lg font-bold text-yellow-400 mb-3">
-                  🎯 ภารกิจรายวัน
+                  🎯 เป้าหมายการเรียนรู้
                 </h5>
                 <div className="flex flex-wrap justify-center gap-3">
                   <div className="bg-yellow-600/20 text-yellow-300 px-4 py-2 rounded-full text-sm border border-yellow-500/30">
-                    วันนี้: ทำคะแนน 500+ ในเกม Solar Quiz
+                    วันนี้: ทำ Score Challenge ได้คะแนน 80%+
                   </div>
                   <div className="bg-green-600/20 text-green-300 px-4 py-2 rounded-full text-sm border border-green-500/30">
-                    พรุ่งนี้: เล่น Planet Match ไม่ใช้คำใบ้
+                    สัปดาห์นี้: ลองทุกโหมดอย่างน้อย 1 ครั้ง
                   </div>
                   <div className="bg-blue-600/20 text-blue-300 px-4 py-2 rounded-full text-sm border border-blue-500/30">
-                    สัปดาห์นี้: รีบปลดล็อคเกมใหม่ทั้งหมด
+                    เดือนนี้: ทำแบบทดสอบติดต่อกัน 7 วัน
                   </div>
                 </div>
               </div>

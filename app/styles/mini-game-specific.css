@@ -1,0 +1,67 @@
+/* Mini Game Progress Bar Styles */
+.progress-bar {
+  transition: width 0.3s ease-in-out;
+}
+
+.progress-0 { width: 0%; }
+.progress-10 { width: 10%; }
+.progress-20 { width: 20%; }
+.progress-30 { width: 30%; }
+.progress-40 { width: 40%; }
+.progress-50 { width: 50%; }
+.progress-60 { width: 60%; }
+.progress-70 { width: 70%; }
+.progress-80 { width: 80%; }
+.progress-90 { width: 90%; }
+.progress-100 { width: 100%; }
+
+/* Question Renderer Specific Styles */
+.question-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.question-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Answer Button Styles */
+.answer-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.answer-button:hover {
+  transform: scale(1.02);
+}
+
+.answer-button.correct {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgb(34, 197, 94);
+  color: rgb(74, 222, 128);
+}
+
+.answer-button.incorrect {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgb(239, 68, 68);
+  color: rgb(248, 113, 113);
+}
+
+.answer-button.selected {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgb(59, 130, 246);
+  color: rgb(147, 197, 253);
+}
+
+.answer-button.disabled {
+  background: rgba(107, 114, 128, 0.2);
+  border-color: rgb(107, 114, 128);
+  color: rgb(156, 163, 175);
+}
+
+/* Game Loading Animation */
+.loading-brain {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.loading-border {
+  animation: spin 1s linear infinite;
+}
