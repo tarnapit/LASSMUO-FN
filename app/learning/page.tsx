@@ -218,24 +218,24 @@ export default function LearningPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       <Navbar />
 
-      <div className="container mx-auto px-6 py-20">
+      <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
         {/* Hero Section */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-12 sm:mb-16">
           {/* Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
-              <BookOpen className="w-5 h-5 text-purple-400 mr-2" />
-              <span className="text-purple-300 text-sm font-semibold">การเรียนรู้แบบปฏิบัติ</span>
+          <div className="flex justify-center mb-4 sm:mb-6">
+            <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-full border border-purple-500/30">
+              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 mr-2" />
+              <span className="text-purple-300 text-xs sm:text-sm font-semibold">การเรียนรู้แบบปฏิบัติ</span>
             </div>
           </div>
 
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight px-4">
             {text.lesson}
           </h1>
           
-          <p className="text-gray-300 text-xl max-w-4xl mx-auto leading-relaxed mb-8">
+          <p className="text-gray-300 text-base sm:text-lg md:text-xl max-w-4xl mx-auto leading-relaxed mb-6 sm:mb-8 px-4">
             เรียนรู้ดาราศาสตร์ผ่านการทดลอง การสำรวจ และการลงมือทำ
-            <br />
+            <br className="hidden sm:block" />
             <span className="text-purple-400 font-semibold">ปฏิบัติจริง ไม่ใช่แค่ท่องจำ</span>
           </p>
 
@@ -291,7 +291,7 @@ export default function LearningPage() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto px-4">
           {learningModules.map((module) => {
             const quiz = getQuizByModuleId(module.id);
             const progress = moduleProgresses[module.id];
@@ -299,13 +299,13 @@ export default function LearningPage() {
 
             return (
               <div key={module.id} className="group h-full">
-                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl p-6 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105 border border-slate-700/50 h-full flex flex-col min-h-[500px] shadow-xl">
+                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105 border border-slate-700/50 h-full flex flex-col min-h-[450px] sm:min-h-[500px] shadow-xl">
                   {/* Header with Status */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center space-x-3">
+                  <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
                       {getModuleStatusIcon(module.id)}
                       <div className="flex flex-col">
-                        <span className={`text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
+                        <span className={`text-xs sm:text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
                           {getModuleStatusText(module.id)}
                         </span>
                         <span className={`text-xs ${getLevelColor(module.level)}`}>

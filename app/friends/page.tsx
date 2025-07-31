@@ -170,19 +170,19 @@ export default function FriendsPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       <Navbar />
       
-      <div className="container mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-4">
-            <Users className="text-yellow-400" size={48} />
+      <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+        <div className="text-center mb-12 sm:mb-16">
+          <div className="flex justify-center mb-3 sm:mb-4">
+            <Users className="text-yellow-400" size={32} />
           </div>
-          <h1 className="text-5xl font-bold text-white mb-4">{text.title}</h1>
-          <p className="text-gray-300 text-lg">{text.subtitle}</p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 px-4">{text.title}</h1>
+          <p className="text-gray-300 text-base sm:text-lg px-4">{text.subtitle}</p>
         </div>
 
         {/* Navigation Tabs */}
         {isLoggedIn && (
-          <div className="flex justify-center mb-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-2 border border-white/20">
+          <div className="flex justify-center mb-6 sm:mb-8">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-1 sm:p-2 border border-white/20">
               <div className="flex space-x-2">
                 {(Object.keys(text.tabs) as Tab[]).map((tab) => (
                   <button
