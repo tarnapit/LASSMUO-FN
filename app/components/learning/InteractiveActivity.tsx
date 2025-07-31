@@ -8,9 +8,15 @@ interface InteractiveActivityProps {
   onComplete: (score: number, timeSpent: number, passed: boolean) => void;
   required?: boolean;
   minimumScore?: number;
+  key?: string; // เพิ่ม key เพื่อให้ component รีเซ็ตเมื่อกิจกรรมเปลี่ยน
 }
 
-export default function InteractiveActivityComponent({ activity, onComplete, required = false, minimumScore = 0 }: InteractiveActivityProps) {
+export default function InteractiveActivityComponent({ 
+  activity, 
+  onComplete, 
+  required = false, 
+  minimumScore = 0 
+}: InteractiveActivityProps) {
   const [startTime] = useState(new Date());
   const [isCompleted, setIsCompleted] = useState(false);
   const [score, setScore] = useState(0);
@@ -20,6 +26,18 @@ export default function InteractiveActivityComponent({ activity, onComplete, req
   const [attempts, setAttempts] = useState(0);
   const [passed, setPassed] = useState(false);
   const [showHint, setShowHint] = useState(false);
+
+  // รีเซ็ต component เมื่อ activity เปลี่ยน
+  useEffect(() => {
+    setIsCompleted(false);
+    setScore(0);
+    setShowFeedback(false);
+    setIsCorrect(false);
+    setTimeRemaining(activity.timeLimit || 0);
+    setAttempts(0);
+    setPassed(false);
+    setShowHint(false);
+  }, [activity.id, activity.timeLimit]);
 
   // Timer effect
   useEffect(() => {
@@ -45,6 +63,7 @@ export default function InteractiveActivityComponent({ activity, onComplete, req
     setIsCorrect(false);
     setPassed(false);
     const timeSpent = Math.round((new Date().getTime() - startTime.getTime()) / 1000);
+    console.log(`Activity ${activity.id} time up, calling onComplete with passed=false`);
     onComplete(0, timeSpent, false);
   };
 
@@ -56,6 +75,8 @@ export default function InteractiveActivityComponent({ activity, onComplete, req
     const finalScore = correct ? earnedScore : 0;
     const activityPassed = finalScore >= (activity.passingScore || minimumScore);
     
+    console.log(`Activity ${activity.id} answer: correct=${correct}, score=${finalScore}, passed=${activityPassed}, passingScore=${activity.passingScore}, minimumScore=${minimumScore}`);
+    
     setIsCorrect(correct);
     setScore(finalScore);
     setPassed(activityPassed);
@@ -64,12 +85,15 @@ export default function InteractiveActivityComponent({ activity, onComplete, req
     // ถ้าผ่านแล้วหรือใช้ครั้งครบ
     if (activityPassed || (activity.maxAttempts && newAttempts >= activity.maxAttempts)) {
       setIsCompleted(true);
+      console.log(`Activity ${activity.id} completed, calling onComplete with passed=${activityPassed}`);
+      // เรียกทันทีไม่ต้อง setTimeout
       onComplete(finalScore, timeSpent, activityPassed);
     } else {
       // แสดงคำใบ้ถ้ามี
       if (activity.feedback?.hint && !correct) {
         setShowHint(true);
       }
+      console.log(`Activity ${activity.id} not passed yet, attempts: ${newAttempts}/${activity.maxAttempts}`);
     }
   };
 

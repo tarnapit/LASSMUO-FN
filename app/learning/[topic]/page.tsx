@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getLearningModuleById } from "../../data/learning-modules";
 import { getQuizByModuleId } from "../../data/quizzes";
@@ -43,9 +43,11 @@ export default function LearningTopicPage() {
     new Set()
   );
   const [canProceed, setCanProceed] = useState(true);
+  // เพิ่ม state เพื่อติดตามกิจกรรมที่กำลังทำอยู่
+  const [currentActivityId, setCurrentActivityId] = useState<string | null>(null);
 
   // ตรวจสอบว่าสามารถไปหน้าต่อไปได้หรือไม่
-  const checkCanProceed = () => {
+  const checkCanProceed = useCallback(() => {
     if (!module) {
       setCanProceed(true);
       return;
@@ -59,15 +61,27 @@ export default function LearningTopicPage() {
       return;
     }
 
+    console.log('checkCanProceed called for content:', currentContent.type, currentContent.activity?.id);
+
     // ถ้าเป็นกิจกรรมที่บังคับ
     if (currentContent.required && currentContent.activity) {
       const activityId = currentContent.activity.id;
+      
+      // ตรวจสอบว่ากิจกรรมนี้เสร็จแล้วหรือยัง
       const isCompleted = completedActivities.has(activityId);
+      
+      // อัพเดท currentActivityId
+      setCurrentActivityId(activityId);
+      
+      console.log(`Checking required activity ${activityId}: completed = ${isCompleted}, completedActivities:`, [...completedActivities]);
+      
       setCanProceed(isCompleted);
     } else {
+      console.log('Content is not a required activity, can proceed');
       setCanProceed(true);
+      setCurrentActivityId(null);
     }
-  };
+  }, [module, currentChapterIndex, currentContentIndex, completedActivities]);
 
   useEffect(() => {
     if (params.topic) {
@@ -77,6 +91,13 @@ export default function LearningTopicPage() {
       if (foundModule) {
         setModule(foundModule);
         setQuiz(foundQuiz);
+        
+        // รีเซ็ต states เมื่อเปลี่ยน module
+        setCompletedActivities(new Set());
+        setActivityScores({});
+        setTotalScore(0);
+        setCurrentActivityId(null);
+        
         // เริ่มการเรียน module
         progressManager.startLearningModule(params.topic as string);
 
@@ -102,15 +123,22 @@ export default function LearningTopicPage() {
     }
   }, [params.topic, router]);
 
-  // บันทึกเวลาเมื่อเปลี่ยน chapter
+  // บันทึกเวลาเมื่อเปลี่ยน chapter หรือ content
   useEffect(() => {
     setStartTime(new Date());
-  }, [currentChapterIndex]);
+  }, [currentChapterIndex, currentContentIndex]);
 
-  // ตรวจสอบทุกครั้งที่เปลี่ยน content
+  // ตรวจสอบทุกครั้งที่เปลี่ยน content หรือ completedActivities
   useEffect(() => {
     checkCanProceed();
-  }, [currentContentIndex, completedActivities, module, currentChapterIndex]);
+  }, [checkCanProceed]);
+
+  // Debug useEffect เพื่อดู state changes
+  useEffect(() => {
+    console.log('completedActivities changed:', [...completedActivities]);
+    console.log('canProceed:', canProceed);
+    console.log('currentActivityId:', currentActivityId);
+  }, [completedActivities, canProceed, currentActivityId]);
 
   if (!module) {
     return (
@@ -244,6 +272,12 @@ export default function LearningTopicPage() {
       `Activity ${activityId} completed with score ${score} in ${timeSpent} seconds, passed: ${passed}`
     );
 
+    // ตรวจสอบว่าเป็นกิจกรรมปัจจุบันหรือไม่
+    if (currentActivityId !== activityId) {
+      console.warn(`Activity ${activityId} is not the current activity (${currentActivityId})`);
+      return;
+    }
+
     // บันทึกคะแนนกิจกรรม
     setActivityScores((prev) => {
       const newScores = { ...prev, [activityId]: score };
@@ -252,13 +286,17 @@ export default function LearningTopicPage() {
       return newScores;
     });
 
-    // ถ้าผ่านกิจกรรมแล้ว
+    // ถ้าผ่านกิจกรรมแล้ว - อัพเดท state และเรียก checkCanProceed ใน useEffect
     if (passed) {
-      setCompletedActivities((prev) => new Set([...prev, activityId]));
+      setCompletedActivities((prev) => {
+        const newSet = new Set([...prev, activityId]);
+        console.log(`Activity ${activityId} marked as completed. All completed:`, [...newSet]);
+        return newSet;
+      });
+    } else {
+      // ถ้าไม่ผ่าน ก็ตรวจสอบเลย
+      checkCanProceed();
     }
-
-    // ตรวจสอบว่าสามารถไปต่อได้หรือไม่
-    checkCanProceed();
 
     // อัพเดท progress
     if (typeof window !== "undefined") {
@@ -314,6 +352,7 @@ export default function LearningTopicPage() {
       case "range-answer":
         return currentContent.activity ? (
           <InteractiveActivityComponent
+            key={`${currentChapterIndex}-${currentContentIndex}-${currentContent.activity.id}`}
             activity={currentContent.activity}
             onComplete={(score, timeSpent, passed) =>
               handleActivityComplete(
