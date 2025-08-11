@@ -90,6 +90,12 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
       }
     } catch (error: any) {
       console.error('Auth error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        stack: error.stack
+      });
+      
       const errorMessage = error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
       setError(errorMessage);
       

@@ -61,7 +61,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       {/* API Status Indicator */}
-      <ApiStatusIndicator />
+      {/* <ApiStatusIndicator /> */}
       
       {/* Navigation */}
       <Navbar />
