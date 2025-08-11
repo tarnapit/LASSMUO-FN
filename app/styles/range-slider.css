@@ -1,0 +1,66 @@
+/* Range Slider Styles */
+.range-slider-container {
+  --min-percent: 25%;
+  --max-percent: 75%;
+  --min-position: 25%;
+  --max-position: 75%;
+}
+
+.range-slider-min {
+  left: var(--min-position, 25%);
+}
+
+.range-slider-max {
+  left: var(--max-position, 75%);
+}
+
+/* Custom Range Slider Track */
+.range-slider-track {
+  background: linear-gradient(to right, 
+    #374151 0%, 
+    #374151 var(--min-percent, 25%), 
+    #3b82f6 var(--min-percent, 25%), 
+    #3b82f6 var(--max-percent, 75%), 
+    #374151 var(--max-percent, 75%), 
+    #374151 100%);
+}
+
+/* Correct Range Indicator */
+.correct-range-indicator {
+  left: var(--correct-left, 30%);
+  width: var(--correct-width, 40%);
+}
+
+/* Range Input Styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-track {
+  background: transparent;
+  height: 16px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  background: transparent;
+  height: 24px;
+  width: 24px;
+}
+
+input[type="range"]::-moz-range-track {
+  background: transparent;
+  height: 16px;
+  border: none;
+}
+
+input[type="range"]::-moz-range-thumb {
+  background: transparent;
+  height: 24px;
+  width: 24px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}

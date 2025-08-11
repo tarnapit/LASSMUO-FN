@@ -1,0 +1,34 @@
+.range-slider-thumb {
+  position: absolute;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: #3b82f6;
+  border-radius: 9999px;
+  border: 4px solid white;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateX(-50%) translateY(-0.25rem);
+}
+
+.range-slider-thumb-min {
+  left: var(--min-position);
+}
+
+.range-slider-thumb-max {
+  left: var(--max-position);
+}
+
+.range-slider-track {
+  height: 1rem;
+  border-radius: 9999px;
+  background: var(--track-background);
+}
+
+.correct-range-indicator {
+  position: absolute;
+  height: 100%;
+  background-color: #10b981;
+  border-radius: 9999px;
+  opacity: 0.5;
+  left: var(--correct-min);
+  width: var(--correct-width);
+}

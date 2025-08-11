@@ -8,6 +8,9 @@ import TrueFalseQuestion from "./TrueFalseQuestion";
 import EnhancedDragDropQuestion from "./DragDropQuestion";
 import EnhancedFillBlankQuestion from "./FillBlankQuestion";
 import EnhancedMatchPairsQuestion from "./MatchPairsQuestion";
+import ImageIdentificationQuestion from "./ImageIdentificationQuestion";
+import SentenceReorderingQuestion from "./SentenceReorderingQuestion";
+import RangeAnswerQuestion from "./RangeAnswerQuestion";
 import { AlertCircle } from "lucide-react";
 
 interface EnhancedQuizComponentProps {
@@ -165,6 +168,57 @@ export default function EnhancedQuizComponent({
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
               question={currentQuestion.question}
+            />
+          );
+        }
+        break;
+
+      case 'image-identification':
+        if ('imageUrl' in currentQuestion && 'answers' in currentQuestion) {
+          return (
+            <ImageIdentificationQuestion
+              question={currentQuestion.question}
+              imageUrl={currentQuestion.imageUrl}
+              imageDescription={currentQuestion.imageDescription}
+              answers={currentQuestion.answers}
+              onAnswer={(answerId, isCorrect) => handleAnswer(answerId, isCorrect)}
+              selectedAnswer={selectedAnswer as number}
+              {...questionProps}
+            />
+          );
+        }
+        break;
+
+      case 'sentence-reordering':
+        if ('sentences' in currentQuestion && 'correctOrder' in currentQuestion) {
+          return (
+            <SentenceReorderingQuestion
+              question={currentQuestion.question}
+              sentences={currentQuestion.sentences}
+              correctOrder={currentQuestion.correctOrder}
+              instruction={currentQuestion.instruction}
+              onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
+              showResult={showResult}
+              userAnswer={userAnswers[currentQuestionIndex]}
+            />
+          );
+        }
+        break;
+
+      case 'range-answer':
+        if ('minValue' in currentQuestion && 'maxValue' in currentQuestion && 'correctRange' in currentQuestion) {
+          return (
+            <RangeAnswerQuestion
+              question={currentQuestion.question}
+              minValue={currentQuestion.minValue}
+              maxValue={currentQuestion.maxValue}
+              correctRange={currentQuestion.correctRange}
+              unit={currentQuestion.unit}
+              step={currentQuestion.step}
+              labels={currentQuestion.labels}
+              onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
+              showResult={showResult}
+              userAnswer={userAnswers[currentQuestionIndex]}
             />
           );
         }

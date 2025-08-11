@@ -59,12 +59,50 @@ export interface TrueFalseQuestion extends BaseQuestion {
   correctAnswer: boolean;
 }
 
+export interface ImageIdentificationQuestion extends BaseQuestion {
+  type: "image-identification";
+  imageUrl: string;
+  imageDescription?: string;
+  answers: Array<{
+    id: number;
+    text: string;
+    isCorrect: boolean;
+    emoji?: string;
+  }>;
+}
+
+export interface SentenceReorderingQuestion extends BaseQuestion {
+  type: "sentence-reordering";
+  sentences: string[];
+  correctOrder: number[]; // indices of sentences in correct order
+  instruction?: string;
+}
+
+export interface RangeAnswerQuestion extends BaseQuestion {
+  type: "range-answer";
+  minValue: number;
+  maxValue: number;
+  correctRange: {
+    min: number;
+    max: number;
+  };
+  unit?: string;
+  step?: number;
+  labels?: {
+    min?: string;
+    max?: string;
+  };
+}
+
 export type Question = 
   | MultipleChoiceQuestion 
   | DragDropQuestion 
   | FillBlankQuestion 
   | MatchPairsQuestion 
-  | TrueFalseQuestion;
+  | TrueFalseQuestion
+  | ImageIdentificationQuestion
+  | SentenceReorderingQuestion
+  | RangeAnswerQuestion;
 
 export interface StageData {
   id: number;
