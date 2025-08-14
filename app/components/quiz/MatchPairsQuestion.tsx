@@ -33,6 +33,8 @@ export default function EnhancedMatchPairsQuestion({
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [connections, setConnections] = useState<Array<{from: string, to: string, isCorrect?: boolean}>>([]);
   const [animatingPair, setAnimatingPair] = useState<{left: string, right: string} | null>(null);
+  const [feedback, setFeedback] = useState<{type: 'correct' | 'incorrect', message: string} | null>(null);
+  const [showingFeedback, setShowingFeedback] = useState(false);
   const leftRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rightRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -59,7 +61,7 @@ export default function EnhancedMatchPairsQuestion({
   }, [userAnswer, pairs]);
 
   const handleLeftClick = (leftId: string) => {
-    if (showResult || matches[leftId]) return;
+    if (showResult || matches[leftId] || showingFeedback) return;
     
     if (selectedLeft === leftId) {
       setSelectedLeft(null);
@@ -70,7 +72,7 @@ export default function EnhancedMatchPairsQuestion({
   };
 
   const handleRightClick = (rightId: string) => {
-    if (showResult) return;
+    if (showResult || showingFeedback) return;
     
     // Check if this right item is already matched
     const alreadyMatched = Object.values(matches).includes(rightId);
@@ -92,10 +94,28 @@ export default function EnhancedMatchPairsQuestion({
     const correctPair = pairs.find(p => p.left.id === leftId && p.right.id === rightId);
     const isCorrectMatch = !!correctPair;
     
-    // Animate the connection with immediate feedback
+    // แสดง feedback ทันที
+    setShowingFeedback(true);
     setAnimatingPair({ left: leftId, right: rightId });
     
+    if (isCorrectMatch) {
+      setFeedback({
+        type: 'correct',
+        message: `✅ ถูกต้อง! "${correctPair?.left.text}" จับคู่กับ "${correctPair?.right.text}"`
+      });
+    } else {
+      const leftItem = pairs.find(p => p.left.id === leftId)?.left.text;
+      const rightItem = pairs.find(p => p.right.id === rightId)?.right.text;
+      setFeedback({
+        type: 'incorrect',
+        message: `❌ ไม่ถูกต้อง "${leftItem}" ไม่ได้จับคู่กับ "${rightItem}"`
+      });
+    }
+    
     setTimeout(() => {
+      setShowingFeedback(false);
+      setFeedback(null);
+      
       const newMatches = { ...matches, [leftId]: rightId };
       setMatches(newMatches);
       
@@ -121,7 +141,7 @@ export default function EnhancedMatchPairsQuestion({
           onAnswer(allCorrect, newMatches);
         }, 500);
       }
-    }, 300);
+    }, 2000);
   };
 
   const handleReset = () => {
@@ -165,22 +185,24 @@ export default function EnhancedMatchPairsQuestion({
       );
       
       return `
-        p-4 rounded-xl font-semibold text-center cursor-pointer
+        matching-item p-4 rounded-xl font-semibold text-center cursor-pointer
         transition-all duration-300 border-2
         ${connection?.isCorrect 
-          ? 'bg-green-500 text-white border-green-500 shadow-lg' 
-          : 'bg-red-500 text-white border-red-500 shadow-lg'
+          ? 'matching-item-correct bg-green-500 text-white border-green-500 shadow-lg' 
+          : 'matching-item-incorrect bg-red-500 text-white border-red-500 shadow-lg'
         }
       `;
     }
     
     return `
-      p-4 rounded-xl font-semibold text-center cursor-pointer
+      matching-item p-4 rounded-xl font-semibold text-center cursor-pointer
       transition-all duration-300 border-2
       ${isMatched 
-        ? 'bg-blue-500 text-white border-blue-500 shadow-lg cursor-default' 
+        ? 'matching-item-correct bg-blue-500 text-white border-blue-500 shadow-lg cursor-default' 
         : isSelected 
-          ? 'bg-yellow-400 text-black border-yellow-400 shadow-lg scale-105' 
+          ? 'matching-item-selected bg-yellow-400 text-black border-yellow-400 shadow-lg scale-105' 
+          : showingFeedback
+          ? 'bg-gray-500 text-gray-400 border-gray-500'
           : 'bg-white text-gray-900 border-gray-200 hover:border-blue-400 hover:bg-blue-50 shadow-md hover:shadow-lg'
       }
       ${isAnimating ? 'animate-pulse scale-105' : ''}
@@ -236,6 +258,27 @@ export default function EnhancedMatchPairsQuestion({
 
   return (
     <div className="w-full max-w-6xl mx-auto">
+      {/* Feedback overlay */}
+      {showingFeedback && feedback && (
+        <div className="feedback-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className={`
+            feedback-modal max-w-md mx-4 p-6 rounded-xl border-2 text-center transform transition-all duration-300 scale-100
+            ${feedback.type === 'correct' 
+              ? 'bg-green-500/90 border-green-400 text-white shadow-green-500/50' 
+              : 'bg-red-500/90 border-red-400 text-white shadow-red-500/50'
+            } shadow-2xl
+          `}>
+            <div className="text-4xl mb-2">
+              {feedback.type === 'correct' ? '🎉' : '💭'}
+            </div>
+            <p className="text-lg font-semibold">{feedback.message}</p>
+            {feedback.type === 'correct' && (
+              <div className="mt-2 text-sm opacity-90">ถูกต้อง!</div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-3xl lg:text-4xl font-bold text-white">
@@ -254,7 +297,8 @@ export default function EnhancedMatchPairsQuestion({
           {!showResult && (
             <button
               onClick={handleReset}
-              className="p-3 bg-gray-500 hover:bg-gray-600 rounded-full transition-colors"
+              disabled={showingFeedback}
+              className="p-3 bg-gray-500 hover:bg-gray-600 disabled:bg-gray-600/50 rounded-full transition-colors"
               title="รีเซ็ตการจับคู่"
               aria-label="รีเซ็ตการจับคู่"
             >
@@ -295,7 +339,14 @@ export default function EnhancedMatchPairsQuestion({
                 className={getItemStyle(item.id, 'left', !!matches[item.id])}
               >
                 {item.emoji && <span className="text-2xl mb-2 block">{item.emoji}</span>}
-                {item.text}
+                <div className="flex items-center justify-between">
+                  <span>{item.text}</span>
+                  {matches[item.id] && (
+                    <span className="text-xl ml-2">
+                      {connections.find(c => c.from === item.id)?.isCorrect ? '✅' : '❌'}
+                    </span>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -313,7 +364,14 @@ export default function EnhancedMatchPairsQuestion({
                   className={getItemStyle(item.id, 'right', isMatched)}
                 >
                   {item.emoji && <span className="text-2xl mb-2 block">{item.emoji}</span>}
-                  {item.text}
+                  <div className="flex items-center justify-between">
+                    <span>{item.text}</span>
+                    {isMatched && (
+                      <span className="text-xl ml-2">
+                        {connections.find(c => c.to === item.id)?.isCorrect ? '✅' : '❌'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -341,7 +399,7 @@ export default function EnhancedMatchPairsQuestion({
             {Object.keys(matches).length}/{pairs.length}
           </span>
           {allMatched && !showResult && (
-            <CheckCircle className="w-5 h-5 text-green-400 ml-2" />
+            <CheckCircle className="w-5 h-5 text-green-400 ml-2 progress-celebration" />
           )}
         </div>
       </div>

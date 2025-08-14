@@ -263,8 +263,10 @@ export default function InteractiveActivityComponent({
 function MatchingGame({ activity, onAnswer, disabled }: any) {
   const [selectedLeft, setSelectedLeft] = useState<number | null>(null);
   const [selectedRight, setSelectedRight] = useState<number | null>(null);
-  const [matches, setMatches] = useState<Array<{left: number, right: number}>>([]);
+  const [matches, setMatches] = useState<Array<{left: number, right: number, isCorrect: boolean}>>([]);
   const [shuffledRight, setShuffledRight] = useState<Array<{item: string, originalIndex: number}>>([]);
+  const [feedback, setFeedback] = useState<{type: 'correct' | 'incorrect', message: string} | null>(null);
+  const [showingFeedback, setShowingFeedback] = useState(false);
 
   useEffect(() => {
     const data = activity.data;
@@ -296,24 +298,42 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
 
   const checkMatch = (leftIndex: number, rightIndex: number) => {
     const rightOriginalIndex = shuffledRight[rightIndex].originalIndex;
+    const isCorrect = leftIndex === rightOriginalIndex;
     
-    if (leftIndex === rightOriginalIndex) {
-      // ถูกต้อง
-      setMatches(prev => [...prev, { left: leftIndex, right: rightIndex }]);
-      setSelectedLeft(null);
-      setSelectedRight(null);
-      
-      if (matches.length + 1 === activity.data.pairs.length) {
-        // เสร็จแล้ว
-        setTimeout(() => onAnswer(true, activity.points || 10), 500);
-      }
+    // แสดง feedback ทันที
+    setShowingFeedback(true);
+    if (isCorrect) {
+      setFeedback({
+        type: 'correct',
+        message: `✅ ถูกต้อง! "${activity.data.pairs[leftIndex].left}" และ "${activity.data.pairs[leftIndex].right}" จับคู่กันได้`
+      });
     } else {
-      // ผิด
-      setTimeout(() => {
+      setFeedback({
+        type: 'incorrect', 
+        message: `❌ ไม่ถูกต้อง "${activity.data.pairs[leftIndex].left}" ไม่ได้จับคู่กับ "${shuffledRight[rightIndex].item}"`
+      });
+    }
+    
+    setTimeout(() => {
+      setShowingFeedback(false);
+      setFeedback(null);
+      
+      if (isCorrect) {
+        // ถูกต้อง - เพิ่มการจับคู่
+        setMatches(prev => [...prev, { left: leftIndex, right: rightIndex, isCorrect: true }]);
         setSelectedLeft(null);
         setSelectedRight(null);
-      }, 1000);
-    }
+        
+        if (matches.length + 1 === activity.data.pairs.length) {
+          // เสร็จแล้ว
+          setTimeout(() => onAnswer(true, activity.points || 10), 500);
+        }
+      } else {
+        // ผิด - ล้างการเลือก
+        setSelectedLeft(null);
+        setSelectedRight(null);
+      }
+    }, 2000);
   };
 
   const isMatched = (side: 'left' | 'right', index: number) => {
@@ -325,47 +345,109 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
   if (!activity.data.pairs) return <div>ข้อมูลไม่ถูกต้อง</div>;
 
   return (
-    <div className="grid grid-cols-2 gap-6">
-      {/* ฝั่งซ้าย */}
-      <div className="space-y-3">
-        <h4 className="text-lg font-semibold text-white mb-3">จับคู่รายการ</h4>
-        {activity.data.pairs.map((pair: any, index: number) => (
-          <button
-            key={index}
-            onClick={() => handleLeftClick(index)}
-            disabled={disabled || isMatched('left', index)}
-            className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-              isMatched('left', index)
-                ? 'bg-green-500/20 border-green-500 text-green-300'
-                : selectedLeft === index
-                ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300'
-                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-            }`}
-          >
-            {pair.left}
-          </button>
-        ))}
+    <div className="space-y-6">
+      {/* Feedback overlay */}
+      {showingFeedback && feedback && (
+        <div className="feedback-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className={`
+            feedback-modal max-w-md mx-4 p-6 rounded-xl border-2 text-center transform transition-all duration-300 scale-100
+            ${feedback.type === 'correct' 
+              ? 'bg-green-500/90 border-green-400 text-white shadow-green-500/50' 
+              : 'bg-red-500/90 border-red-400 text-white shadow-red-500/50'
+            } shadow-2xl
+          `}>
+            <div className="text-4xl mb-2">
+              {feedback.type === 'correct' ? '🎉' : '💭'}
+            </div>
+            <p className="text-lg font-semibold">{feedback.message}</p>
+            {feedback.type === 'correct' && (
+              <div className="mt-2 text-sm opacity-90">+{Math.floor((activity.points || 10) / activity.data.pairs.length)} แต้ม</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* ฝั่งซ้าย */}
+        <div className="space-y-3">
+          <h4 className="text-lg font-semibold text-white mb-3">จับคู่รายการ</h4>
+          {activity.data.pairs.map((pair: any, index: number) => {
+            const matchInfo = matches.find(m => m.left === index);
+            return (
+              <button
+                key={index}
+                onClick={() => handleLeftClick(index)}
+                disabled={disabled || isMatched('left', index) || showingFeedback}
+                className={`
+                  matching-item w-full p-3 rounded-lg border-2 transition-all text-left
+                  ${matchInfo
+                    ? matchInfo.isCorrect
+                      ? 'matching-item-correct bg-green-500/30 border-green-500 text-green-300 shadow-lg'
+                      : 'matching-item-incorrect bg-red-500/30 border-red-500 text-red-300'
+                    : selectedLeft === index
+                    ? 'matching-item-selected bg-yellow-500/20 border-yellow-500 text-yellow-300 scale-105 shadow-lg'
+                    : showingFeedback
+                    ? 'bg-gray-500/20 border-gray-500 text-gray-400'
+                    : 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-blue-400'
+                  }
+                `}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{pair.left}</span>
+                  {matchInfo && (
+                    <span className="text-xl">
+                      {matchInfo.isCorrect ? '✅' : '❌'}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ฝั่งขวา */}
+        <div className="space-y-3">
+          <h4 className="text-lg font-semibold text-white mb-3">เลือกคำตอบ</h4>
+          {shuffledRight.map((item, index) => {
+            const isMatched = matches.some(m => m.right === index);
+            return (
+              <button
+                key={index}
+                onClick={() => handleRightClick(index)}
+                disabled={disabled || isMatched || showingFeedback}
+                className={`
+                  matching-item w-full p-3 rounded-lg border-2 transition-all text-left
+                  ${isMatched
+                    ? 'matching-item-correct bg-green-500/30 border-green-500 text-green-300 shadow-lg'
+                    : selectedRight === index
+                    ? 'matching-item-selected bg-yellow-500/20 border-yellow-500 text-yellow-300 scale-105 shadow-lg'
+                    : showingFeedback
+                    ? 'bg-gray-500/20 border-gray-500 text-gray-400'
+                    : 'bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-blue-400'
+                  }
+                `}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{item.item}</span>
+                  {isMatched && <span className="text-xl">✅</span>}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ฝั่งขวา */}
-      <div className="space-y-3">
-        <h4 className="text-lg font-semibold text-white mb-3">เลือกคำตอบ</h4>
-        {shuffledRight.map((item, index) => (
-          <button
-            key={index}
-            onClick={() => handleRightClick(index)}
-            disabled={disabled || isMatched('right', index)}
-            className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
-              isMatched('right', index)
-                ? 'bg-green-500/20 border-green-500 text-green-300'
-                : selectedRight === index
-                ? 'bg-yellow-500/20 border-yellow-500 text-yellow-300'
-                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-            }`}
-          >
-            {item.item}
-          </button>
-        ))}
+      {/* ความคืบหน้า */}
+      <div className="text-center">
+        <div className="inline-flex items-center space-x-2 text-gray-300">
+          <span>ความคืบหน้า:</span>
+          <span className="font-semibold text-white">
+            {matches.length}/{activity.data.pairs.length}
+          </span>
+          {matches.length === activity.data.pairs.length && (
+            <span className="progress-celebration text-green-400 text-xl ml-2">🎉</span>
+          )}
+        </div>
       </div>
     </div>
   );

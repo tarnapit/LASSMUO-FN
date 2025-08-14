@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "./styles/quiz-animations.css";
 @import "./styles/enhanced-ui.css";
+@import "./styles/matching-game.css";
 
 :root {
   --background: #ffffff;

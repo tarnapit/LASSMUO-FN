@@ -21,6 +21,8 @@ export default function QuestionRenderer({
   const [matchingPairs, setMatchingPairs] = useState<Record<string, string>>({});
   const [fillBlankAnswer, setFillBlankAnswer] = useState("");
   const [orderItems, setOrderItems] = useState<string[]>(question.items || []);
+  const [feedback, setFeedback] = useState<{type: 'correct' | 'incorrect', message: string} | null>(null);
+  const [showingFeedback, setShowingFeedback] = useState(false);
 
   // Reset state when question changes
   useEffect(() => {
@@ -28,6 +30,8 @@ export default function QuestionRenderer({
     setMatchingPairs({});
     setFillBlankAnswer("");
     setOrderItems(question.items || []);
+    setFeedback(null);
+    setShowingFeedback(false);
   }, [question.id, question.items]);
 
   const handleMultipleChoice = (index: number) => {
@@ -49,15 +53,39 @@ export default function QuestionRenderer({
   };
 
   const handleMatching = (left: string, right: string) => {
-    if (disabled) return;
+    if (disabled || showingFeedback) return;
+    
     const newPairs = { ...matchingPairs, [left]: right };
     setMatchingPairs(newPairs);
     
-    // Check if all pairs are matched
-    if (Object.keys(newPairs).length === (question.pairs?.length || 0)) {
-      const result = Object.entries(newPairs).map(([left, right]) => `${left}-${right}`);
-      onAnswer(result);
+    // Show immediate feedback
+    const correctPairings = question.correctAnswer as string[];
+    const userPairing = `${left}-${right}`;
+    const isCorrect = correctPairings.includes(userPairing);
+    
+    setShowingFeedback(true);
+    if (isCorrect) {
+      setFeedback({
+        type: 'correct',
+        message: `✅ ถูกต้อง! "${left}" และ "${right}" จับคู่กันได้`
+      });
+    } else {
+      setFeedback({
+        type: 'incorrect',
+        message: `❌ ไม่ถูกต้อง "${left}" ไม่ได้จับคู่กับ "${right}"`
+      });
     }
+    
+    setTimeout(() => {
+      setShowingFeedback(false);
+      setFeedback(null);
+      
+      // Check if all pairs are matched
+      if (Object.keys(newPairs).length === (question.pairs?.length || 0)) {
+        const result = Object.entries(newPairs).map(([left, right]) => `${left}-${right}`);
+        onAnswer(result);
+      }
+    }, 2000);
   };
 
   const handleOrdering = (newOrder: string[]) => {
@@ -127,6 +155,24 @@ export default function QuestionRenderer({
     case 'multiple-choice':
       return (
         <div className="space-y-3">
+          {/* Feedback overlay */}
+          {showingFeedback && feedback && (
+            <div className="feedback-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className={`
+                feedback-modal max-w-md mx-4 p-6 rounded-xl border-2 text-center transform transition-all duration-300 scale-100
+                ${feedback.type === 'correct' 
+                  ? 'bg-green-500/90 border-green-400 text-white shadow-green-500/50' 
+                  : 'bg-red-500/90 border-red-400 text-white shadow-red-500/50'
+                } shadow-2xl
+              `}>
+                <div className="text-4xl mb-2">
+                  {feedback.type === 'correct' ? '🎉' : '💭'}
+                </div>
+                <p className="text-lg font-semibold">{feedback.message}</p>
+              </div>
+            </div>
+          )}
+
           {question.options?.map((option, index) => {
             let buttonStyle = "w-full p-4 text-left rounded-xl border-2 transition-all duration-200 ";
             
@@ -250,6 +296,24 @@ export default function QuestionRenderer({
     case 'matching':
       return (
         <div className="space-y-6">
+          {/* Feedback overlay */}
+          {showingFeedback && feedback && (
+            <div className="feedback-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className={`
+                feedback-modal max-w-md mx-4 p-6 rounded-xl border-2 text-center transform transition-all duration-300 scale-100
+                ${feedback.type === 'correct' 
+                  ? 'bg-green-500/90 border-green-400 text-white shadow-green-500/50' 
+                  : 'bg-red-500/90 border-red-400 text-white shadow-red-500/50'
+                } shadow-2xl
+              `}>
+                <div className="text-4xl mb-2">
+                  {feedback.type === 'correct' ? '🎉' : '💭'}
+                </div>
+                <p className="text-lg font-semibold">{feedback.message}</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-3">
               <h4 className="text-lg font-semibold text-white">จับคู่</h4>
@@ -264,27 +328,43 @@ export default function QuestionRenderer({
                   
                   if (matchingPairs[pair.left]) {
                     if (isCorrect) {
-                      leftStyle += "bg-green-500/20 border-green-500 text-green-300";
+                      leftStyle += "bg-green-500/30 border-green-500 text-green-300";
                     } else {
-                      leftStyle += "bg-red-500/20 border-red-500 text-red-300";
+                      leftStyle += "bg-red-500/30 border-red-500 text-red-300";
                     }
                   } else {
                     leftStyle += "bg-gray-500/20 border-gray-500 text-gray-400";
                   }
                 } else {
                   if (matchingPairs[pair.left]) {
-                    leftStyle += "bg-blue-500/20 border-blue-500 text-blue-300";
+                    leftStyle += "bg-green-500/30 border-green-500 text-green-300";
+                  } else if (showingFeedback) {
+                    leftStyle += "bg-gray-500/20 border-gray-500 text-gray-400";
                   } else {
                     leftStyle += "bg-white/10 border-gray-600 text-white hover:border-blue-400";
                   }
                 }
 
                 return (
-                  <div key={index} className={leftStyle}>
-                    {pair.left}
-                    {matchingPairs[pair.left] && (
-                      <span className="ml-2 font-semibold">→ {matchingPairs[pair.left]}</span>
-                    )}
+                  <div key={index} className={`matching-item ${leftStyle}`}>
+                    <div className="flex items-center justify-between">
+                      <span>{pair.left}</span>
+                      {matchingPairs[pair.left] && (
+                        <>
+                          <span className="mx-2">→</span>
+                          <span className="font-semibold">{matchingPairs[pair.left]}</span>
+                          {showResult && (
+                            <span className="ml-2 text-xl">
+                              {(() => {
+                                const correctPairings = question.correctAnswer as string[];
+                                const userPairing = `${pair.left}-${matchingPairs[pair.left]}`;
+                                return correctPairings.includes(userPairing) ? '✅' : '❌';
+                              })()}
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -296,18 +376,25 @@ export default function QuestionRenderer({
                   key={index}
                   onClick={() => {
                     const unpairedLeft = question.pairs?.find(p => !matchingPairs[p.left])?.left;
-                    if (unpairedLeft && !disabled && !showResult) {
+                    if (unpairedLeft && !disabled && !showResult && !showingFeedback) {
                       handleMatching(unpairedLeft, pair.right);
                     }
                   }}
-                  disabled={disabled || showResult || Object.values(matchingPairs).includes(pair.right)}
-                  className={`w-full p-3 text-left rounded-lg border-2 transition-all duration-200 ${
+                  disabled={disabled || showResult || Object.values(matchingPairs).includes(pair.right) || showingFeedback}
+                  className={`matching-item w-full p-3 text-left rounded-lg border-2 transition-all duration-200 ${
                     Object.values(matchingPairs).includes(pair.right)
+                      ? 'matching-item-correct bg-green-500/30 border-green-500 text-green-300'
+                      : showingFeedback
                       ? 'bg-gray-500/20 border-gray-500 text-gray-400'
                       : 'bg-white/10 border-gray-600 text-white hover:border-green-400 hover:bg-green-500/10'
                   }`}
                 >
-                  {pair.right}
+                  <div className="flex items-center justify-between">
+                    <span>{pair.right}</span>
+                    {Object.values(matchingPairs).includes(pair.right) && (
+                      <span className="text-xl">✅</span>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
