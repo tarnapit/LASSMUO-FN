@@ -36,10 +36,27 @@ export default function RangeAnswerQuestion({
   userAnswer,
   disabled = false
 }: RangeAnswerQuestionProps) {
-  const [selectedMin, setSelectedMin] = useState(userAnswer?.min ?? Math.round((minValue + maxValue) / 4));
-  const [selectedMax, setSelectedMax] = useState(userAnswer?.max ?? Math.round((minValue + maxValue) * 3 / 4));
+  const [selectedMin, setSelectedMin] = useState(minValue);
+  const [selectedMax, setSelectedMax] = useState(maxValue);
   const [hasAnswered, setHasAnswered] = useState(false);
 
+  // Effect to clear state when question changes
+  useEffect(() => {
+    // Reset all states first to ensure clean start for new question
+    setHasAnswered(false);
+    
+    // Set initial values
+    if (userAnswer) {
+      setSelectedMin(userAnswer.min);
+      setSelectedMax(userAnswer.max);
+    } else {
+      // Set initial values based on the range
+      setSelectedMin(Math.round((minValue + maxValue) / 4));
+      setSelectedMax(Math.round((minValue + maxValue) * 3 / 4));
+    }
+  }, [minValue, maxValue, correctRange]); // Trigger when question parameters change
+
+  // Separate effect for handling userAnswer updates
   useEffect(() => {
     if (userAnswer) {
       setSelectedMin(userAnswer.min);

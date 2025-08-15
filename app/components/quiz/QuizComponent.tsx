@@ -36,6 +36,14 @@ export default function EnhancedQuizComponent({
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
 
+  // Effect to ensure clean state when moving to a new question
+  useEffect(() => {
+    // Don't clear on the first question or when showing result
+    if (currentQuestionIndex > 0 && !showResult) {
+      setSelectedAnswer(null);
+    }
+  }, [currentQuestionIndex, showResult]);
+
   // Handle different answer types
   const handleAnswer = (answer: any, isCorrect: boolean) => {
     if (showResult) return;
@@ -64,6 +72,15 @@ export default function EnhancedQuizComponent({
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
       setShowResult(false);
+      
+      // Clear user answer for the next question to ensure clean state
+      // This is especially important for drag-drop and other interactive questions
+      const nextQuestionIndex = currentQuestionIndex + 1;
+      setUserAnswers(prev => {
+        const newAnswers = { ...prev };
+        delete newAnswers[nextQuestionIndex];
+        return newAnswers;
+      });
     }
   };
 

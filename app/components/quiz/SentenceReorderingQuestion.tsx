@@ -27,7 +27,12 @@ export default function SentenceReorderingQuestion({
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // Effect to clear state when question changes
   useEffect(() => {
+    // Reset all states first to ensure clean start for new question
+    setDraggedItem(null);
+    setDragOverIndex(null);
+    
     // Initialize with shuffled order if no user answer
     if (userAnswer && userAnswer.length > 0) {
       setOrderedSentences(userAnswer);
@@ -37,7 +42,14 @@ export default function SentenceReorderingQuestion({
       const shuffled = indices.sort(() => Math.random() - 0.5);
       setOrderedSentences(shuffled);
     }
-  }, [sentences, userAnswer]);
+  }, [sentences, correctOrder]); // Trigger when sentences or correctOrder changes
+
+  // Separate effect for handling userAnswer updates
+  useEffect(() => {
+    if (userAnswer && userAnswer.length > 0) {
+      setOrderedSentences(userAnswer);
+    }
+  }, [userAnswer]);
 
   useEffect(() => {
     // Check answer when order is complete

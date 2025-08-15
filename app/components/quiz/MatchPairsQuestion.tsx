@@ -42,7 +42,31 @@ export default function EnhancedMatchPairsQuestion({
   );
   const leftItems = pairs.map(p => p.left);
 
-  // Restore user answer
+  // Effect to clear state when question/pairs change
+  useEffect(() => {
+    // Reset all states first to ensure clean start for new question
+    setSelectedLeft(null);
+    setSelectedRight(null);
+    setMatches({});
+    setConnections([]);
+    setAnimatingPair(null);
+    
+    // Then restore user answer if exists
+    if (userAnswer) {
+      setMatches(userAnswer);
+      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
+        const correctPair = pairs.find(p => p.left.id === leftId);
+        return {
+          from: leftId,
+          to: rightId,
+          isCorrect: correctPair?.right.id === rightId
+        };
+      });
+      setConnections(newConnections);
+    }
+  }, [pairs]); // Trigger when pairs prop changes
+
+  // Separate effect for handling userAnswer updates
   useEffect(() => {
     if (userAnswer) {
       setMatches(userAnswer);

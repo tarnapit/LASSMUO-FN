@@ -28,6 +28,24 @@ export default function FillBlankQuestion({
   const [currentHintIndex, setCurrentHintIndex] = useState(0);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
 
+  // Effect to clear state when question changes
+  useEffect(() => {
+    // Reset all states first to ensure clean start for new question
+    setAnswer("");
+    setShowHint(false);
+    setCurrentHintIndex(0);
+    setIsCorrect(null);
+    
+    // Then restore user answer if exists
+    if (userAnswer) {
+      setAnswer(userAnswer);
+      if (showResult) {
+        setIsCorrect(checkAnswer(userAnswer));
+      }
+    }
+  }, [question, correctAnswer]); // Trigger when question or correct answer changes
+
+  // Separate effect for handling userAnswer and showResult updates
   useEffect(() => {
     if (userAnswer) {
       setAnswer(userAnswer);
