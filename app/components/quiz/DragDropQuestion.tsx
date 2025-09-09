@@ -41,6 +41,14 @@ export default function EnhancedDragDropQuestion({
 
   // Initialize items and restore user answer
   useEffect(() => {
+    // Reset all states first to ensure clean start
+    setDroppedItems({});
+    setIsComplete(false);
+    setDraggedItem(null);
+    setDraggedFrom(null);
+    setHoveredZone(null);
+    dragCounter.current = 0;
+    
     const shuffledItems = [...dragItems].sort(() => Math.random() - 0.5);
     setItems(shuffledItems);
     
@@ -56,6 +64,17 @@ export default function EnhancedDragDropQuestion({
       setItems(prev => prev.filter(item => !Object.values(restored).some(dropped => dropped.id === item.id)));
     }
   }, [dragItems, userAnswer]);
+
+  // Additional effect to reset states when question changes (when dragItems prop changes)
+  useEffect(() => {
+    // This effect specifically handles question transitions
+    setDroppedItems({});
+    setIsComplete(false);
+    setDraggedItem(null);
+    setDraggedFrom(null);
+    setHoveredZone(null);
+    dragCounter.current = 0;
+  }, [dragItems]);
 
   const handleDragStart = (e: React.DragEvent, item: DragItem, from: 'items' | number) => {
     if (showResult) return;

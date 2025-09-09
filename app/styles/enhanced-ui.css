@@ -197,4 +197,45 @@
   .hover-lift:hover {
     transform: translateY(-4px) scale(1.01);
   }
+  
+  /* Reduce animations for mobile performance */
+  .hero-gradient {
+    animation-duration: 12s;
+  }
+  
+  .typing-animation {
+    animation: none;
+    border-right: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-entrance {
+    animation-duration: 0.3s;
+  }
+  
+  .hover-lift:hover {
+    transform: translateY(-2px) scale(1.005);
+  }
+  
+  /* Minimal animations for small screens */
+  .pulse-glow {
+    animation: none;
+  }
+  
+  .typing-animation {
+    animation: none;
+    border-right: none;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .hover-lift:hover {
+    transform: none;
+  }
+  
+  .interactive-glow:hover {
+    box-shadow: none;
+  }
 }

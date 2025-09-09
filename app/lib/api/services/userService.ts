@@ -24,6 +24,20 @@ export class UserService {
   }
 
   /**
+   * Get all users without authentication (public endpoint)
+   */
+  async getAllUsersPublic(): Promise<ApiResponse<User[]>> {
+    // ลองหา endpoint อื่นที่ไม่ต้องการ auth ก่อน
+    try {
+      // ลอง endpoint ที่ไม่ต้องการ auth
+      return await apiClient.get<ApiResponse<User[]>>(`${this.endpoint}`);
+    } catch (error) {
+      // ถ้าไม่ได้ ลอง endpoint อื่น
+      return await apiClient.get<ApiResponse<User[]>>(`${this.endpoint}/all`);
+    }
+  }
+
+  /**
    * Get user by ID
    */
   async getUserById(userId: string): Promise<ApiResponse<User>> {
@@ -66,7 +80,8 @@ export class UserService {
     token: string;
     refreshToken?: string;
   }>> {
-    return apiClient.post(`${this.endpoint}/login`, { email, password });
+    // ใช้ endpoint ที่ถูกต้องตาม backend route
+    return apiClient.post(`/login/users`, { email, password });
   }
 
   /**

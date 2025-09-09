@@ -147,23 +147,23 @@ export default function QuizPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       <Navbar />
       
-      <div className="container mx-auto px-6 py-20">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-white mb-4">แบบทดสอบ</h1>
-          <p className="text-gray-300 text-lg mb-6">ทดสอบความเข้าใจหลังจากเรียนบทเรียนเสร็จแล้ว</p>
+      <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+        <div className="text-center mb-12 sm:mb-16">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 sm:mb-4 px-4">แบบทดสอบ</h1>
+          <p className="text-gray-300 text-base sm:text-lg mb-4 sm:mb-6 px-4">ทดสอบความเข้าใจหลังจากเรียนบทเรียนเสร็จแล้ว</p>
           
           {/* Lock status summary */}
-          <div className="inline-flex items-center space-x-4 bg-white/10 backdrop-blur-sm rounded-full px-6 py-3 border border-white/20">
+          <div className="inline-flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 bg-white/10 backdrop-blur-sm rounded-2xl sm:rounded-full px-4 sm:px-6 py-3 border border-white/20">
             <div className="flex items-center space-x-2">
-              <CheckCircle className="text-green-400" size={20} />
-              <span className="text-green-400 text-sm font-medium">
+              <CheckCircle className="text-green-400" size={16} />
+              <span className="text-green-400 text-xs sm:text-sm font-medium">
                 {Object.values(quizUnlockStatus).filter(Boolean).length} ปลดล็อกแล้ว
               </span>
             </div>
-            <div className="w-px h-4 bg-white/20"></div>
+            <div className="hidden sm:block w-px h-4 bg-white/20"></div>
             <div className="flex items-center space-x-2">
-              <XCircle className="text-yellow-400" size={20} />
-              <span className="text-yellow-400 text-sm font-medium">
+              <XCircle className="text-yellow-400" size={16} />
+              <span className="text-yellow-400 text-xs sm:text-sm font-medium">
                 {Object.values(quizUnlockStatus).filter(status => !status).length} ล็อกอยู่
               </span>
             </div>

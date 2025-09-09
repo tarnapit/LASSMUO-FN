@@ -42,7 +42,31 @@ export default function EnhancedMatchPairsQuestion({
   );
   const leftItems = pairs.map(p => p.left);
 
-  // Restore user answer
+  // Effect to clear state when question/pairs change
+  useEffect(() => {
+    // Reset all states first to ensure clean start for new question
+    setSelectedLeft(null);
+    setSelectedRight(null);
+    setMatches({});
+    setConnections([]);
+    setAnimatingPair(null);
+    
+    // Then restore user answer if exists
+    if (userAnswer) {
+      setMatches(userAnswer);
+      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
+        const correctPair = pairs.find(p => p.left.id === leftId);
+        return {
+          from: leftId,
+          to: rightId,
+          isCorrect: correctPair?.right.id === rightId
+        };
+      });
+      setConnections(newConnections);
+    }
+  }, [pairs]); // Trigger when pairs prop changes
+
+  // Separate effect for handling userAnswer updates
   useEffect(() => {
     if (userAnswer) {
       setMatches(userAnswer);
@@ -89,15 +113,38 @@ export default function EnhancedMatchPairsQuestion({
   };
 
   const createMatch = (leftId: string, rightId: string) => {
-    // Animate the connection
+    const correctPair = pairs.find(p => p.left.id === leftId && p.right.id === rightId);
+    const isCorrectMatch = !!correctPair;
+    
+    // Animate the connection with immediate feedback
     setAnimatingPair({ left: leftId, right: rightId });
     
     setTimeout(() => {
-      setMatches(prev => ({ ...prev, [leftId]: rightId }));
-      setConnections(prev => [...prev, { from: leftId, to: rightId }]);
+      const newMatches = { ...matches, [leftId]: rightId };
+      setMatches(newMatches);
+      
+      // Update connections with correctness info
+      const newConnections = Object.entries(newMatches).map(([left, right]) => {
+        const correctPair = pairs.find(p => p.left.id === left && p.right.id === right);
+        return {
+          from: left,
+          to: right,
+          isCorrect: !!correctPair
+        };
+      });
+      setConnections(newConnections);
+      
       setSelectedLeft(null);
       setSelectedRight(null);
       setAnimatingPair(null);
+
+      // Check if all pairs are matched
+      if (Object.keys(newMatches).length === pairs.length) {
+        const allCorrect = pairs.every(pair => newMatches[pair.left.id] === pair.right.id);
+        setTimeout(() => {
+          onAnswer(allCorrect, newMatches);
+        }, 500);
+      }
     }, 300);
   };
 

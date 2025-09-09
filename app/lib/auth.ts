@@ -66,65 +66,105 @@ class AuthManager {
         password
       };
 
+      console.log('Sending create user request:', createUserData);
       const response = await userService.createUser(createUserData);
       
       // Handle actual API response format
       console.log('API Response:', response);
       
-      // API ส่งกลับ { message: string, user: User } แทน { success: boolean, data: User }
+      let userData;
+      let token;
+
+      // ตรวจสอบ response format ต่างๆ ที่อาจเกิดขึ้น
       if (response && (response as any).user) {
-        const apiUser = (response as any).user;
-        
-        // แปลงข้อมูลจาก API เป็น User interface ของเรา
-        const user: User = {
-          id: apiUser.id,
-          name: apiUser.name,
-          email: apiUser.email,
-          createdAt: new Date(apiUser.createAt || apiUser.createdAt || Date.now())
-        };
-
-        // บันทึกข้อมูลผู้ใช้ลง localStorage
-        this.currentUser = user;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(this.authKey, JSON.stringify(user));
-        }
-
-        return { 
-          success: true, 
-          message: 'สมัครสมาชิกสำเร็จ', 
-          user 
-        };
+        // Format: { user: User, token?: string, message?: string }
+        userData = (response as any).user;
+        token = (response as any).token;
+      } else if (response && response.data && (response.data as any).user) {
+        // Format: { data: { user: User, token?: string } }
+        userData = (response.data as any).user;
+        token = (response.data as any).token;
       } else if (response && response.data) {
-        // กรณีที่ API ส่งกลับตาม ApiResponse format
-        const user: User = {
-          id: response.data.id,
-          name: response.data.name,
-          email: response.data.email,
-          createdAt: new Date(response.data.createdAt || Date.now())
-        };
-
-        this.currentUser = user;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem(this.authKey, JSON.stringify(user));
-        }
-
-        return { 
-          success: true, 
-          message: 'สมัครสมาชิกสำเร็จ', 
-          user 
-        };
+        // Format: { data: User }
+        userData = response.data;
+      } else if (response && (response as any).id) {
+        // Format: User object directly
+        userData = response;
       } else {
+        console.error('Unexpected API response format:', response);
         return { 
           success: false, 
-          message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก' 
+          message: 'รูปแบบการตอบกลับจากเซิร์ฟเวอร์ไม่ถูกต้อง' 
         };
       }
+
+      if (!userData || !userData.id) {
+        return { 
+          success: false, 
+          message: 'ไม่สามารถสร้างผู้ใช้ได้ กรุณาลองใหม่อีกครั้ง' 
+        };
+      }
+
+      // แปลงข้อมูลจาก API เป็น User interface ของเรา
+      const user: User = {
+        id: userData.id || userData._id,
+        name: userData.name || userData.fullName || userData.displayName,
+        email: userData.email,
+        createdAt: new Date(userData.createAt || userData.createdAt || userData.created_at || Date.now())
+      };
+
+      // บันทึกข้อมูลผู้ใช้ลง localStorage
+      this.currentUser = user;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(this.authKey, JSON.stringify(user));
+        
+        // บันทึก token ถ้ามี
+        if (token) {
+          localStorage.setItem(this.tokenKey, token);
+        }
+
+        // บันทึกผู้ใช้ไว้ในรายการสำหรับการ login ในอนาคต
+        const savedUsers = localStorage.getItem('astronomy_app_all_users');
+        let allUsers = [];
+        if (savedUsers) {
+          try {
+            allUsers = JSON.parse(savedUsers);
+          } catch (e) {
+            allUsers = [];
+          }
+        }
+        
+        // เพิ่มผู้ใช้ใหม่ (พร้อม password สำหรับการ login)
+        const userWithPassword = {
+          ...user,
+          password: password, // เก็บ password ไว้สำหรับการตรวจสอบ login
+          createdAt: user.createdAt.toISOString()
+        };
+        
+        // ตรวจสอบไม่ให้มีผู้ใช้ซ้ำ
+        const existingUserIndex = allUsers.findIndex((u: any) => u.email === user.email);
+        if (existingUserIndex >= 0) {
+          allUsers[existingUserIndex] = userWithPassword;
+        } else {
+          allUsers.push(userWithPassword);
+        }
+        
+        localStorage.setItem('astronomy_app_all_users', JSON.stringify(allUsers));
+        console.log('User saved to localStorage backup:', userWithPassword);
+      }
+
+      console.log('Sign up successful, user:', user);
+      return { 
+        success: true, 
+        message: 'สมัครสมาชิกสำเร็จ', 
+        user 
+      };
 
     } catch (error: any) {
       console.error('SignUp error:', error);
       
       // จัดการ error messages ที่เฉพาะเจาะจง
-      if (error.status === 409 || error.message?.includes('already exists')) {
+      if (error.status === 409 || error.message?.includes('already exists') || error.message?.includes('duplicate')) {
         return { success: false, message: 'อีเมลนี้ถูกใช้งานแล้ว' };
       } else if (error.status === 400) {
         return { success: false, message: 'ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง' };
@@ -136,12 +176,12 @@ class AuthManager {
       
       return { 
         success: false, 
-        message: 'เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง' 
+        message: error.message || 'เกิดข้อผิดพลาดในการสมัครสมาชิก กรุณาลองใหม่อีกครั้ง' 
       };
     }
   }
 
-  // ล็อกอิน - ตรวจสอบจาก user list เนื่องจาก login endpoint ไม่มี
+  // ล็อกอิน - ใช้หลายวิธีตามสถานการณ์
   async login(loginData: LoginData): Promise<{ success: boolean; message: string; user?: User }> {
     try {
       const { email, password } = loginData;
@@ -150,61 +190,198 @@ class AuthManager {
         return { success: false, message: 'กรุณากรอกอีเมลและรหัสผ่าน' };
       }
 
-      // ดึงรายการ users ทั้งหมดแล้วหาที่ตรงกัน
-      const response = await userService.getAllUsers();
-      console.log('Get all users response:', response);
+      console.log('Attempting login with email:', email.trim());
       
-      let users = [];
-      if (response && (response as any).user) {
-        users = (response as any).user;
-      } else if (response && response.data) {
-        users = response.data;
+      // วิธีที่ 1: ลอง login endpoint ถ้ามี (ใช้ endpoint ที่ถูกต้อง)
+      try {
+        console.log('Trying login endpoint with correct route...');
+        const response = await userService.loginUser(email.trim(), password);
+        console.log('Login API response:', response);
+        
+        let userData;
+        let token;
+
+        // รองรับหลายรูปแบบของ response
+        if (response && (response as any).user) {
+          // Format: { user: User, token?: string }
+          userData = (response as any).user;
+          token = (response as any).token;
+          console.log('Found user data in response.user');
+        } else if (response && response.data && (response.data as any).user) {
+          // Format: { data: { user: User, token?: string } }
+          userData = (response.data as any).user;
+          token = (response.data as any).token;
+          console.log('Found user data in response.data.user');
+        } else if (response && response.data) {
+          // Format: { data: User } (user data directly in data)
+          userData = response.data;
+          token = (response as any).token; // token might be at root level
+          console.log('Found user data in response.data');
+        } else if (response && (response as any).id) {
+          // Format: User object directly (no wrapper)
+          userData = response;
+          console.log('Found user data directly in response');
+        }
+
+        if (userData && (userData.id || userData._id)) {
+          console.log('Processing user data:', userData);
+          
+          const user: User = {
+            id: userData.id || userData._id,
+            name: userData.name || userData.fullName || userData.displayName,
+            email: userData.email,
+            createdAt: new Date(userData.createAt || userData.createdAt || userData.created_at || Date.now())
+          };
+
+          this.currentUser = user;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(this.authKey, JSON.stringify(user));
+            if (token) {
+              localStorage.setItem(this.tokenKey, token);
+            }
+          }
+
+          console.log('Login successful via login endpoint, user:', user);
+          return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
+        } else {
+          console.log('No valid user data found in response');
+        }
+      } catch (loginError: any) {
+        console.log('Login endpoint failed:', loginError.message);
+        console.log('Login error details:', loginError);
       }
 
-      if (!Array.isArray(users)) {
-        return { success: false, message: 'ไม่สามารถเข้าถึงข้อมูลผู้ใช้ได้' };
+      // วิธีที่ 2: ลองใช้ public user list
+      try {
+        console.log('Trying public user list...');
+        const response = await userService.getAllUsersPublic();
+        console.log('Public users response:', response);
+        
+        let users = [];
+        if (response && (response as any).user) {
+          users = (response as any).user;
+        } else if (response && response.data) {
+          users = response.data;
+        }
+
+        if (Array.isArray(users) && users.length > 0) {
+          const foundUser = users.find((user: any) => {
+            console.log('Checking user:', user.email, 'vs', email.trim());
+            return user.email === email.trim() && user.password === password;
+          });
+
+          if (foundUser) {
+            const user: User = {
+              id: foundUser.id || foundUser._id,
+              name: foundUser.name || foundUser.fullName || foundUser.displayName,
+              email: foundUser.email,
+              createdAt: new Date(foundUser.createAt || foundUser.createdAt || foundUser.created_at || Date.now())
+            };
+
+            this.currentUser = user;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(this.authKey, JSON.stringify(user));
+            }
+
+            console.log('Login successful via public user list, user:', user);
+            return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
+          }
+        }
+      } catch (publicError: any) {
+        console.log('Public user list failed:', publicError.message);
       }
 
-      // หา user ที่ email และ password ตรงกัน
-      const foundUser = users.find((user: any) => 
-        user.email === email.trim() && user.password === password
-      );
+      // วิธีที่ 3: ลองใช้ user list แบบปกติ (อาจต้องการ auth)
+      try {
+        console.log('Trying regular user list...');
+        const response = await userService.getAllUsers();
+        console.log('Regular users response:', response);
+        
+        let users = [];
+        if (response && (response as any).user) {
+          users = (response as any).user;
+        } else if (response && response.data) {
+          users = response.data;
+        }
 
-      if (!foundUser) {
-        return { success: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
+        if (Array.isArray(users) && users.length > 0) {
+          const foundUser = users.find((user: any) => {
+            return user.email === email.trim() && user.password === password;
+          });
+
+          if (foundUser) {
+            const user: User = {
+              id: foundUser.id || foundUser._id,
+              name: foundUser.name || foundUser.fullName || foundUser.displayName,
+              email: foundUser.email,
+              createdAt: new Date(foundUser.createAt || foundUser.createdAt || foundUser.created_at || Date.now())
+            };
+
+            this.currentUser = user;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(this.authKey, JSON.stringify(user));
+            }
+
+            console.log('Login successful via regular user list, user:', user);
+            return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
+          }
+        }
+      } catch (regularError: any) {
+        console.log('Regular user list failed:', regularError.message);
       }
 
-      // แปลงข้อมูลจาก API เป็น User interface ของเรา
-      const user: User = {
-        id: foundUser.id,
-        name: foundUser.name,
-        email: foundUser.email,
-        createdAt: new Date(foundUser.createAt || foundUser.createdAt || Date.now())
-      };
-
-      // บันทึกข้อมูลผู้ใช้
-      this.currentUser = user;
+      // วิธีที่ 4: ตรวจสอบจาก localStorage (สำหรับกรณีที่ API ไม่พร้อมใช้งาน)
+      console.log('Trying localStorage fallback...');
       if (typeof window !== 'undefined') {
-        localStorage.setItem(this.authKey, JSON.stringify(user));
+        // ดูว่ามีข้อมูลผู้ใช้ที่เคยบันทึกไว้หรือไม่
+        const savedUsers = localStorage.getItem('astronomy_app_all_users');
+        if (savedUsers) {
+          try {
+            const users = JSON.parse(savedUsers);
+            const foundUser = users.find((user: any) => 
+              user.email === email.trim() && user.password === password
+            );
+
+            if (foundUser) {
+              const user: User = {
+                id: foundUser.id,
+                name: foundUser.name,
+                email: foundUser.email,
+                createdAt: new Date(foundUser.createdAt || Date.now())
+              };
+
+              this.currentUser = user;
+              localStorage.setItem(this.authKey, JSON.stringify(user));
+
+              console.log('Login successful via localStorage fallback, user:', user);
+              return { success: true, message: 'เข้าสู่ระบบสำเร็จ (โหมดออฟไลน์)', user };
+            }
+          } catch (parseError) {
+            console.error('Error parsing saved users:', parseError);
+          }
+        }
       }
 
-      return { 
-        success: true, 
-        message: 'เข้าสู่ระบบสำเร็จ', 
-        user 
-      };
+      // ถ้าไม่พบด้วยวิธีไหนเลย
+      console.log('User not found with any method');
+      return { success: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
 
     } catch (error: any) {
       console.error('Login error:', error);
       
-      // จัดการ error messages ที่เฉพาะเจาะจง
-      if (error.message?.includes('fetch')) {
-        return { success: false, message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' };
+      if (error.status === 401 || error.message?.includes('Unauthorized')) {
+        return { success: false, message: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' };
+      } else if (error.status === 404) {
+        return { success: false, message: 'ไม่พบผู้ใช้นี้ในระบบ' };
+      } else if (error.status === 400) {
+        return { success: false, message: 'ข้อมูลที่ส่งไม่ถูกต้อง' };
+      } else if (error.message?.includes('fetch') || error.message?.includes('Network')) {
+        return { success: false, message: 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต' };
       }
       
       return { 
         success: false, 
-        message: error.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ' 
+        message: error.message || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ กรุณาลองใหม่อีกครั้ง' 
       };
     }
   }

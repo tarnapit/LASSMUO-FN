@@ -66,22 +66,22 @@ export default function LeaderboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       <Navbar />
       
-      <div className="container mx-auto px-8 py-12">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-4">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-3 sm:mb-4 px-4">
             🏆 บอร์ดผู้นำ
           </h1>
-          <p className="text-xl text-gray-300">
+          <p className="text-base sm:text-lg lg:text-xl text-gray-300 px-4">
             ดูอันดับของนักเรียนดาราศาสตร์ที่เก่งที่สุด
           </p>
         </div>
 
         {/* Your Progress */}
         {userProgress && (
-          <div className="mb-12 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-6 border border-blue-500/30">
-            <h2 className="text-2xl font-bold text-white mb-4 flex items-center">
-              <Users className="mr-2 text-blue-400" size={24} />
+          <div className="mb-8 sm:mb-12 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-xl p-4 sm:p-6 border border-blue-500/30">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-3 sm:mb-4 flex items-center justify-center sm:justify-start">
+              <Users className="mr-2 text-blue-400" size={20} />
               ผลการเรียนรู้ของคุณ
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -184,26 +184,26 @@ export default function StagePage() {
       <Navbar />
 
       {/* Main Content */}
-      <div className="container mx-auto px-8 py-12 relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 relative z-10">
         {/* Hero Header */}
-        <div className="text-center mb-16 max-w-6xl mx-auto">
+        <div className="text-center mb-12 sm:mb-16 max-w-6xl mx-auto">
           {/* Header Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full border border-indigo-500/30">
-              <Award className="w-5 h-5 text-indigo-400 mr-2" />
-              <span className="text-indigo-300 text-sm font-semibold">ระบบการเรียนรู้แบบขั้นตอน</span>
+          <div className="flex justify-center mb-4 sm:mb-6">
+            <div className="inline-flex items-center px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 rounded-full border border-indigo-500/30">
+              <Award className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400 mr-2" />
+              <span className="text-indigo-300 text-xs sm:text-sm font-semibold">ระบบการเรียนรู้แบบขั้นตอน</span>
             </div>
           </div>
 
         {/* Title */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 leading-tight">
+        <div className="text-center mb-8 sm:mb-12">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-4 sm:mb-6 leading-tight px-4">
             การผจญภัยในอวกาศ
           </h1>
           
-          <p className="text-gray-300 text-xl md:text-2xl max-w-4xl mx-auto leading-relaxed mb-12">
+          <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed mb-8 sm:mb-12 px-4">
             เริ่มต้นการเดินทางสู่ความรู้ดาราศาสตร์ผ่านด่านต่างๆ 
-            <br />
+            <br className="hidden sm:block" />
             <span className="text-purple-400 font-semibold">ปลดล็อคเนื้อหาใหม่เมื่อผ่านด่าน!</span>
           </p>
 

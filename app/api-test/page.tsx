@@ -100,6 +100,108 @@ export default function ApiTestPage() {
     }
   };
 
+  const testAuthLogin = async () => {
+    try {
+      // สร้างผู้ใช้ก่อน
+      const testUser = {
+        name: "Login Test User",
+        email: "logintest@example.com", 
+        password: "123456"
+      };
+      
+      console.log('Creating test user for login:', testUser);
+      const createResult = await userService.createUser(testUser);
+      console.log('Create user result:', createResult);
+      
+      // ลอง login
+      console.log('Testing login with:', { email: testUser.email, password: testUser.password });
+      const loginResult = await authManager.login({ 
+        email: testUser.email, 
+        password: testUser.password 
+      });
+      console.log('Login result:', loginResult);
+      
+      setTestResults(prev => ({ 
+        ...prev, 
+        testLogin: { 
+          createUser: createResult, 
+          login: loginResult 
+        } 
+      }));
+      
+      alert(`Login test: ${loginResult.success ? 'Success' : 'Failed'} - ${loginResult.message}`);
+    } catch (error) {
+      console.error('Login test error:', error);
+      setTestResults(prev => ({ 
+        ...prev, 
+        testLogin: { error: (error as any).message } 
+      }));
+      alert('Login test error: ' + (error as any).message);
+    }
+  };
+
+  const testDirectLogin = async () => {
+    try {
+      console.log('Testing direct login API call...');
+      const result = await userService.loginUser('Tum@gmail.com', '123456');
+      console.log('Direct login result:', result);
+      setTestResults(prev => ({ ...prev, directLogin: result }));
+      alert('Direct login test completed - check console for details');
+    } catch (error) {
+      console.error('Direct login error:', error);
+      setTestResults(prev => ({ ...prev, directLogin: { error: (error as any).message } }));
+      alert('Direct login error: ' + (error as any).message);
+    }
+  };
+
+  const testLoginEndpoint = async () => {
+    try {
+      console.log('Testing /login/users endpoint directly...');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888'}/login/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          email: 'Tum@gmail.com',
+          password: '123456'
+        })
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
+      
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        result = { rawResponse: responseText };
+      }
+      
+      setTestResults(prev => ({ 
+        ...prev, 
+        loginEndpointTest: { 
+          status: response.status, 
+          ok: response.ok,
+          data: result 
+        } 
+      }));
+      
+      alert(`Login endpoint test:\nStatus: ${response.status}\nOK: ${response.ok}\nCheck console for details`);
+    } catch (error) {
+      console.error('Login endpoint test error:', error);
+      setTestResults(prev => ({ 
+        ...prev, 
+        loginEndpointTest: { error: (error as any).message } 
+      }));
+      alert('Login endpoint test error: ' + (error as any).message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8">
       <div className="max-w-6xl mx-auto">
@@ -270,9 +372,28 @@ export default function ApiTestPage() {
             </button>
             <button
               onClick={testAuthSignUp}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded transition-colors"
+              className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded mr-4 transition-colors"
             >
               Test Auth Sign Up (via AuthManager)
+            </button>
+            <br />
+            <button
+              onClick={testAuthLogin}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded mr-4 transition-colors"
+            >
+              Test Auth Login (Full Flow)
+            </button>
+            <button
+              onClick={testDirectLogin}
+              className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-2 rounded mr-4 transition-colors"
+            >
+              Test Direct Login API
+            </button>
+            <button
+              onClick={testLoginEndpoint}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-6 py-2 rounded transition-colors"
+            >
+              Test /login/users Endpoint
             </button>
           </div>
 

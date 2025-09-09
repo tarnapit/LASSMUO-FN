@@ -10,12 +10,15 @@ class ApiClient {
   }
 
   private async handleResponse<T>(response: Response): Promise<T> {
+    const responseText = await response.text();
+    console.log(`Response text from ${response.url}:`, responseText);
+
     if (!response.ok) {
       let errorMessage = `HTTP Error: ${response.status}`;
       
       try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
+        const errorData = responseText ? JSON.parse(responseText) : {};
+        errorMessage = errorData.message || errorData.error || errorData.detail || errorMessage;
       } catch {
         // If response is not JSON, use status text
         errorMessage = response.statusText || errorMessage;
@@ -24,15 +27,27 @@ class ApiClient {
       // เพิ่มข้อมูลเพิ่มเติมสำหรับ debugging
       if (response.status === 404) {
         errorMessage = `Not Found: ${errorMessage}`;
+      } else if (response.status === 401) {
+        errorMessage = `Unauthorized: ${errorMessage}`;
+      } else if (response.status === 400) {
+        errorMessage = `Bad Request: ${errorMessage}`;
       }
       
       throw new ApiError(errorMessage, response.status);
     }
 
     try {
-      return await response.json();
+      if (!responseText) {
+        // ถ้าไม่มี response body ส่งคืน empty object
+        return {} as T;
+      }
+      
+      const parsedResponse = JSON.parse(responseText);
+      console.log('Parsed response:', parsedResponse);
+      return parsedResponse;
     } catch (error) {
-      throw new ApiError('Invalid JSON response');
+      console.error('JSON parse error:', error);
+      throw new ApiError('Invalid JSON response from server');
     }
   }
 
@@ -55,6 +70,12 @@ class ApiClient {
     };
 
     try {
+      console.log(`Making ${config.method || 'GET'} request to:`, url);
+      console.log('Request config:', { 
+        headers: config.headers, 
+        body: config.body ? JSON.stringify(JSON.parse(config.body as string)) : undefined 
+      });
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
 
@@ -64,6 +85,13 @@ class ApiClient {
       });
 
       clearTimeout(timeoutId);
+      
+      console.log(`Response from ${url}:`, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
       return await this.handleResponse<T>(response);
     } catch (error) {
       console.error('API Request failed:', { url, error });

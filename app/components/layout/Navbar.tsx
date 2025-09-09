@@ -127,11 +127,11 @@ export default function Navbar() {
 
   return (
     <nav className="relative z-50">
-      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-6">
+      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Logo */}
         <Link
           href="/"
-          className="text-2xl font-bold text-white tracking-wider hover:text-yellow-300 transition-colors"
+          className="text-xl sm:text-2xl font-bold text-white tracking-wider hover:text-yellow-300 transition-colors"
         >
           LASSMUOO
         </Link>
@@ -272,23 +272,24 @@ export default function Navbar() {
         {/* Mobile menu button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="md:hidden text-white hover:text-yellow-300 transition-colors"
+          className="md:hidden text-white hover:text-yellow-300 transition-colors p-2"
+          aria-label="เปิด/ปิดเมนู"
         >
-          {isOpen ? <X size={24} /> : <Menu size={24} />}
+          {isOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700">
-          <div className="px-4 py-6 space-y-4">
+        <div className="md:hidden absolute top-full left-0 right-0 bg-slate-900/95 backdrop-blur-sm border-t border-slate-700 z-40">
+          <div className="px-4 py-4 sm:py-6 space-y-3 sm:space-y-4">
             {navigation.map((item) => (
               <div key={item.name}>
                 {item.hasDropdown ? (
                   <div>
                     <button
                       onClick={() => toggleDropdown(item.name)}
-                      className="w-full flex items-center justify-between text-white hover:text-yellow-300 transition-colors py-2"
+                      className="w-full flex items-center justify-between text-white hover:text-yellow-300 transition-colors py-2 text-base font-medium"
                     >
                       <span>{item.name}</span>
                       <ChevronDown

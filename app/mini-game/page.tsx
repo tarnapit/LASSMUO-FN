@@ -229,25 +229,25 @@ export default function MiniGamePage() {
         <div className="absolute top-80 right-1/4 w-2 h-2 bg-orange-400 rounded-full animate-ping delay-700"></div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 py-20 relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20 relative z-10">
         {/* Header Section */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-12 sm:mb-16">
           {/* Header Badge */}
-          <div className="flex justify-center mb-6">
-            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full border border-blue-500/30">
-              <Brain className="w-5 h-5 text-blue-400 mr-2" />
-              <span className="text-blue-300 text-sm font-semibold">ระบบทดสอบความรู้</span>
+          <div className="flex justify-center mb-4 sm:mb-6">
+            <div className="inline-flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full border border-blue-500/30">
+              <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400 mr-2" />
+              <span className="text-blue-300 text-xs sm:text-sm font-semibold">ระบบทดสอบความรู้</span>
             </div>
           </div>
 
-          <div className="relative mb-6">
-            <Brain className="text-blue-400 animate-bounce mx-auto" size={72} />
+          <div className="relative mb-4 sm:mb-6">
+            <Brain className="text-blue-400 animate-bounce mx-auto" size={48} />
           </div>
 
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold mb-4 sm:mb-6 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent leading-tight px-4">
             {text.title}
           </h1>
-          <p className="text-gray-300 text-xl sm:text-2xl max-w-4xl mx-auto leading-relaxed">
+          <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl max-w-4xl mx-auto leading-relaxed px-4">
             {text.subtitle}
           </p>
 
@@ -288,26 +288,26 @@ export default function MiniGamePage() {
         </div>
 
         {/* Progress Dashboard */}
-        <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-3xl p-8 sm:p-10 mb-16 border border-white/10 max-w-7xl mx-auto">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-8 flex items-center gap-3 justify-center sm:justify-start">
-            <Trophy className="text-yellow-400" size={32} />
-            {text.yourProgress}
+        <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 mb-12 sm:mb-16 border border-white/10 max-w-7xl mx-auto">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-6 sm:mb-8 flex flex-col sm:flex-row items-center gap-2 sm:gap-3 justify-center sm:justify-start">
+            <Trophy className="text-yellow-400" size={24} />
+            <span className="text-center sm:text-left">{text.yourProgress}</span>
           </h2>
 
-          <div className="grid sm:grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="bg-white/5 rounded-2xl p-8 border border-white/10">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-gray-400 text-lg font-medium">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+            <div className="bg-white/5 rounded-xl sm:rounded-2xl p-6 sm:p-8 border border-white/10">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
+                <span className="text-gray-400 text-base sm:text-lg font-medium">
                   {text.gamesCompleted}
                 </span>
-                <CheckCircle className="text-green-400" size={24} />
+                <CheckCircle className="text-green-400" size={20} />
               </div>
-              <div className="text-4xl font-bold text-white mb-2">
+              <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
                 {totalCompletedGames}/3
               </div>
-              <div className="w-full bg-gray-700 rounded-full h-3 mt-4">
+              <div className="w-full bg-gray-700 rounded-full h-2 sm:h-3 mt-3 sm:mt-4">
                 <div
-                  className={`bg-gradient-to-r from-green-500 to-blue-500 h-3 rounded-full transition-all duration-500 progress-animated`}
+                  className={`bg-gradient-to-r from-green-500 to-blue-500 h-2 sm:h-3 rounded-full transition-all duration-500 progress-animated`}
                   data-progress={(totalCompletedGames / 3) * 100}
                 ></div>
               </div>
@@ -342,25 +342,25 @@ export default function MiniGamePage() {
         </div>
 
         {/* Quiz Modes Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-center mb-8">
-            <div className="p-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mr-3">
-              <Brain className="w-8 h-8 text-white" />
+        <div className="mb-8 sm:mb-12">
+          <div className="flex flex-col sm:flex-row items-center justify-center mb-6 sm:mb-8">
+            <div className="p-2 sm:p-3 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full mr-0 sm:mr-3 mb-2 sm:mb-0">
+              <Brain className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
             </div>
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent text-center">
               โหมดทดสอบความรู้
             </h2>
           </div>
         </div>
 
         {/* Quiz Modes Grid */}
-        <div className="grid sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-3 gap-8 sm:gap-10 max-w-7xl mx-auto mb-16 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10 max-w-7xl mx-auto mb-12 sm:mb-16 mt-6 sm:mt-8 px-4">
           {miniGames.map((game, index) => {
             const completed = isGameCompleted(game.id);
             const isHovered = hoveredGame === game.id;
 
             return (
-              <div key={game.id} className="mt-6">
+              <div key={game.id} className="mt-4 sm:mt-6">
                 <Link
                   href={`/mini-game/${game.id}`}
                   className="group block"
@@ -369,19 +369,19 @@ export default function MiniGamePage() {
                 >
                   <div
                     className={`
-                  relative bg-white/10 backdrop-blur-sm rounded-3xl p-10 
+                  relative bg-white/10 backdrop-blur-sm rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 
                   hover:bg-white/20 transition-all duration-500 
                   transform hover:scale-105 hover:-translate-y-2
-                  border border-white/20 h-full game-card-glow min-h-[580px] max-h-[580px] overflow-visible
+                  border border-white/20 h-full game-card-glow min-h-[480px] sm:min-h-[520px] lg:min-h-[580px] max-h-[580px] overflow-visible
                   flex flex-col justify-between
                   ${completed ? "ring-2 ring-green-500/50" : ""}
                   ${isHovered ? "shadow-2xl shadow-yellow-500/20" : ""}
                 `}
                   >
                     {/* Badges Container */}
-                    <div className="absolute top-3 left-3 right-3 flex justify-between items-start z-10">
+                    <div className="absolute top-2 sm:top-3 left-2 sm:left-3 right-2 sm:right-3 flex justify-between items-start z-10">
                       {/* Left badges */}
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1 sm:gap-2">
                         {!completed && isNewGame(game.id) && (
                           <div className="bg-gradient-to-r from-pink-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
                             {text.newGame}
