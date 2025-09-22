@@ -4,6 +4,13 @@ import { useParams, useRouter } from "next/navigation";
 import { getQuizById } from "../../data/quizzes";
 import { learningModules } from "../../data/learning-modules";
 import { progressManager } from "../../lib/progress";
+import { 
+  shuffleQuiz, 
+  checkAnswerWithMapping, 
+  generateQuizSessionKey,
+  OptionMapping 
+} from "../../lib/quiz-utils";
+import { debugQuizShuffle } from "../../lib/quiz-debug";
 import Navbar from "../../components/layout/Navbar";
 import { 
   Clock, 
@@ -15,15 +22,17 @@ import {
   RotateCcw,
   Trophy,
   Target,
-  Brain
+  Brain,
+  Shuffle
 } from "lucide-react";
-import { Quiz, QuizQuestion, QuizAttempt } from "../../types/quiz";
+import { Quiz, QuizQuestion, QuizAttempt, QuizSession } from "../../types/quiz";
 
 export default function QuizDetailPage() {
   const params = useParams();
   const router = useRouter();
   const quizId = params.id as string;
   
+  const [originalQuiz, setOriginalQuiz] = useState<Quiz | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | number>>({});
@@ -33,6 +42,9 @@ export default function QuizDetailPage() {
   const [quizAttempt, setQuizAttempt] = useState<QuizAttempt | null>(null);
   const [previousAttempts, setPreviousAttempts] = useState<QuizAttempt[]>([]);
   const [showExplanation, setShowExplanation] = useState<Record<string, boolean>>({});
+  const [quizSession, setQuizSession] = useState<QuizSession | null>(null);
+  const [questionMappings, setQuestionMappings] = useState<{ [questionId: string]: OptionMapping[] }>({});
+  const [isShuffled, setIsShuffled] = useState(false);
 
   useEffect(() => {
     const foundQuiz = getQuizById(quizId);
@@ -45,7 +57,9 @@ export default function QuizDetailPage() {
         return;
       }
 
-      setQuiz(foundQuiz);
+      setOriginalQuiz(foundQuiz);
+      setQuiz(foundQuiz); // เริ่มต้นด้วย quiz เดิม
+      
       if (foundQuiz.timeLimit) {
         setTimeLeft(foundQuiz.timeLimit * 60); // แปลงเป็นวินาที
       }
@@ -76,11 +90,82 @@ export default function QuizDetailPage() {
   }, [isActive, timeLeft, showResults]);
 
   const startQuiz = () => {
-    setIsActive(true);
-    setCurrentQuestionIndex(0);
-    setAnswers({});
-    setShowResults(false);
-    setShowExplanation({});
+    if (!originalQuiz) {
+      console.error('Original quiz not found');
+      return;
+    }
+    
+    console.log('Starting quiz with data:', {
+      id: originalQuiz.id,
+      questionsCount: originalQuiz.questions?.length,
+      firstQuestion: originalQuiz.questions?.[0]
+    });
+    
+    // Debug quiz data
+    debugQuizShuffle(originalQuiz);
+    
+    try {
+      // สร้าง quiz session ใหม่พร้อม shuffle
+      const sessionKey = generateQuizSessionKey(quizId);
+      console.log('Generated session key:', sessionKey);
+      
+      // ลองเปิด shuffle กลับมาทีละส่วน
+      let shuffledQuiz, newMappings;
+      
+      try {
+        const shuffleResult = shuffleQuiz(originalQuiz, sessionKey);
+        shuffledQuiz = shuffleResult.quiz;
+        newMappings = shuffleResult.questionMappings;
+        console.log('✅ Shuffle successful');
+      } catch (shuffleError) {
+        console.error('❌ Shuffle failed, using original quiz:', shuffleError);
+        shuffledQuiz = originalQuiz;
+        newMappings = {};
+      }
+      
+      // ตรวจสอบว่า quiz มีข้อมูล
+      if (!shuffledQuiz || !shuffledQuiz.questions || shuffledQuiz.questions.length === 0) {
+        console.error('No quiz data available');
+        return;
+      }
+      
+      console.log('Quiz loaded successfully:', {
+        originalCount: originalQuiz.questions.length,
+        shuffledCount: shuffledQuiz.questions.length,
+        mappingsCount: Object.keys(newMappings).length
+      });
+      
+      // สร้าง quiz session
+      const newSession: QuizSession = {
+        sessionKey,
+        quizId,
+        shuffledQuiz,
+        questionMappings: newMappings,
+        startedAt: new Date()
+      };
+      
+      setQuizSession(newSession);
+      setQuiz(shuffledQuiz);
+      setQuestionMappings(newMappings);
+      setIsShuffled(true);
+      setIsActive(true);
+      setCurrentQuestionIndex(0);
+      setAnswers({});
+      setShowResults(false);
+      setShowExplanation({});
+    } catch (error) {
+      console.error('Error starting quiz:', error);
+      // Fallback ใช้ quiz เดิมหากเกิดข้อผิดพลาด
+      console.log('Using fallback quiz (no shuffle)');
+      setQuiz(originalQuiz);
+      setQuestionMappings({});
+      setIsShuffled(false);
+      setIsActive(true);
+      setCurrentQuestionIndex(0);
+      setAnswers({});
+      setShowResults(false);
+      setShowExplanation({});
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -97,36 +182,32 @@ export default function QuizDetailPage() {
   };
 
   const calculateScore = useCallback(() => {
-    if (!quiz) return { score: 0, totalPoints: 0, percentage: 0 };
+    if (!quiz || !quiz.questions) return { score: 0, totalPoints: 0, percentage: 0 };
     
     let score = 0;
     let totalPoints = 0;
 
     quiz.questions.forEach(question => {
+      // ตรวจสอบว่า question มีข้อมูลหรือไม่
+      if (!question || !question.id || typeof question.points !== 'number') {
+        console.warn('Invalid question in calculateScore:', question);
+        return;
+      }
+
       totalPoints += question.points;
       const userAnswer = answers[question.id];
       
-      if (question.type === 'true-false') {
-        if (userAnswer === question.correctAnswer) {
-          score += question.points;
-        }
-      } else if (question.type === 'multiple-choice') {
-        if (userAnswer === question.correctAnswer) {
-          score += question.points;
-        }
-      } else if (question.type === 'text') {
-        // สำหรับข้อความ ต้องตรวจสอบแบบ case-insensitive
-        const correctAnswer = (question.correctAnswer as string).toLowerCase().trim();
-        const userAnswerText = (userAnswer as string || '').toLowerCase().trim();
-        if (userAnswerText === correctAnswer) {
-          score += question.points;
-        }
+      // ใช้ฟังก์ชัน checkAnswerWithMapping เพื่อตรวจสอบคำตอบ
+      const isCorrect = checkAnswerWithMapping(question, userAnswer, questionMappings);
+      
+      if (isCorrect) {
+        score += question.points;
       }
     });
 
     const percentage = totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0;
     return { score, totalPoints, percentage };
-  }, [quiz, answers]);
+  }, [quiz, answers, questionMappings]);
 
   const handleSubmitQuiz = () => {
     if (!quiz) return;
@@ -164,8 +245,16 @@ export default function QuizDetailPage() {
     setIsActive(false);
     setShowResults(false);
     setShowExplanation({});
-    if (quiz?.timeLimit) {
-      setTimeLeft(quiz.timeLimit * 60);
+    setQuizSession(null);
+    setQuestionMappings({});
+    setIsShuffled(false);
+    
+    // รีเซ็ตกลับไปใช้ quiz เดิม
+    if (originalQuiz) {
+      setQuiz(originalQuiz);
+      if (originalQuiz.timeLimit) {
+        setTimeLeft(originalQuiz.timeLimit * 60);
+      }
     }
   };
 
@@ -177,8 +266,8 @@ export default function QuizDetailPage() {
   };
 
   const canRetakeQuiz = () => {
-    if (!quiz?.maxAttempts) return true;
-    return progressManager.canRetakeQuiz(quiz.id, quiz.maxAttempts);
+    // อนุญาตให้ทำซ้ำได้ไม่จำกัดครั้งเพื่อการศึกษา
+    return true;
   };
 
   const getModuleTitle = () => {
@@ -187,7 +276,7 @@ export default function QuizDetailPage() {
     return module?.title || 'Unknown Module';
   };
 
-  if (!quiz) {
+  if (!originalQuiz) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
         <div className="text-center text-white">
@@ -203,9 +292,9 @@ export default function QuizDetailPage() {
     );
   }
 
-  const currentQuestion = quiz.questions[currentQuestionIndex];
-  const isLastQuestion = currentQuestionIndex === quiz.questions.length - 1;
-  const hasAnsweredCurrent = answers[currentQuestion?.id] !== undefined;
+  const currentQuestion = quiz?.questions[currentQuestionIndex];
+  const isLastQuestion = quiz ? currentQuestionIndex === quiz.questions.length - 1 : false;
+  const hasAnsweredCurrent = currentQuestion ? answers[currentQuestion.id] !== undefined : false;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
@@ -222,7 +311,7 @@ export default function QuizDetailPage() {
             กลับไปหน้าแบบทดสอบ
           </button>
           
-          <h1 className="text-4xl font-bold text-white mb-2">{quiz.title}</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">{originalQuiz.title}</h1>
           <p className="text-gray-300">บทเรียน: {getModuleTitle()}</p>
         </div>
 
@@ -233,7 +322,15 @@ export default function QuizDetailPage() {
               <div className="text-center mb-6">
                 <Brain className="mx-auto text-blue-400 mb-4" size={64} />
                 <h2 className="text-2xl font-bold text-white mb-4">พร้อมเริ่มทำแบบทดสอบแล้วหรือยัง?</h2>
-                <p className="text-gray-300">{quiz.description}</p>
+                <p className="text-gray-300">{originalQuiz.description}</p>
+                
+                {/* แสดงสถานะการ shuffle */}
+                <div className="mt-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                  <div className="flex items-center justify-center text-blue-300">
+                    <Shuffle size={16} className="mr-2" />
+                    <span className="text-sm">คำถามและตัวเลือกจะถูกสุ่มเพื่อป้องกันการท่องจำ</span>
+                  </div>
+                </div>
               </div>
 
               <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -242,7 +339,7 @@ export default function QuizDetailPage() {
                     <Brain size={16} className="mr-2" />
                     จำนวนข้อ
                   </div>
-                  <div className="text-2xl font-bold text-white">{quiz.questions.length} ข้อ</div>
+                  <div className="text-2xl font-bold text-white">{originalQuiz.questions.length} ข้อ</div>
                 </div>
 
                 <div className="bg-white/5 rounded-lg p-4">
@@ -251,7 +348,7 @@ export default function QuizDetailPage() {
                     เวลา
                   </div>
                   <div className="text-2xl font-bold text-white">
-                    {quiz.timeLimit ? `${quiz.timeLimit} นาที` : 'ไม่จำกัด'}
+                    {originalQuiz.timeLimit ? `${originalQuiz.timeLimit} นาที` : 'ไม่จำกัด'}
                   </div>
                 </div>
 
@@ -260,7 +357,7 @@ export default function QuizDetailPage() {
                     <Target size={16} className="mr-2" />
                     คะแนนผ่าน
                   </div>
-                  <div className="text-2xl font-bold text-white">{quiz.passingScore}%</div>
+                  <div className="text-2xl font-bold text-white">{originalQuiz.passingScore}%</div>
                 </div>
 
                 <div className="bg-white/5 rounded-lg p-4">
@@ -269,7 +366,7 @@ export default function QuizDetailPage() {
                     คะแนนเต็ม
                   </div>
                   <div className="text-2xl font-bold text-white">
-                    {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                    {originalQuiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
                   </div>
                 </div>
               </div>
@@ -291,9 +388,9 @@ export default function QuizDetailPage() {
               {!canRetakeQuiz() ? (
                 <div className="text-center p-4 bg-red-500/20 rounded-lg border border-red-500/30">
                   <XCircle className="mx-auto text-red-400 mb-2" size={48} />
-                  <h3 className="text-lg font-semibold text-red-400 mb-2">หมดจำนวนครั้งในการทำแบบทดสอบ</h3>
+                  <h3 className="text-lg font-semibold text-red-400 mb-2">ไม่สามารถทำซ้ำได้</h3>
                   <p className="text-red-300 text-sm">
-                    คุณได้ทำแบบทดสอบครบ {quiz.maxAttempts} ครั้งแล้ว
+                    ระบบจำกัดการทำซ้ำ (ขณะนี้ปิดการใช้งาน)
                   </p>
                 </div>
               ) : (
@@ -304,11 +401,9 @@ export default function QuizDetailPage() {
                   >
                     เริ่มทำแบบทดสอบ
                   </button>
-                  {quiz.maxAttempts && (
-                    <p className="text-gray-400 text-sm mt-2">
-                      ทำได้สูงสุด {quiz.maxAttempts} ครั้ง (เหลือ {quiz.maxAttempts - previousAttempts.length} ครั้ง)
-                    </p>
-                  )}
+                  <p className="text-gray-400 text-sm mt-2">
+                    สามารถทำซ้ำได้ไม่จำกัดครั้งเพื่อการเรียนรู้
+                  </p>
                 </div>
               )}
             </div>
@@ -322,11 +417,11 @@ export default function QuizDetailPage() {
             <div className="flex justify-between items-center mb-6">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
                 <span className="text-white text-sm">
-                  ข้อที่ {currentQuestionIndex + 1} จาก {quiz.questions.length}
+                  ข้อที่ {currentQuestionIndex + 1} จาก {quiz?.questions.length || 0}
                 </span>
               </div>
               
-              {quiz.timeLimit && (
+              {originalQuiz.timeLimit && (
                 <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 border border-white/20">
                   <div className="flex items-center text-white">
                     <Clock size={16} className="mr-2" />
@@ -343,83 +438,85 @@ export default function QuizDetailPage() {
               <div className="w-full bg-gray-700 rounded-full h-2">
                 <div 
                   className="bg-blue-400 h-2 rounded-full transition-all duration-300"
-                  style={{width: `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%`}}
+                  style={{width: quiz ? `${((currentQuestionIndex + 1) / quiz.questions.length) * 100}%` : '0%'}}
                 />
               </div>
             </div>
 
             {/* Question */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 mb-6">
-              <h2 className="text-2xl font-bold text-white mb-6">
-                {currentQuestion.question}
-              </h2>
+            {currentQuestion && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 mb-6">
+                <h2 className="text-2xl font-bold text-white mb-6">
+                  {currentQuestion.question}
+                </h2>
 
-              {/* Answer Options */}
-              <div className="space-y-3">
-                {currentQuestion.type === 'multiple-choice' && currentQuestion.options?.map((option, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSelect(currentQuestion.id, index)}
-                    className={`w-full text-left p-4 rounded-lg border transition-all ${
-                      answers[currentQuestion.id] === index
-                        ? 'bg-blue-600 border-blue-500 text-white'
-                        : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
-                    }`}
-                  >
-                    <span className="font-semibold mr-3">
-                      {String.fromCharCode(65 + index)}.
-                    </span>
-                    {option}
-                  </button>
-                ))}
-
-                {currentQuestion.type === 'true-false' && (
-                  <div className="grid grid-cols-2 gap-4">
+                {/* Answer Options */}
+                <div className="space-y-3">
+                  {currentQuestion.type === 'multiple-choice' && currentQuestion.options?.map((option, index) => (
                     <button
-                      onClick={() => handleAnswerSelect(currentQuestion.id, 'true')}
-                      className={`p-4 rounded-lg border transition-all ${
-                        answers[currentQuestion.id] === 'true'
-                          ? 'bg-green-600 border-green-500 text-white'
+                      key={index}
+                      onClick={() => handleAnswerSelect(currentQuestion.id, index)}
+                      className={`w-full text-left p-4 rounded-lg border transition-all ${
+                        answers[currentQuestion.id] === index
+                          ? 'bg-blue-600 border-blue-500 text-white'
                           : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
                       }`}
                     >
-                      <CheckCircle className="mx-auto mb-2" size={24} />
-                      ถูก
+                      <span className="font-semibold mr-3">
+                        {String.fromCharCode(65 + index)}.
+                      </span>
+                      {option}
                     </button>
-                    <button
-                      onClick={() => handleAnswerSelect(currentQuestion.id, 'false')}
-                      className={`p-4 rounded-lg border transition-all ${
-                        answers[currentQuestion.id] === 'false'
-                          ? 'bg-red-600 border-red-500 text-white'
-                          : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
-                      }`}
-                    >
-                      <XCircle className="mx-auto mb-2" size={24} />
-                      ผิด
-                    </button>
-                  </div>
-                )}
+                  ))}
 
-                {currentQuestion.type === 'text' && (
-                  <input
-                    type="text"
-                    value={answers[currentQuestion.id] as string || ''}
-                    onChange={(e) => handleAnswerSelect(currentQuestion.id, e.target.value)}
-                    placeholder="พิมพ์คำตอบของคุณ..."
-                    className="w-full p-4 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
-                  />
-                )}
-              </div>
+                  {currentQuestion.type === 'true-false' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <button
+                        onClick={() => handleAnswerSelect(currentQuestion.id, 'true')}
+                        className={`p-4 rounded-lg border transition-all ${
+                          answers[currentQuestion.id] === 'true'
+                            ? 'bg-green-600 border-green-500 text-white'
+                            : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <CheckCircle className="mx-auto mb-2" size={24} />
+                        ถูก
+                      </button>
+                      <button
+                        onClick={() => handleAnswerSelect(currentQuestion.id, 'false')}
+                        className={`p-4 rounded-lg border transition-all ${
+                          answers[currentQuestion.id] === 'false'
+                            ? 'bg-red-600 border-red-500 text-white'
+                            : 'bg-white/5 border-white/20 text-gray-300 hover:bg-white/10'
+                        }`}
+                      >
+                        <XCircle className="mx-auto mb-2" size={24} />
+                        ผิด
+                      </button>
+                    </div>
+                  )}
 
-              {/* Question Info */}
-              <div className="mt-6 pt-4 border-t border-white/20 text-sm text-gray-400">
-                <span>คะแนน: {currentQuestion.points} คะแนน</span>
-                <span className="ml-4">ความยาก: {
-                  currentQuestion.difficulty === 'easy' ? 'ง่าย' :
-                  currentQuestion.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'
-                }</span>
+                  {currentQuestion.type === 'text' && (
+                    <input
+                      type="text"
+                      value={answers[currentQuestion.id] as string || ''}
+                      onChange={(e) => handleAnswerSelect(currentQuestion.id, e.target.value)}
+                      placeholder="พิมพ์คำตอบของคุณ..."
+                      className="w-full p-4 bg-white/5 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                    />
+                  )}
+                </div>
+
+                {/* Question Info */}
+                <div className="mt-6 pt-4 border-t border-white/20 text-sm text-gray-400">
+                  <span>คะแนน: {currentQuestion.points} คะแนน</span>
+                  <span className="ml-4">ความยาก: {
+                    currentQuestion.difficulty === 'easy' ? 'ง่าย' :
+                    currentQuestion.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'
+                  }</span>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Navigation */}
             <div className="flex justify-between items-center">
@@ -442,7 +539,7 @@ export default function QuizDetailPage() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => setCurrentQuestionIndex(Math.min(quiz.questions.length - 1, currentQuestionIndex + 1))}
+                    onClick={() => quiz && setCurrentQuestionIndex(Math.min(quiz.questions.length - 1, currentQuestionIndex + 1))}
                     className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                   >
                     ข้อถัดไป
@@ -453,26 +550,28 @@ export default function QuizDetailPage() {
             </div>
 
             {/* Question Navigator */}
-            <div className="mt-8 bg-white/5 rounded-lg p-4">
-              <h3 className="text-white font-semibold mb-3">ข้อคำถาม</h3>
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
-                {quiz.questions.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentQuestionIndex(index)}
-                    className={`w-10 h-10 rounded-lg text-sm font-semibold transition-all ${
-                      index === currentQuestionIndex
-                        ? 'bg-blue-600 text-white'
-                        : answers[quiz.questions[index].id] !== undefined
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                    }`}
-                  >
-                    {index + 1}
-                  </button>
-                ))}
+            {quiz && (
+              <div className="mt-8 bg-white/5 rounded-lg p-4">
+                <h3 className="text-white font-semibold mb-3">ข้อคำถาม</h3>
+                <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                  {quiz.questions.map((question, index) => (
+                    <button
+                      key={question?.id || index}
+                      onClick={() => setCurrentQuestionIndex(index)}
+                      className={`w-10 h-10 rounded-lg text-sm font-semibold transition-all ${
+                        index === currentQuestionIndex
+                          ? 'bg-blue-600 text-white'
+                          : question?.id && answers[question.id] !== undefined
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                      }`}
+                    >
+                      {index + 1}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -523,17 +622,25 @@ export default function QuizDetailPage() {
             </div>
 
             {/* Question Review */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 mb-8">
-              <h3 className="text-2xl font-bold text-white mb-6">ตรวจสอบคำตอบ</h3>
-              
-              <div className="space-y-6">
-                {quiz.questions.map((question, index) => {
-                  const userAnswer = answers[question.id];
-                  const isCorrect = question.type === 'true-false' 
-                    ? userAnswer === question.correctAnswer
-                    : question.type === 'multiple-choice'
-                    ? userAnswer === question.correctAnswer
-                    : (userAnswer as string || '').toLowerCase().trim() === (question.correctAnswer as string).toLowerCase().trim();
+            {quiz && (
+              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 mb-8">
+                <h3 className="text-2xl font-bold text-white mb-6">ตรวจสอบคำตอบ</h3>
+                
+                <div className="space-y-6">
+                  {quiz.questions.map((question, index) => {
+                    // ตรวจสอบว่า question มีข้อมูลหรือไม่
+                    if (!question || !question.id) {
+                      return (
+                        <div key={`invalid-${index}`} className="border-b border-white/20 pb-6 last:border-0">
+                          <div className="text-red-400">
+                            ข้อที่ {index + 1}: ข้อมูลคำถามไม่ถูกต้อง
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const userAnswer = answers[question.id];
+                    const isCorrect = checkAnswerWithMapping(question, userAnswer, questionMappings);
 
                   return (
                     <div key={question.id} className="border-b border-white/20 pb-6 last:border-0">
@@ -626,22 +733,28 @@ export default function QuizDetailPage() {
                         </div>
                       )}
                     </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
-            {/* Actions */}
+            )}            {/* Actions */}
             <div className="text-center space-y-4">
-              {canRetakeQuiz() && !quizAttempt.passed && (
-                <button
-                  onClick={resetQuiz}
-                  className="inline-flex items-center px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-lg font-semibold mr-4"
-                >
-                  <RotateCcw size={20} className="mr-2" />
-                  ทำแบบทดสอบอีกครั้ง
-                </button>
-              )}
+              <div className="mb-6 p-4 bg-green-500/20 rounded-lg border border-green-500/30">
+                <h4 className="text-lg font-semibold text-green-400 mb-2">💡 เคล็ดลับการเรียนรู้</h4>
+                <p className="text-green-300 text-sm">
+                  สามารถทำแบบทดสอบซ้ำได้ไม่จำกัดครั้งเพื่อฝึกจำและเรียนรู้จากความผิดพลาด
+                  <br />
+                  คำถามและตัวเลือกจะถูกสุ่มใหม่ทุกครั้งเพื่อป้องกันการท่องจำ
+                </p>
+              </div>
+
+              <button
+                onClick={resetQuiz}
+                className="inline-flex items-center px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-lg font-semibold mr-4"
+              >
+                <RotateCcw size={20} className="mr-2" />
+                ทำแบบทดสอบอีกครั้ง
+              </button>
               
               <button
                 onClick={() => router.push('/quiz')}

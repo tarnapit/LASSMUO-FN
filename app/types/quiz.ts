@@ -7,6 +7,7 @@ export interface QuizQuestion {
   explanation?: string;
   difficulty: 'easy' | 'medium' | 'hard';
   points: number;
+  _originalCorrectAnswer?: number; // เก็บ index ต้นฉบับก่อน shuffle (สำหรับ multiple-choice)
 }
 
 export interface Quiz {
@@ -43,4 +44,17 @@ export interface QuizProgress {
   totalAttempts: number;
   passed: boolean;
   lastAttemptAt?: Date;
+}
+
+export interface QuizSession {
+  sessionKey: string;
+  quizId: string;
+  shuffledQuiz: Quiz;
+  questionMappings: { [questionId: string]: OptionMapping[] };
+  startedAt: Date;
+}
+
+export interface OptionMapping {
+  originalIndex: number;
+  shuffledIndex: number;
 }
