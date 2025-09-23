@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Rocket, Users, BookOpen, Gamepad2, Star, Trophy, Target, Clock, GraduationCap, PlayCircle, Brain, User, Menu } from "lucide-react";
+import { Rocket, Users, BookOpen, Gamepad2, Star, Trophy, Target, Clock, GraduationCap, PlayCircle, Brain } from "lucide-react";
 import Navbar from "./components/layout/Navbar";
 import ApiStatusIndicator from "./components/ui/ApiStatusIndicator";
 import { progressManager } from "./lib/progress";
@@ -11,12 +11,10 @@ import { useUser, useUserProfile } from "./lib/api/hooks";
 
 export default function HomePage() {
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [learningStats, setLearningStats] = useState<any>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // API hooks for user data
-  const { data: userProfile, loading: userProfileLoading, error: userProfileError } = useUserProfile(currentUser?.id || '');
+  const { data: userProfile, loading: userProfileLoading, error: userProfileError } = useUserProfile('');
 
   useEffect(() => {
     // มิเกรตข้อมูลเก่าก่อน
@@ -26,18 +24,12 @@ export default function HomePage() {
     const currentProgress = progressManager.getProgress();
     setProgress(currentProgress);
     
-    const user = authManager.getCurrentUser();
-    setCurrentUser(user);
-    setIsLoggedIn(authManager.isLoggedIn());
-    
     // โหลดสถิติการเรียนรู้
     const stats = progressManager.getLearningStats();
     setLearningStats(stats);
 
-    // Listen for auth changes
-    const unsubscribe = authManager.onAuthStateChange((user) => {
-      setCurrentUser(user);
-      setIsLoggedIn(!!user);
+    // Listen for progress changes
+    const unsubscribe = authManager.onAuthStateChange(() => {
       // รีโหลด progress เมื่อ auth state เปลี่ยน
       const newProgress = progressManager.getProgress();
       setProgress(newProgress);
@@ -61,61 +53,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       {/* Navigation */}
-      <nav className="relative z-50">
-        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="text-xl sm:text-2xl font-bold text-white tracking-wider hover:text-yellow-300 transition-colors"
-          >
-            LASSMUOO
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="/stage" className="text-white hover:text-yellow-300 transition-colors font-medium">
-              ด่าน
-            </Link>
-            <Link href="/learning" className="text-white hover:text-yellow-300 transition-colors font-medium">
-              บทเรียน
-            </Link>
-            <Link href="/mini-game" className="text-white hover:text-yellow-300 transition-colors font-medium">
-              มินิเกม
-            </Link>
-            <Link href="/leaderboard" className="text-white hover:text-yellow-300 transition-colors font-medium">
-              บอร์ดผู้นำ
-            </Link>
-          </div>
-
-          {/* Auth Section */}
-          <div className="hidden md:block">
-            {currentUser ? (
-              <div className="flex items-center space-x-3 bg-slate-800 rounded-lg px-4 py-2 border border-slate-700">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <User size={16} className="text-white" />
-                </div>
-                <div className="text-left">
-                  <div className="text-white font-medium">{currentUser.username}</div>
-                </div>
-              </div>
-            ) : (
-              <button 
-                className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-2 rounded-lg border border-blue-500/30 hover:from-blue-500 hover:to-purple-500 transition-all duration-300"
-              >
-                เข้าสู่ระบบ
-              </button>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <button
-            className="md:hidden text-white hover:text-yellow-300 transition-colors p-2"
-            aria-label="เปิด/ปิดเมนู"
-          >
-            <Menu size={20} />
-          </button>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section - Split Layout */}
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
