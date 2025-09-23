@@ -20,7 +20,7 @@ export class AnswerService {
    * Get all answers
    */
   async getAllAnswers(): Promise<ApiResponse<Answer[]>> {
-    return apiClient.get<ApiResponse<Answer[]>>(`${this.endpoint}`);
+    return apiClient.get<ApiResponse<Answer[]>>(`${this.endpoint}/get`);
   }
 
   /**
@@ -42,6 +42,13 @@ export class AnswerService {
    */
   async getAnswersByOrderId(orderId: string): Promise<ApiResponse<Answer[]>> {
     return apiClient.get<ApiResponse<Answer[]>>(`${this.endpoint}`, { orderId });
+  }
+
+  /**
+   * Get answers by question ID  
+   */
+  async getAnswersByQuestionId(questionId: string): Promise<ApiResponse<Answer[]>> {
+    return apiClient.get<ApiResponse<Answer[]>>(`${this.endpoint}/get`, { questionId });
   }
 
   /**

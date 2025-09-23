@@ -20,14 +20,14 @@ export class LessonService {
    * Get all lessons
    */
   async getAllLessons(): Promise<ApiResponse<Lesson[]>> {
-    return apiClient.get<ApiResponse<Lesson[]>>(`${this.endpoint}`);
+    return apiClient.get<ApiResponse<Lesson[]>>(`${this.endpoint}/getAll`);
   }
 
   /**
    * Get lesson by ID
    */
   async getLessonById(lessonId: string): Promise<ApiResponse<Lesson>> {
-    return apiClient.get<ApiResponse<Lesson>>(`${this.endpoint}/${lessonId}`);
+    return apiClient.get<ApiResponse<Lesson>>(`${this.endpoint}/getById/${lessonId}`);
   }
 
   /**
@@ -41,7 +41,7 @@ export class LessonService {
    * Update lesson (full update)
    */
   async updateLesson(lessonId: string, lessonData: UpdateLessonRequest): Promise<ApiResponse<Lesson>> {
-    return apiClient.put<ApiResponse<Lesson>>(`${this.endpoint}/update/${lessonId}`, lessonData);
+    return apiClient.put<ApiResponse<Lesson>>(`${this.endpoint}/updateLesson/${lessonId}`, lessonData);
   }
 
   /**

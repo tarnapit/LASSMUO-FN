@@ -3,11 +3,14 @@ export const API_CONFIG = {
   BASE_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8888',
   ENDPOINTS: {
     COURSE: '/course',
+    COURSE_DETAIL: '/courseDetail',
+    COURSE_LESSON: '/courseLesson',
     STAGE: '/stage', 
     LESSON: '/lesson',
     ORDER: '/order',
     USER: '/users',
     ANSWER: '/answer',
+    AUTH: '/login',
     HEALTH: '/health'
   },
   TIMEOUT: 5000, // ลดเวลา timeout ลง

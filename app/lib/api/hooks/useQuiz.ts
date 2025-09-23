@@ -58,13 +58,13 @@ export function useQuiz() {
   };
 }
 
-// Hook for fetching user's quiz results
-export function useUserQuizResults(userId: string, lessonId?: string) {
+// Hook for fetching user's quiz results (in quiz context)
+export function useQuizUserResults(userId: string, lessonId?: string) {
   return useFetch(() => answerService.getUserQuizResults(userId, lessonId), [userId, lessonId]);
 }
 
-// Hook for fetching user's progress
-export function useUserProgress(userId: string) {
+// Hook for fetching user's progress (in quiz context)
+export function useQuizUserProgress(userId: string) {
   return useFetch(() => answerService.getUserProgress(userId), [userId]);
 }
 
@@ -73,8 +73,8 @@ export function useQuizStats(orderId: string) {
   return useFetch(() => answerService.getQuestionStats(orderId), [orderId]);
 }
 
-// Hook for fetching leaderboard
-export function useLeaderboard(courseId?: string, limit: number = 10) {
+// Hook for fetching leaderboard (in quiz context)
+export function useQuizLeaderboard(courseId?: string, limit: number = 10) {
   return useFetch(() => answerService.getLeaderboard(courseId, limit), [courseId, limit]);
 }
 
