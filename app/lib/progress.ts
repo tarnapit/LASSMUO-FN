@@ -246,12 +246,14 @@ class ProgressManager {
   
   // ตรวจสอบว่าสามารถทำ quiz ซ้ำได้หรือไม่
   canRetakeQuiz(quizId: string, maxAttempts?: number): boolean {
-    if (!maxAttempts) return true;
+    // สำหรับการศึกษา อนุญาตให้ทำซ้ำได้ไม่จำกัด
+    return true;
     
-    const quizProgress = this.getQuizProgress(quizId);
-    if (!quizProgress) return true;
-    
-    return quizProgress.totalAttempts < maxAttempts;
+    // โค้ดเดิมที่จำกัดจำนวนครั้ง (ถูก comment ไว้)
+    // if (!maxAttempts) return true;
+    // const quizProgress = this.getQuizProgress(quizId);
+    // if (!quizProgress) return true;
+    // return quizProgress.totalAttempts < maxAttempts;
   }
   
   // รีเซ็ต quiz progress (สำหรับการพัฒนา/ทดสอบ)

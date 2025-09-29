@@ -24,8 +24,8 @@ export function useUserProfile(userId: string) {
   return useFetch(() => userService.getUserProfile(userId), [userId]);
 }
 
-// Hook for user authentication
-export function useAuth() {
+// Hook for user authentication (using userService)
+export function useUserAuth() {
   const loginMutation = useMutation<ApiResponse<{
     user: User;
     token: string;

@@ -20,14 +20,14 @@ export class StageService {
    * Get all stages
    */
   async getAllStages(): Promise<ApiResponse<Stage[]>> {
-    return apiClient.get<ApiResponse<Stage[]>>(`${this.endpoint}`);
+    return apiClient.get<ApiResponse<Stage[]>>(`${this.endpoint}/getAll`);
   }
 
   /**
    * Get stage by ID
    */
   async getStageById(stageId: string): Promise<ApiResponse<Stage>> {
-    return apiClient.get<ApiResponse<Stage>>(`${this.endpoint}/${stageId}`);
+    return apiClient.get<ApiResponse<Stage>>(`${this.endpoint}/getById/${stageId}`);
   }
 
   /**

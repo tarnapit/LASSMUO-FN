@@ -20,14 +20,14 @@ export class CourseService {
    * Get all courses
    */
   async getAllCourses(): Promise<ApiResponse<Course[]>> {
-    return apiClient.get<ApiResponse<Course[]>>(`${this.endpoint}`);
+    return apiClient.get<ApiResponse<Course[]>>(`${this.endpoint}/all`);
   }
 
   /**
    * Get course by ID
    */
   async getCourseById(courseId: string): Promise<ApiResponse<Course>> {
-    return apiClient.get<ApiResponse<Course>>(`${this.endpoint}/${courseId}`);
+    return apiClient.get<ApiResponse<Course>>(`${this.endpoint}/getCourse/${courseId}`);
   }
 
   /**

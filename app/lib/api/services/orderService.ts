@@ -38,6 +38,13 @@ export class OrderService {
   }
 
   /**
+   * Get orders by user ID
+   */
+  async getOrdersByUserId(userId: string): Promise<ApiResponse<Order[]>> {
+    return apiClient.get<ApiResponse<Order[]>>(`${this.endpoint}/getOrder`, { userId });
+  }
+
+  /**
    * Update order (full update)
    */
   async updateOrder(orderId: string, orderData: UpdateOrderRequest): Promise<ApiResponse<Order>> {
