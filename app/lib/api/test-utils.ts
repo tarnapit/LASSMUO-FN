@@ -2,7 +2,7 @@
 // These functions help test API integration and can be used in development
 
 import { api } from './index';
-import { CreateCourseRequest, CreateStageRequest, CreateLessonRequest, CreateOrderRequest } from './types';
+import { CreateCourseRequest, CreateStageRequest } from './types';
 
 /**
  * Test API connection and basic functionality
@@ -66,19 +66,22 @@ export async function createSampleData(): Promise<{
     const sampleStages: CreateStageRequest[] = [
       {
         courseId,
-        title: "Getting Started with Astronomy",
+        name: "Getting Started with Astronomy",
+        description: "Introduction to astronomy basics",
         order: 1,
         unlockCondition: true
       },
       {
         courseId,
-        title: "Understanding Planets",
+        name: "Understanding Planets",
+        description: "Learn about planets in our solar system",
         order: 2,
         unlockCondition: false
       },
       {
         courseId,
-        title: "Moons and Satellites",
+        name: "Moons and Satellites",
+        description: "Explore moons and artificial satellites",
         order: 3,
         unlockCondition: false
       }
@@ -93,96 +96,11 @@ export async function createSampleData(): Promise<{
       }
     }
 
-    // Create sample lessons for the first stage
-    if (stages.length > 0) {
-      const firstStageId = stages[0].id;
-      const sampleLessons: CreateLessonRequest[] = [
-        {
-          stageId: firstStageId,
-          title: "What is Astronomy?",
-          content: "Astronomy is the scientific study of celestial objects and phenomena...",
-          order: 1,
-          duration: 300 // 5 minutes
-        },
-        {
-          stageId: firstStageId,
-          title: "History of Space Exploration",
-          content: "The history of space exploration begins with ancient civilizations...",
-          order: 2,
-          duration: 450 // 7.5 minutes
-        }
-      ];
 
-      const lessons = [];
-      for (const lessonData of sampleLessons) {
-        const lessonResponse = await api.lesson.createLesson(lessonData);
-        if (lessonResponse.data) {
-          lessons.push(lessonResponse.data);
-          console.log('✅ Created lesson:', lessonResponse.data.id);
-        }
-      }
-
-      // Create sample quiz questions for the first lesson
-      if (lessons.length > 0) {
-        const firstLessonId = lessons[0].id;
-        const sampleQuestions: CreateOrderRequest[] = [
-          {
-            lessonId: firstLessonId,
-            question: "What is the closest planet to the Sun?",
-            choices: ["Mercury", "Venus", "Earth", "Mars"],
-            correctAnswer: "Mercury"
-          },
-          {
-            lessonId: firstLessonId,
-            question: "How many planets are in our solar system?",
-            choices: ["7", "8", "9", "10"],
-            correctAnswer: "8"
-          },
-          {
-            lessonId: firstLessonId,
-            question: "Which planet is known as the Red Planet?",
-            choices: ["Venus", "Mars", "Jupiter", "Saturn"],
-            correctAnswer: "Mars"
-          },
-          {
-            lessonId: firstLessonId,
-            question: "What is the largest planet in our solar system?",
-            choices: ["Earth", "Saturn", "Jupiter", "Neptune"],
-            correctAnswer: "Jupiter"
-          },
-          {
-            lessonId: firstLessonId,
-            question: "Which planet has the most moons?",
-            choices: ["Earth", "Mars", "Jupiter", "Saturn"],
-            correctAnswer: "Saturn"
-          }
-        ];
-
-        const questions = [];
-        for (const questionData of sampleQuestions) {
-          const questionResponse = await api.order.createOrder(questionData);
-          if (questionResponse.data) {
-            questions.push(questionResponse.data);
-            console.log('✅ Created question:', questionResponse.data.id);
-          }
-        }
-
-        return {
-          success: true,
-          message: 'Sample data created successfully',
-          data: {
-            course: courseResponse.data,
-            stages: stages,
-            lessons: lessons,
-            questions: questions
-          }
-        };
-      }
-    }
 
     return {
       success: true,
-      message: 'Partial sample data created',
+      message: 'Sample data created successfully',
       data: {
         course: courseResponse.data,
         stages: stages
@@ -206,7 +124,7 @@ export async function testLearningFlow(): Promise<{
   results?: any;
 }> {
   try {
-    console.log('🎓 Testing complete learning flow...');
+    console.log('🎓 Testing basic learning flow...');
 
     // 1. Get all courses
     const coursesResponse = await api.course.getAllCourses();
@@ -222,49 +140,12 @@ export async function testLearningFlow(): Promise<{
     const stagesResponse = await api.stage.getStagesByCourseId(firstCourse.id);
     console.log('📖 Found stages:', stagesResponse.data?.length || 0);
 
-    if (!stagesResponse.data || stagesResponse.data.length === 0) {
-      throw new Error('No stages found for the course.');
-    }
-
-    const firstStage = stagesResponse.data[0];
-
-    // 3. Get lessons for the first stage
-    const lessonsResponse = await api.lesson.getLessonsByStageId(firstStage.id);
-    console.log('📝 Found lessons:', lessonsResponse.data?.length || 0);
-
-    if (!lessonsResponse.data || lessonsResponse.data.length === 0) {
-      throw new Error('No lessons found for the stage.');
-    }
-
-    const firstLesson = lessonsResponse.data[0];
-
-    // 4. Get quiz questions for the first lesson
-    const questionsResponse = await api.order.getOrdersByLessonId(firstLesson.id);
-    console.log('❓ Found questions:', questionsResponse.data?.length || 0);
-
-    if (!questionsResponse.data || questionsResponse.data.length === 0) {
-      throw new Error('No questions found for the lesson.');
-    }
-
-    // 5. Test getting random questions
-    const randomQuestionsResponse = await api.order.getRandomOrders(firstLesson.id, 3);
-    console.log('🎲 Random questions:', randomQuestionsResponse.data?.length || 0);
-
-    // 6. Test answer validation
-    const firstQuestion = questionsResponse.data[0];
-    const validationResponse = await api.order.validateAnswer(firstQuestion.id, firstQuestion.correctAnswer);
-    console.log('✅ Answer validation:', validationResponse.data?.isCorrect);
-
     return {
       success: true,
-      message: 'Learning flow test completed successfully',
+      message: 'Basic learning flow test completed successfully',
       results: {
         coursesCount: coursesResponse.data.length,
-        stagesCount: stagesResponse.data.length,
-        lessonsCount: lessonsResponse.data.length,
-        questionsCount: questionsResponse.data.length,
-        randomQuestionsCount: randomQuestionsResponse.data?.length || 0,
-        answerValidation: validationResponse.data?.isCorrect
+        stagesCount: stagesResponse.data?.length || 0
       }
     };
 

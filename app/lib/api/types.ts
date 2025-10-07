@@ -78,48 +78,6 @@ export interface CreateStageRequest {
 
 export interface UpdateStageRequest extends Partial<CreateStageRequest> {}
 
-export interface Lesson {
-  id: string;
-  stageId?: string;
-  title: string;
-  content?: string;
-  order?: number;
-  duration?: number;
-  videoUrl?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateLessonRequest {
-  stageId?: string;
-  title: string;
-  content?: string;
-  order?: number;
-  duration?: number;
-  videoUrl?: string;
-}
-
-export interface UpdateLessonRequest extends Partial<CreateLessonRequest> {}
-
-export interface Order {
-  id: string;
-  userId: string;
-  courseId: string;
-  amount: number;
-  status: 'pending' | 'completed' | 'cancelled';
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateOrderRequest {
-  userId: string;
-  courseId: string;
-  amount: number;
-  status: 'pending' | 'completed' | 'cancelled';
-}
-
-export interface UpdateOrderRequest extends Partial<CreateOrderRequest> {}
-
 export interface User {
   id: string;
   name: string;
@@ -140,25 +98,6 @@ export interface CreateUserRequest {
 export interface UpdateUserRequest extends Partial<Omit<CreateUserRequest, 'password'>> {
   password?: string;
 }
-
-export interface Answer {
-  id: string;
-  userId: string;
-  questionId: string;
-  answer: string;
-  isCorrect: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateAnswerRequest {
-  userId: string;
-  questionId: string;
-  answer: string;
-  isCorrect: boolean;
-}
-
-export interface UpdateAnswerRequest extends Partial<CreateAnswerRequest> {}
 
 // Authentication Types
 export interface LoginRequest {

@@ -10,12 +10,9 @@ export const API_CONFIG = {
     STAGE: '/stage', 
     STAGE_PREREQUISITE: '/stage-prerequisite',
     STAGE_CHARACTER: '/stage-character',
-    LESSON: '/lesson',
-    ORDER: '/order',
     QUESTION: '/question',
     USER: '/users',
     USER_COURSE_PROGRESS: '/user-course-progress',
-    ANSWER: '/answer',
     AUTH: '/login',
     HEALTH: '/health'
   },

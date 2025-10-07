@@ -1,51 +1,63 @@
 import { useCallback } from 'react';
 import { useFetch, useMutation } from './useApi';
-import { orderService, answerService } from '../services';
-import { Order, Answer, CreateOrderRequest, CreateAnswerRequest } from '../types';
+import { questionService } from '../services';
 import { ApiResponse } from '../config';
 
-// Hook for fetching orders by lesson
-export function useOrdersByLesson(lessonId: string) {
-  return useFetch(() => orderService.getOrdersByLessonId(lessonId), [lessonId]);
+// Basic types for questions (using local interface since not exported from main types)
+interface Question {
+  id?: string;
+  question: string;
+  options?: string[];
+  correctAnswer?: string;
+  difficulty?: string;
+  category?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-// Hook for fetching random orders for quiz
-export function useRandomOrdersForQuiz(lessonId: string, count: number = 10) {
-  return useFetch(() => orderService.getRandomOrders(lessonId, count), [lessonId, count]);
+interface CreateQuestionRequest {
+  question: string;
+  options?: string[];
+  correctAnswer?: string;
+  difficulty?: string;
+  category?: string;
 }
 
-// Hook for quiz management
+// Hook for fetching questions by category
+export function useQuestionsByCategory(category: string) {
+  return useFetch(() => questionService.getQuestionsByCategory(category), [category]);
+}
+
+// Hook for fetching random questions
+export function useRandomQuestions(category?: string, difficulty?: string, count: number = 10) {
+  return useFetch(() => questionService.getRandomQuestions(category, difficulty, count), [category, difficulty, count]);
+}
+
+// Hook for quiz management with simplified functionality
 export function useQuiz() {
-  const submitAnswers = useMutation<ApiResponse<{
-    answers: Answer[];
-    totalQuestions: number;
-    correctAnswers: number;
-    score: number;
-    percentage: number;
-  }>, [CreateAnswerRequest[]]>();
-
+  const createQuestion = useMutation<ApiResponse<Question>, [CreateQuestionRequest]>();
   const validateAnswer = useMutation<ApiResponse<{
     isCorrect: boolean;
     correctAnswer?: string;
     explanation?: string;
   }>, [string, string]>();
 
-  const submitQuiz = useCallback(async (answers: CreateAnswerRequest[]) => {
-    return await submitAnswers.mutate(answerService.submitQuizAnswers, answers);
-  }, [submitAnswers]);
+  const submitQuestion = useCallback(async (questionData: CreateQuestionRequest) => {
+    return await createQuestion.mutate(questionService.createQuestion, questionData);
+  }, [createQuestion]);
 
-  const checkAnswer = useCallback(async (orderId: string, answer: string) => {
-    return await validateAnswer.mutate(orderService.validateAnswer, orderId, answer);
+  const checkAnswer = useCallback(async (questionId: string, answer: string) => {
+    return await validateAnswer.mutate(questionService.validateAnswer, questionId, answer);
   }, [validateAnswer]);
 
   return {
     submit: {
-      execute: submitQuiz,
-      loading: submitAnswers.loading,
-      error: submitAnswers.error,
-      success: submitAnswers.success,
-      data: submitAnswers.data,
-      reset: submitAnswers.reset,
+      execute: submitQuestion,
+      loading: createQuestion.loading,
+      error: createQuestion.error,
+      success: createQuestion.success,
+      data: createQuestion.data,
+      reset: createQuestion.reset,
     },
     validate: {
       execute: checkAnswer,
@@ -58,67 +70,47 @@ export function useQuiz() {
   };
 }
 
-// Hook for fetching user's quiz results (in quiz context)
-export function useQuizUserResults(userId: string, lessonId?: string) {
-  return useFetch(() => answerService.getUserQuizResults(userId, lessonId), [userId, lessonId]);
-}
-
-// Hook for fetching user's progress (in quiz context)
-export function useQuizUserProgress(userId: string) {
-  return useFetch(() => answerService.getUserProgress(userId), [userId]);
-}
-
-// Hook for fetching quiz statistics
-export function useQuizStats(orderId: string) {
-  return useFetch(() => answerService.getQuestionStats(orderId), [orderId]);
-}
-
-// Hook for fetching leaderboard (in quiz context)
-export function useQuizLeaderboard(courseId?: string, limit: number = 10) {
-  return useFetch(() => answerService.getLeaderboard(courseId, limit), [courseId, limit]);
-}
-
 // Hook for creating quiz questions
 export function useQuizManagement() {
-  const createOrder = useMutation<ApiResponse<Order>, [CreateOrderRequest]>();
-  const bulkCreateOrders = useMutation<ApiResponse<Order[]>, [CreateOrderRequest[]]>();
-  const deleteOrder = useMutation<ApiResponse<void>, [string]>();
+  const createQuestion = useMutation<ApiResponse<Question>, [CreateQuestionRequest]>();
+  const deleteQuestion = useMutation<ApiResponse<void>, [string]>();
+  const bulkCreate = useMutation<ApiResponse<Question[]>, [CreateQuestionRequest[]]>();
 
-  const createQuestion = useCallback(async (questionData: CreateOrderRequest) => {
-    return await createOrder.mutate(orderService.createOrder, questionData);
-  }, [createOrder]);
+  const createQuizQuestion = useCallback(async (questionData: CreateQuestionRequest) => {
+    return await createQuestion.mutate(questionService.createQuestion, questionData);
+  }, [createQuestion]);
 
-  const createMultipleQuestions = useCallback(async (questions: CreateOrderRequest[]) => {
-    return await bulkCreateOrders.mutate(orderService.bulkCreateOrders, questions);
-  }, [bulkCreateOrders]);
+  const deleteQuizQuestion = useCallback(async (questionId: string) => {
+    return await deleteQuestion.mutate(questionService.deleteQuestion, questionId);
+  }, [deleteQuestion]);
 
-  const deleteQuestion = useCallback(async (orderId: string) => {
-    return await deleteOrder.mutate(orderService.deleteOrder, orderId);
-  }, [deleteOrder]);
+  const bulkCreateQuestions = useCallback(async (questions: CreateQuestionRequest[]) => {
+    return await bulkCreate.mutate(questionService.bulkCreateQuestions, questions);
+  }, [bulkCreate]);
 
   return {
     createQuestion: {
-      execute: createQuestion,
-      loading: createOrder.loading,
-      error: createOrder.error,
-      success: createOrder.success,
-      data: createOrder.data,
-      reset: createOrder.reset,
-    },
-    bulkCreate: {
-      execute: createMultipleQuestions,
-      loading: bulkCreateOrders.loading,
-      error: bulkCreateOrders.error,
-      success: bulkCreateOrders.success,
-      data: bulkCreateOrders.data,
-      reset: bulkCreateOrders.reset,
+      execute: createQuizQuestion,
+      loading: createQuestion.loading,
+      error: createQuestion.error,
+      success: createQuestion.success,
+      data: createQuestion.data,
+      reset: createQuestion.reset,
     },
     delete: {
-      execute: deleteQuestion,
-      loading: deleteOrder.loading,
-      error: deleteOrder.error,
-      success: deleteOrder.success,
-      reset: deleteOrder.reset,
+      execute: deleteQuizQuestion,
+      loading: deleteQuestion.loading,
+      error: deleteQuestion.error,
+      success: deleteQuestion.success,
+      reset: deleteQuestion.reset,
+    },
+    bulkCreate: {
+      execute: bulkCreateQuestions,
+      loading: bulkCreate.loading,
+      error: bulkCreate.error,
+      success: bulkCreate.success,
+      data: bulkCreate.data,
+      reset: bulkCreate.reset,
     },
   };
 }

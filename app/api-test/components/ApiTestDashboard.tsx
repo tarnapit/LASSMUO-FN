@@ -5,12 +5,9 @@ import {
   courseLessonService,
   courseQuizService,
   stageService, 
-  lessonService, 
-  orderService,
   questionService,
   userService,
   userCourseProgressService,
-  answerService, 
   authService 
 } from '../../lib/api/services';
 
@@ -100,24 +97,6 @@ export default function ApiTestPage() {
         results.stages = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
-      // Test Lesson APIs
-      console.log('Testing Lesson APIs...');
-      try {
-        const lessons = await lessonService.getAllLessons();
-        results.lessons = { success: true, data: lessons };
-      } catch (error) {
-        results.lessons = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-
-      // Test Order APIs
-      console.log('Testing Order APIs...');
-      try {
-        const orders = await orderService.getAllOrders();
-        results.orders = { success: true, data: orders };
-      } catch (error) {
-        results.orders = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-
       // Test User APIs (protected)
       console.log('Testing User APIs (protected)...');
       try {
@@ -130,15 +109,6 @@ export default function ApiTestPage() {
           protected: true,
           needsAuth: error instanceof Error && (error.message.includes('401') || error.message.includes('Unauthorized'))
         };
-      }
-
-      // Test Answer APIs
-      console.log('Testing Answer APIs...');
-      try {
-        const answers = await answerService.getAllAnswers();
-        results.answers = { success: true, data: answers };
-      } catch (error) {
-        results.answers = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
       // Test Question APIs (New - replaces some Order functionality)
@@ -783,14 +753,7 @@ export default function ApiTestPage() {
               </ul>
             </div>
             
-            <div className="bg-pink-50 rounded-lg p-4">
-              <h3 className="font-medium text-pink-900 mb-2">Answer APIs</h3>
-              <ul className="text-xs text-pink-700 space-y-1">
-                <li>• GET /answer/get</li>
-                <li>• POST /answer/create</li>
-              </ul>
-            </div>
-            
+
             <div className="bg-teal-50 rounded-lg p-4">
               <h3 className="font-medium text-teal-900 mb-2">Course Detail APIs</h3>
               <ul className="text-xs text-teal-700 space-y-1">

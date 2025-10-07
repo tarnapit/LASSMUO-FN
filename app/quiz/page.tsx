@@ -5,7 +5,7 @@ import { quizzes } from "../data/quizzes";
 import { learningModules } from "../data/learning-modules";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
-import { useOrdersByLesson, useUser } from "../lib/api/hooks";
+import { useUser } from "../lib/api/hooks";
 import { authManager } from "../lib/auth";
 import { 
   Brain, 
