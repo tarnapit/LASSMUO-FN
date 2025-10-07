@@ -13,14 +13,14 @@ export class StageService {
    * Create a new stage
    */
   async createStage(stageData: CreateStageRequest): Promise<ApiResponse<Stage>> {
-    return apiClient.post<ApiResponse<Stage>>(`${this.endpoint}/create`, stageData);
+    return apiClient.post<ApiResponse<Stage>>(`${this.endpoint}`, stageData);
   }
 
   /**
    * Get all stages
    */
   async getAllStages(): Promise<ApiResponse<Stage[]>> {
-    return apiClient.get<ApiResponse<Stage[]>>(`${this.endpoint}/getAll`);
+    return apiClient.get<ApiResponse<Stage[]>>(`${this.endpoint}`);
   }
 
   /**
@@ -55,7 +55,7 @@ export class StageService {
    * Delete stage
    */
   async deleteStage(stageId: string): Promise<ApiResponse<void>> {
-    return apiClient.delete<ApiResponse<void>>(`${this.endpoint}/delete/${stageId}`);
+    return apiClient.delete<ApiResponse<void>>(`${this.endpoint}/${stageId}`);
   }
 
   /**

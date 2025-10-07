@@ -19,6 +19,20 @@ class ApiClient {
       try {
         const errorData = responseText ? JSON.parse(responseText) : {};
         errorMessage = errorData.message || errorData.error || errorData.detail || errorMessage;
+        
+        // แปลง backend errors ที่พบบ่อย
+        if (errorMessage.includes('findMany')) {
+          errorMessage = 'Database connection error - Backend service may not be properly initialized';
+        } else if (errorMessage.includes('Cannot read properties of undefined')) {
+          errorMessage = 'Backend service error - Database or ORM not properly configured';
+        } else if (errorMessage.includes('character') && errorMessage.includes('include')) {
+          errorMessage = 'Prisma schema error - Relation fields mismatch in database models';
+        } else if (errorMessage.includes('prerequisites') || errorMessage.includes('questions')) {
+          errorMessage = 'Database schema error - Missing or incorrect relation fields';
+        } else if (errorMessage.includes('Unknown field') || errorMessage.includes('Unknown relation')) {
+          errorMessage = 'Database schema mismatch - Model relations not properly defined';
+        }
+        
       } catch {
         // If response is not JSON, use status text
         errorMessage = response.statusText || errorMessage;
@@ -31,6 +45,8 @@ class ApiClient {
         errorMessage = `Unauthorized: ${errorMessage}`;
       } else if (response.status === 400) {
         errorMessage = `Bad Request: ${errorMessage}`;
+      } else if (response.status === 500) {
+        errorMessage = `Server Error: ${errorMessage} - Please check if backend database is running`;
       }
       
       throw new ApiError(errorMessage, response.status);

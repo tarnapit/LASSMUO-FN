@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   courseService, 
   courseDetailService, 
-  courseLessonService, 
+  courseLessonService,
+  courseQuizService,
   stageService, 
   lessonService, 
-  orderService, 
-  userService, 
+  orderService,
+  questionService,
+  userService,
+  userCourseProgressService,
   answerService, 
   authService 
 } from '../../lib/api/services';
@@ -79,6 +82,15 @@ export default function ApiTestPage() {
         results.courseLessons = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
+      // Test Course Quiz APIs
+      console.log('Testing Course Quiz APIs...');
+      try {
+        const courseQuizzes = await courseQuizService.getAllCourseQuizzes();
+        results.courseQuizzes = { success: true, data: courseQuizzes };
+      } catch (error) {
+        results.courseQuizzes = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
       // Test Stage APIs
       console.log('Testing Stage APIs...');
       try {
@@ -127,6 +139,24 @@ export default function ApiTestPage() {
         results.answers = { success: true, data: answers };
       } catch (error) {
         results.answers = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test Question APIs (New - replaces some Order functionality)
+      console.log('Testing Question APIs...');
+      try {
+        const questions = await questionService.getAllQuestions();
+        results.questions = { success: true, data: questions };
+      } catch (error) {
+        results.questions = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test User Course Progress APIs (New)
+      console.log('Testing User Course Progress APIs...');
+      try {
+        const userProgress = await userCourseProgressService.getAllUserCourseProgress();
+        results.userCourseProgress = { success: true, data: userProgress };
+      } catch (error) {
+        results.userCourseProgress = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
       // Test Authentication (without credentials to avoid errors)
@@ -237,6 +267,80 @@ export default function ApiTestPage() {
     setLoading(false);
   };
 
+  const testServerConnection = async () => {
+    setLoading(true);
+    
+    try {
+      console.log('Testing backend server connection...');
+      
+      // Test basic connectivity to backend server
+      const response = await fetch('http://localhost:8888', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      const responseText = await response.text();
+      console.log('Server connection test:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        responseText: responseText
+      });
+      
+      if (response.ok) {
+        alert('✅ Server connection successful! Backend is running on port 8888.');
+      } else {
+        // ตรวจสอบ error messages ที่เฉพาะเจาะจง
+        let errorDetails = '';
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.error && errorData.error.includes('findMany')) {
+            errorDetails = '\n\n🔧 Database Error Detected:\n- Backend server is running but database connection failed\n- Please check if your database is running\n- Verify Prisma client configuration\n- Check environment variables (DATABASE_URL)';
+          } else if (errorData.error && errorData.error.includes('Cannot read properties of undefined')) {
+            errorDetails = '\n\n⚙️ Backend Configuration Error:\n- ORM/Database client not properly initialized\n- Check backend startup logs\n- Restart backend server\n- Verify all dependencies are installed';
+          } else if (errorData.error && (errorData.error.includes('character') || errorData.error.includes('prerequisites') || errorData.error.includes('include'))) {
+            errorDetails = '\n\n🗄️ Prisma Schema Error Detected:\n- Database model relations are incorrectly defined\n- Fix schema.prisma file (Stage model relations)\n- Remove undefined relation fields\n- Run: npx prisma db push && npx prisma generate\n- Restart backend server';
+          }
+        } catch (e) {
+          // Response is not JSON
+        }
+        
+        alert(`⚠️ Server responded with status ${response.status}: ${response.statusText}${errorDetails}`);
+      }
+    } catch (error) {
+      console.error('Server connection failed:', error);
+      
+      let errorMessage = '';
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
+          errorMessage = `❌ Cannot connect to backend server at http://localhost:8888
+
+🔍 Possible causes:
+• Backend server is not running
+• Backend is running on different port
+• Firewall blocking connection
+• Network connectivity issues
+
+💡 Solutions:
+• Start your backend server (usually: npm run dev or npm start)
+• Check if backend is running on port 8888
+• Verify backend server logs for errors`;
+        } else {
+          errorMessage = `❌ Connection Error: ${error.message}`;
+        }
+      } else {
+        errorMessage = '❌ Unknown connection error occurred';
+      }
+      
+      alert(errorMessage);
+    }
+    
+    setLoading(false);
+  };
+
   const clearTokens = async () => {
     try {
       await authService.logout();
@@ -318,6 +422,15 @@ export default function ApiTestPage() {
             >
               <span>🎯</span>
               Set Demo Token
+            </button>
+
+            <button
+              onClick={testServerConnection}
+              disabled={loading}
+              className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>🔗</span>
+              Test Server Connection
             </button>
 
             <button
@@ -462,9 +575,56 @@ export default function ApiTestPage() {
                     </div>
                   ) : (
                     <div className="text-red-600 text-xs">
-                      <div className="truncate" title={result.error}>
+                      <div className="truncate mb-1" title={result.error}>
                         {result.error}
                       </div>
+                      
+                      {/* แสดงคำแนะนำสำหรับ error ที่พบบ่อย */}
+                      {result.error.includes('findMany') && (
+                        <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
+                          <div className="font-medium">💡 Backend Database Error:</div>
+                          <div className="mt-1">
+                            • ตรวจสอบว่า backend server กำลังทำงาน<br/>
+                            • ตรวจสอบการเชื่อมต่อ database<br/>
+                            • ตรวจสอบ Prisma client initialization
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(result.error.includes('character') || result.error.includes('prerequisites') || result.error.includes('schema')) && (
+                        <div className="mt-2 p-2 bg-purple-50 rounded text-purple-700 text-xs">
+                          <div className="font-medium">🗄️ Prisma Schema Error:</div>
+                          <div className="mt-1">
+                            • แก้ไข schema.prisma file<br/>
+                            • ตรวจสอบ relation field names<br/>
+                            • รัน: npx prisma db push<br/>
+                            • Restart backend server
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.error.includes('Cannot read properties of undefined') && (
+                        <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
+                          <div className="font-medium">⚠️ Backend Configuration Error:</div>
+                          <div className="mt-1">
+                            • ORM/Database client ไม่ได้ initialize<br/>
+                            • ตรวจสอบ environment variables<br/>
+                            • Restart backend server
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.error.includes('Network connection failed') && (
+                        <div className="mt-2 p-2 bg-orange-50 rounded text-orange-700 text-xs">
+                          <div className="font-medium">🔌 Connection Error:</div>
+                          <div className="mt-1">
+                            • Backend server ไม่ทำงาน (port 8888)<br/>
+                            • ตรวจสอบ firewall/network<br/>
+                            • ลอง "Test Server Connection"
+                          </div>
+                        </div>
+                      )}
+                      
                       {result.protected && result.needsAuth && (
                         <div className="mt-1 text-orange-600 text-xs">
                           🔒 This endpoint requires authentication. Try logging in first.
@@ -483,43 +643,135 @@ export default function ApiTestPage() {
           )}
         </div>
 
+        {/* API Configuration Info */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">API Configuration & Troubleshooting</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="font-medium text-blue-900 mb-2">Backend Server</h3>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div>• Base URL: http://localhost:8888</div>
+                <div>• Timeout: 5000ms</div>
+                <div>• Max Retries: 2</div>
+              </div>
+            </div>
+            
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="font-medium text-green-900 mb-2">Authentication</h3>
+              <div className="text-xs text-green-700 space-y-1">
+                <div>• Login: POST /login/users</div>
+                <div>• Token Storage: localStorage</div>
+                <div>• Header: Authorization: Bearer</div>
+              </div>
+            </div>
+            
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h3 className="font-medium text-purple-900 mb-2">Response Format</h3>
+              <div className="text-xs text-purple-700 space-y-1">
+                <div>• Content-Type: application/json</div>
+                <div>• Success: {"{success: true, data: ...}"}</div>
+                <div>• Error: {"{success: false, error: ...}"}</div>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 rounded-lg p-4">
+              <h3 className="font-medium text-red-900 mb-2">Common Issues</h3>
+              <div className="text-xs text-red-700 space-y-1">
+                <div>• findMany error: Database issue</div>
+                <div>• undefined properties: ORM error</div>
+                <div>• Network failed: Server down</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Troubleshooting Guide */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">🔧 Troubleshooting Guide:</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-600">
+              <div>
+                <div className="font-medium text-red-600 mb-1">❌ "findMany" Error:</div>
+                <div className="space-y-1">
+                  <div>1. Check database connection</div>
+                  <div>2. Verify Prisma configuration</div>
+                  <div>3. Check DATABASE_URL env var</div>
+                  <div>4. Run: npx prisma generate</div>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-orange-600 mb-1">⚠️ Network Failed:</div>
+                <div className="space-y-1">
+                  <div>1. Start backend server</div>
+                  <div>2. Check port 8888 availability</div>
+                  <div>3. Verify firewall settings</div>
+                  <div>4. Test with "Test Server Connection"</div>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-purple-600 mb-1">🗄️ Schema Errors:</div>
+                <div className="space-y-1">
+                  <div>1. Check Prisma schema.prisma</div>
+                  <div>2. Fix relation field names</div>
+                  <div>3. Run: npx prisma db push</div>
+                  <div>4. Restart backend server</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Specific Stage Model Error Guide */}
+            <div className="mt-4 p-3 bg-purple-50 rounded border-l-4 border-purple-400">
+              <div className="font-medium text-purple-800 mb-2">🔍 Current Backend Issue Detected:</div>
+              <div className="text-xs text-purple-700 space-y-1">
+                <div><strong>Stage Model Schema Error:</strong> Relation fields mismatch</div>
+                <div>• Fix in <code>schema.prisma</code>: character, questions, prerequisites relations</div>
+                <div>• Remove undefined fields: course?, lessons?, UserProgress?</div>
+                <div>• Run: <code>npx prisma db push && npx prisma generate</code></div>
+                <div>• Restart backend server after fixing schema</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* API Endpoints Documentation */}
         <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">API Endpoints Reference</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">API Endpoints Reference (Updated)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <h3 className="font-medium text-blue-900 mb-2">Course APIs</h3>
               <ul className="text-xs text-blue-700 space-y-1">
-                <li>• GET /course/all</li>
-                <li>• POST /course/create</li>
-                <li>• GET /course/getCourse/:id</li>
+                <li>• GET /course</li>
+                <li>• POST /course</li>
+                <li>• GET /course/:id</li>
+                <li>• PUT /course/:id</li>
+                <li>• PATCH /course/:id</li>
+                <li>• DELETE /course/:id</li>
               </ul>
             </div>
             
             <div className="bg-green-50 rounded-lg p-4">
               <h3 className="font-medium text-green-900 mb-2">Stage APIs</h3>
               <ul className="text-xs text-green-700 space-y-1">
-                <li>• GET /stage/getAll</li>
-                <li>• GET /stage/getById/:id</li>
-                <li>• POST /stage/create</li>
+                <li>• GET /stage</li>
+                <li>• POST /stage</li>
+                <li>• DELETE /stage/:id</li>
               </ul>
             </div>
             
             <div className="bg-purple-50 rounded-lg p-4">
-              <h3 className="font-medium text-purple-900 mb-2">Lesson APIs</h3>
+              <h3 className="font-medium text-purple-900 mb-2">Question APIs</h3>
               <ul className="text-xs text-purple-700 space-y-1">
-                <li>• GET /lesson/getAll</li>
-                <li>• GET /lesson/getById/:id</li>
-                <li>• POST /lesson/createLesson</li>
+                <li>• GET /question</li>
+                <li>• POST /question</li>
+                <li>• GET /question/:id</li>
+                <li>• DELETE /question/:id</li>
               </ul>
             </div>
             
             <div className="bg-orange-50 rounded-lg p-4">
-              <h3 className="font-medium text-orange-900 mb-2">Order APIs</h3>
+              <h3 className="font-medium text-orange-900 mb-2">Course Quiz APIs</h3>
               <ul className="text-xs text-orange-700 space-y-1">
-                <li>• GET /order/getOrder</li>
-                <li>• POST /order/createOrder</li>
-                <li>• DELETE /order/deleteOrder/:id</li>
+                <li>• GET /courseQuiz</li>
+                <li>• POST /courseQuiz</li>
+                <li>• DELETE /courseQuiz/:id</li>
               </ul>
             </div>
             
@@ -542,9 +794,29 @@ export default function ApiTestPage() {
             <div className="bg-teal-50 rounded-lg p-4">
               <h3 className="font-medium text-teal-900 mb-2">Course Detail APIs</h3>
               <ul className="text-xs text-teal-700 space-y-1">
-                <li>• GET /courseDetail/all</li>
-                <li>• POST /courseDetail/create</li>
-                <li>• DELETE /courseDetail/delete/:id</li>
+                <li>• GET /courseDetail</li>
+                <li>• POST /courseDetail</li>
+                <li>• DELETE /courseDetail/:id</li>
+              </ul>
+            </div>
+            
+            <div className="bg-yellow-50 rounded-lg p-4">
+              <h3 className="font-medium text-yellow-900 mb-2">Course Lesson APIs</h3>
+              <ul className="text-xs text-yellow-700 space-y-1">
+                <li>• GET /courseLesson</li>
+                <li>• POST /courseLesson</li>
+                <li>• GET /courseLesson/:id</li>
+                <li>• DELETE /courseLesson/:id</li>
+              </ul>
+            </div>
+            
+            <div className="bg-cyan-50 rounded-lg p-4">
+              <h3 className="font-medium text-cyan-900 mb-2">User Progress APIs</h3>
+              <ul className="text-xs text-cyan-700 space-y-1">
+                <li>• GET /user-course-progress</li>
+                <li>• POST /user-course-progress</li>
+                <li>• PUT /user-course-progress/:id</li>
+                <li>• DELETE /user-course-progress/:id</li>
               </ul>
             </div>
             

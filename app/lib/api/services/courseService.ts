@@ -13,42 +13,42 @@ export class CourseService {
    * Create a new course
    */
   async createCourse(courseData: CreateCourseRequest): Promise<ApiResponse<Course>> {
-    return apiClient.post<ApiResponse<Course>>(`${this.endpoint}/create`, courseData);
+    return apiClient.post<ApiResponse<Course>>(`${this.endpoint}`, courseData);
   }
 
   /**
    * Get all courses
    */
   async getAllCourses(): Promise<ApiResponse<Course[]>> {
-    return apiClient.get<ApiResponse<Course[]>>(`${this.endpoint}/all`);
+    return apiClient.get<ApiResponse<Course[]>>(`${this.endpoint}`);
   }
 
   /**
    * Get course by ID
    */
   async getCourseById(courseId: string): Promise<ApiResponse<Course>> {
-    return apiClient.get<ApiResponse<Course>>(`${this.endpoint}/getCourse/${courseId}`);
+    return apiClient.get<ApiResponse<Course>>(`${this.endpoint}/${courseId}`);
   }
 
   /**
    * Update course (full update)
    */
   async updateCourse(courseId: string, courseData: UpdateCourseRequest): Promise<ApiResponse<Course>> {
-    return apiClient.put<ApiResponse<Course>>(`${this.endpoint}/update/${courseId}`, courseData);
+    return apiClient.put<ApiResponse<Course>>(`${this.endpoint}/${courseId}`, courseData);
   }
 
   /**
    * Patch course (partial update)
    */
   async patchCourse(courseId: string, courseData: Partial<UpdateCourseRequest>): Promise<ApiResponse<Course>> {
-    return apiClient.patch<ApiResponse<Course>>(`${this.endpoint}/patch/${courseId}`, courseData);
+    return apiClient.patch<ApiResponse<Course>>(`${this.endpoint}/${courseId}`, courseData);
   }
 
   /**
    * Delete course
    */
   async deleteCourse(courseId: string): Promise<ApiResponse<void>> {
-    return apiClient.delete<ApiResponse<void>>(`${this.endpoint}/delete/${courseId}`);
+    return apiClient.delete<ApiResponse<void>>(`${this.endpoint}/${courseId}`);
   }
 
   /**

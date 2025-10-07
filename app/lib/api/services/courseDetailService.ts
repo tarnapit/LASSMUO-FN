@@ -13,14 +13,14 @@ export class CourseDetailService {
    * Create a new course detail
    */
   async createCourseDetail(courseDetailData: CreateCourseDetailRequest): Promise<ApiResponse<CourseDetail>> {
-    return apiClient.post<ApiResponse<CourseDetail>>(`${this.endpoint}/create`, courseDetailData);
+    return apiClient.post<ApiResponse<CourseDetail>>(`${this.endpoint}`, courseDetailData);
   }
 
   /**
    * Get all course details
    */
   async getAllCourseDetails(): Promise<ApiResponse<CourseDetail[]>> {
-    return apiClient.get<ApiResponse<CourseDetail[]>>(`${this.endpoint}/all`);
+    return apiClient.get<ApiResponse<CourseDetail[]>>(`${this.endpoint}`);
   }
 
   /**
@@ -48,7 +48,7 @@ export class CourseDetailService {
    * Delete course detail
    */
   async deleteCourseDetail(courseDetailId: string): Promise<ApiResponse<void>> {
-    return apiClient.delete<ApiResponse<void>>(`${this.endpoint}/delete/${courseDetailId}`);
+    return apiClient.delete<ApiResponse<void>>(`${this.endpoint}/${courseDetailId}`);
   }
 }
 
