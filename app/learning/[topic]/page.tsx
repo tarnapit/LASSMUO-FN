@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getLearningModuleById } from "../../data/learning-modules";
+import { getLearningModuleById } from "../../lib/hooks/useLearningData";
 import { getQuizByModuleId } from "../../data/quizzes";
 import { LearningModule, Chapter } from "../../types/learning";
 import { progressManager } from "../../lib/progress";
@@ -84,43 +84,52 @@ export default function LearningTopicPage() {
   }, [module, currentChapterIndex, currentContentIndex, completedActivities]);
 
   useEffect(() => {
-    if (params.topic) {
-      const foundModule = getLearningModuleById(params.topic as string);
-      const foundQuiz = getQuizByModuleId(params.topic as string);
+    const fetchModule = async () => {
+      if (params.topic) {
+        try {
+          const foundModule = await getLearningModuleById(params.topic as string);
+          const foundQuiz = getQuizByModuleId(params.topic as string);
 
-      if (foundModule) {
-        setModule(foundModule);
-        setQuiz(foundQuiz);
-        
-        // รีเซ็ต states เมื่อเปลี่ยน module
-        setCompletedActivities(new Set());
-        setActivityScores({});
-        setTotalScore(0);
-        setCurrentActivityId(null);
-        
-        // เริ่มการเรียน module
-        progressManager.startLearningModule(params.topic as string);
+          if (foundModule) {
+            setModule(foundModule);
+            setQuiz(foundQuiz);
+            
+            // รีเซ็ต states เมื่อเปลี่ยน module
+            setCompletedActivities(new Set());
+            setActivityScores({});
+            setTotalScore(0);
+            setCurrentActivityId(null);
+            
+            // เริ่มการเรียน module
+            progressManager.startLearningModule(params.topic as string);
 
-        // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยัง
-        const moduleProgress = progressManager.getModuleProgress(
-          params.topic as string
-        );
-        setModuleCompleted(moduleProgress?.isCompleted || false);
+            // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยัง
+            const moduleProgress = progressManager.getModuleProgress(
+              params.topic as string
+            );
+            setModuleCompleted(moduleProgress?.isCompleted || false);
 
-        // โหลด progress ของแต่ละ chapter
-        const progresses: Record<string, any> = {};
-        foundModule.chapters.forEach((chapter) => {
-          const chapterProg = progressManager.getChapterProgress(
-            params.topic as string,
-            chapter.id
-          );
-          progresses[chapter.id] = chapterProg;
-        });
-        setChapterProgress(progresses);
-      } else {
-        router.push("/learning");
+            // โหลด progress ของแต่ละ chapter
+            const progresses: Record<string, any> = {};
+            foundModule.chapters.forEach((chapter) => {
+              const chapterProg = progressManager.getChapterProgress(
+                params.topic as string,
+                chapter.id
+              );
+              progresses[chapter.id] = chapterProg;
+            });
+            setChapterProgress(progresses);
+          } else {
+            router.push("/learning");
+          }
+        } catch (error) {
+          console.error('Error fetching module:', error);
+          router.push("/learning");
+        }
       }
-    }
+    };
+
+    fetchModule();
   }, [params.topic, router]);
 
   // บันทึกเวลาเมื่อเปลี่ยน chapter หรือ content
@@ -343,13 +352,7 @@ export default function LearningTopicPage() {
         );
 
       // กิจกรรมอินเตอร์แอคทีฟแต่ละประเภท
-      case "multiple-choice":
-      case "matching":
-      case "fill-blanks":
-      case "image-identification":
-      case "true-false":
-      case "sentence-ordering":
-      case "range-answer":
+      case "quiz":
         return currentContent.activity ? (
           <InteractiveActivityComponent
             key={`${currentChapterIndex}-${currentContentIndex}-${currentContent.activity.id}`}

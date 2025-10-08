@@ -4,10 +4,14 @@ export interface Course {
   description: string;
   price?: number;
   duration?: string;
+  estimatedTime?: number;
+  coverImage?: string;
   isActive?: boolean;
   level?: 'Fundamental' | 'Intermediate' | 'Advanced';
   createdAt?: string;
+  createAt?: string;
   updatedAt?: string;
+  courseLesson?: CourseLesson[];
 }
 
 export interface CreateCourseRequest {
@@ -24,9 +28,15 @@ export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
 // Course Detail Types
 export interface CourseDetail {
   id: string;
-  courseId: string;
-  content: string;
-  objectives: string;
+  courseId?: string;
+  courseLessonId?: string;
+  content: any; // เปลี่ยนเป็น any เพื่อรองรับ JSON object
+  type?: string;
+  objectives?: string;
+  ImageUrl?: string;
+  imageUrl?: string;
+  required?: boolean;
+  score?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -43,10 +53,13 @@ export interface UpdateCourseDetailRequest extends Partial<CreateCourseDetailReq
 export interface CourseLesson {
   id: string;
   courseId: string;
-  lessonId: string;
-  order: number;
+  lessonId?: string;
+  title?: string;
+  order?: number;
+  estimatedTime?: number;
   createdAt?: string;
   updatedAt?: string;
+  courseDetail?: CourseDetail[];
 }
 
 export interface CreateCourseLessonRequest {
