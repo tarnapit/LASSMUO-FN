@@ -16,14 +16,26 @@ export function useLearningModuleData() {
         setLoading(true);
         setError(null);
 
+        console.log('Fetching courses from API...');
+        
         // Fetch courses from API
         const coursesResponse = await courseService.getAllCourses();
         
+        console.log('Courses response:', coursesResponse);
+        
         if (!coursesResponse.success || !coursesResponse.data) {
-          throw new Error('Failed to fetch courses');
+          throw new Error(coursesResponse.error || 'Failed to fetch courses');
         }
 
         const courses = coursesResponse.data;
+        
+        // Ensure courses is an array
+        if (!Array.isArray(courses)) {
+          console.error('Expected courses to be an array, got:', typeof courses);
+          throw new Error('Invalid response format from API');
+        }
+        
+        console.log('Processing courses:', courses);
         
         // Convert courses to learning modules format with basic structure
         const learningModules: LearningModule[] = courses.map((course: any) => ({
@@ -38,17 +50,21 @@ export function useLearningModuleData() {
           chapters: [], // Will be populated when needed
         }));
 
+        console.log('Converted learning modules:', learningModules);
         setModules(learningModules.filter(module => module.isActive));
         
       } catch (err) {
         console.error('Error fetching learning modules:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        setError(errorMessage);
         
         // Fallback to mock data on error
         try {
+          console.log('Loading fallback mock data...');
           const { learningModules } = require('../../data/learning-modules');
           setModules(learningModules);
           setError(null); // Clear error since we have fallback data
+          console.log('Successfully loaded fallback data');
         } catch (fallbackError) {
           console.error('Failed to load fallback data:', fallbackError);
         }
@@ -81,11 +97,15 @@ export function useLearningModuleDetail(moduleId: string) {
         setLoading(true);
         setError(null);
 
+        console.log('Fetching course detail for ID:', moduleId);
+
         // Get course by ID
         const courseResponse = await courseService.getCourseById(moduleId);
         
+        console.log('Course detail response:', courseResponse);
+        
         if (!courseResponse.success || !courseResponse.data) {
-          throw new Error('Course not found');
+          throw new Error(courseResponse.error || 'Course not found');
         }
 
         const course = courseResponse.data;
@@ -103,19 +123,23 @@ export function useLearningModuleDetail(moduleId: string) {
           chapters: [], // Basic empty chapters for now
         };
 
+        console.log('Processed module detail:', detailedModule);
         setModule(detailedModule);
         
       } catch (err) {
         console.error('Error fetching module detail:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+        setError(errorMessage);
         
         // Fallback to mock data
         try {
+          console.log('Loading fallback mock data for module:', moduleId);
           const { learningModules } = require('../../data/learning-modules');
           const mockModule = learningModules.find((m: any) => m.id === moduleId);
           if (mockModule) {
             setModule(mockModule);
             setError(null);
+            console.log('Successfully loaded fallback module');
           }
         } catch (fallbackError) {
           console.error('Failed to load fallback module:', fallbackError);
