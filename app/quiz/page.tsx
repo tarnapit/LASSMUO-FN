@@ -1,11 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { quizzes } from "../data/quizzes";
-import { learningModules } from "../data/learning-modules";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
-import { useUser } from "../lib/api/hooks";
+import { useLearningData, useQuizData } from "@/app/lib/hooks/useDataAdapter";
 import { authManager } from "../lib/auth";
 import { 
   Brain, 
@@ -25,9 +23,10 @@ export default function QuizPage() {
   const [quizUnlockStatus, setQuizUnlockStatus] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // สำหรับตอนนี้ จะใช้ local data หลัก และ API เป็น optional
-  // ในอนาคตสามารถขยายให้ใช้ API เป็นหลักได้
-  const quizzesToShow = quizzes; // ใช้ local data
+  // Use data adapters
+  const { modules: learningModules } = useLearningData();
+  const { quizzes, loading: quizzesLoading, error: quizzesError } = useQuizData();
+  const quizzesToShow = quizzes || [];
 
   useEffect(() => {
     // โหลดข้อมูล user
@@ -274,7 +273,7 @@ export default function QuizPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col">
                             <span className="text-sm text-gray-400">
-                              คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                              คะแนนเต็ม {quiz.questions.reduce((sum: number, q: any) => sum + q.points, 0)} คะแนน
                             </span>
                             <span className={`text-sm font-semibold ${getQuizStatusColor(quiz.id)}`}>
                               {getQuizStatusText(quiz.id)}
@@ -423,7 +422,7 @@ export default function QuizPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="text-sm text-gray-600">
-                            คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                            คะแนนเต็ม {quiz.questions.reduce((sum: number, q: any) => sum + q.points, 0)} คะแนน
                           </span>
                           <span className="text-sm font-semibold text-red-400 flex items-center">
                             <XCircle size={14} className="mr-1" />

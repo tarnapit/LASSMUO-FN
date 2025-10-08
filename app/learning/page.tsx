@@ -2,13 +2,12 @@
 import React from "react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { learningModules } from "../data/learning-modules";
 import { getQuizByModuleId } from "../data/quizzes";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
 import QuizCard from "../components/ui/QuizCard";
-import { useCourses, useStages, useUser } from "../lib/api/hooks";
 import { authManager } from "../lib/auth";
+import { useLearningData } from "@/app/lib/hooks/useDataAdapter";
 import {
   BookOpen,
   Clock,
@@ -27,8 +26,8 @@ export default function LearningPage() {
   const [showQuizCard, setShowQuizCard] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // API hooks for course/module data
-  const { data: apiCourses, loading: coursesLoading, error: coursesError } = useCourses();
+  // Use data adapter for learning modules
+  const { modules: learningModules, loading: modulesLoading, error: modulesError } = useLearningData();
 
   useEffect(() => {
     // โหลดข้อมูล user
@@ -41,7 +40,7 @@ export default function LearningPage() {
     // ฟังก์ชันโหลด progress
     const loadProgress = () => {
       const progresses: Record<string, any> = {};
-      learningModules.forEach((module) => {
+      learningModules?.forEach((module: any) => {
         // ตรวจสอบและ complete module ถ้าจำเป็น
         progressManager.checkAndCompleteModule(module.id);
 
@@ -91,7 +90,30 @@ export default function LearningPage() {
       );
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [learningModules]);
+
+  // Handle loading state
+  if (modulesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-white text-xl">กำลังโหลดข้อมูล...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (modulesError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-red-400 text-xl">เกิดข้อผิดพลาด: {modulesError}</div>
+        </div>
+      </div>
+    );
+  }
 
   const text = {
     lesson: "บทเรียน",
@@ -151,7 +173,7 @@ export default function LearningPage() {
     if (!progress) return null;
 
     // ใช้ข้อมูลจาก learning modules โดยตรง
-    const module = learningModules.find((m) => m.id === moduleId);
+    const module = learningModules?.find((m: any) => m.id === moduleId);
     const totalChapters = module?.chapters?.length || 0;
     const completedChapters = progress.completedChapters?.length || 0;
     const readingProgress =
@@ -292,7 +314,7 @@ export default function LearningPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto px-4">
-          {learningModules.map((module) => {
+          {learningModules?.map((module: any) => {
             const quiz = getQuizByModuleId(module.id);
             const progress = moduleProgresses[module.id];
             const isCompleted = progress?.isCompleted;

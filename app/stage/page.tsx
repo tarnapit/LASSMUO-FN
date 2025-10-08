@@ -3,25 +3,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Star, Play, Clock, Award, Trophy } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
-import { stageData } from "../data/stages";
 import { progressManager } from "../lib/progress";
 import { PlayerProgress } from "../types/stage";
-import { useStages, useStagesByCourse, useUser } from "../lib/api/hooks";
 import { authManager } from "../lib/auth";
+import { useStageData, useUserProgress } from "@/app/lib/hooks/useDataAdapter";
 
 export default function StagePage() {
   const router = useRouter();
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
-  const [playerProgress, setPlayerProgress] = useState<PlayerProgress | null>(
-    null
-  );
+  const [playerProgress, setPlayerProgress] = useState<PlayerProgress | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // API hooks for stage data
-  const { data: apiStages, loading: stagesLoading, error: stagesError } = useStages();
+  // Use data adapter hooks
+  const { stages, loading: stagesLoading, error: stagesError } = useStageData();
+  const { progress: userProgress, loading: progressLoading } = useUserProgress(currentUser?.id);
   
-  // ดึงข้อมูลด่านจาก data และผสมกับความคืบหน้าของผู้เล่น
-  const processedStages = Object.values(stageData).map((stage) => {
+  // ดึงข้อมูลด่านจาก API และผสมกับความคืบหน้าของผู้เล่น
+  const processedStages = stages?.map((stage: any) => {
     const progress = playerProgress?.stages[stage.id];
     const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
 
@@ -33,29 +31,93 @@ export default function StagePage() {
       bestScore: progress?.bestScore || 0,
       attempts: progress?.attempts || 0,
       lastAttempt: progress?.lastAttempt,
-      totalStars: stage.totalStars || 3, // เพิ่ม totalStars จาก stageData
+      totalStars: stage.totalStars || 3, // เพิ่ม totalStars จาก API data
     };
-  });
+  }) || [];
 
   // จัดเรียงด่านตาม id
-  processedStages.sort((a, b) => a.id - b.id);
+  processedStages.sort((a: any, b: any) => a.id - b.id);
 
-  // Use API stages if available for additional data, otherwise use processed local data
-  const finalStages = apiStages?.data ? 
-    processedStages.map(stage => {
-      const apiStage = apiStages.data?.find((s: any) => s.id === stage.id);
-      return apiStage ? { ...stage, ...apiStage } : stage;
-    }) : processedStages;
+  const finalStages = processedStages;
+
+  // Handle loading state
+  const loading = stagesLoading || progressLoading;
 
   useEffect(() => {
     // โหลดข้อมูล user
-    const user = authManager.getCurrentUser();
+    const user = authManager.getCurrentUser() || {
+      id: 1,
+      name: "ผู้เรียน",
+      level: 1,
+      experience: 150,
+      avatar: "👩‍🚀",
+    };
     setCurrentUser(user);
-    
-    // โหลด progress เมื่อ component mount
-    const progress = progressManager.getProgress();
-    setPlayerProgress(progress);
-    console.log("Initial progress loaded:", progress);
+  }, []);
+
+  useEffect(() => {
+    // Load progress from localStorage if no API progress available
+    if (!progressLoading && !userProgress) {
+      const progress = progressManager.getProgress();
+      setPlayerProgress(progress);
+      console.log("Initial progress loaded:", progress);
+    } else if (userProgress && Array.isArray(userProgress)) {
+      // Convert API progress to local format
+      const progress: PlayerProgress = {
+        stages: userProgress.reduce((acc: any, p: any) => {
+          acc[p.stageId] = {
+            stageId: p.stageId,
+            isUnlocked: p.isUnlocked,
+            isCompleted: p.isCompleted || false,
+            stars: p.totalStars || 0,
+            bestScore: p.bestScore || 0,
+            attempts: p.attempts || 0,
+            lastAttempt: p.lastAttempt ? new Date(p.lastAttempt) : undefined,
+            xpEarned: p.xpEarned || 0,
+            perfectRuns: p.perfectRuns || 0,
+            averageTime: p.averageTime || 0,
+            mistakeCount: p.mistakeCount || 0,
+            hintsUsed: p.hintsUsed || 0,
+            achievements: p.achievements || [],
+          };
+          return acc;
+        }, {}),
+        totalStars: 0,
+        totalPoints: 0,
+        totalXp: 0,
+        gems: 0,
+        currentStreak: 0,
+        longestStreak: 0,
+        hearts: 5,
+        maxHearts: 5,
+        completedStages: [],
+        currentStage: 1,
+        achievements: [],
+        badges: [],
+        dailyGoal: {
+          xpTarget: 100,
+          currentXp: 0,
+          isCompleted: false,
+          streak: 0,
+        },
+        weeklyProgress: {
+          mondayXp: 0,
+          tuesdayXp: 0,
+          wednesdayXp: 0,
+          thursdayXp: 0,
+          fridayXp: 0,
+          saturdayXp: 0,
+          sundayXp: 0,
+        },
+        league: {
+          currentLeague: "bronze",
+          position: 1,
+          xpThisWeek: 0,
+        },
+      };
+      setPlayerProgress(progress);
+      console.log("API progress loaded:", progress);
+    }
 
     // เพิ่ม listener สำหรับการกลับมาหน้านี้
     const handleRouterEvents = () => {
@@ -75,7 +137,7 @@ export default function StagePage() {
     return () => {
       window.removeEventListener("popstate", handleRouterEvents);
     };
-  }, []);
+  }, [userProgress, progressLoading]);
 
   // Function to refresh progress (เรียกใช้เมื่อต้องการอัพเดท)
   const refreshProgress = () => {
@@ -150,7 +212,7 @@ export default function StagePage() {
       console.log("Current player progress:", playerProgress);
       console.log(
         "Stages data with stars:",
-        finalStages.map((s) => ({
+        finalStages.map((s: any) => ({
           id: s.id,
           stars: s.stars,
           isCompleted: s.isCompleted,
@@ -159,7 +221,7 @@ export default function StagePage() {
         }))
       );
     }
-  }, [playerProgress]);
+  }, [playerProgress, finalStages]);
 
   // Function to close popup when clicking outside
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -231,7 +293,7 @@ export default function StagePage() {
           className="relative max-w-4xl mx-auto px-4 sm:px-8"
           onClick={handleBackgroundClick}
         >
-          {finalStages.map((stage, index) => {
+          {finalStages.map((stage: any, index: number) => {
             // Duolingo-style zigzag positioning
             const isEven = index % 2 === 0;
             const translateX = isEven
@@ -370,7 +432,7 @@ export default function StagePage() {
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
-              const stage = finalStages.find((s) => s.id === selectedStage);
+              const stage = finalStages.find((s: any) => s.id === selectedStage);
               if (!stage) return null;
 
               return (

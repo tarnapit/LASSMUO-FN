@@ -5,8 +5,10 @@ export { courseLessonService, CourseLessonService } from './courseLessonService'
 export { courseQuizService, CourseQuizService } from './courseQuizService';
 export { stageService, StageService } from './stageService';
 export { questionService, QuestionService } from './questionService';
+export { miniGameService, MiniGameService } from './miniGameService';
 export { userService, UserService } from './userService';
 export { userCourseProgressService, UserCourseProgressService } from './userCourseProgressService';
+export { userStageProgressService, UserStageProgressService } from './userStageProgressService';
 export { authService, AuthService } from './authService';
 
 // Export types
