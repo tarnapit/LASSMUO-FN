@@ -532,7 +532,7 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
         chapters: chapters,
       };
       
-      console.log('Final API-based module:', apiModule);
+      console.log('✅ API Integration Success: Solar System module created with', apiModule.chapters.length, 'chapters');
       return apiModule;
     }
     
