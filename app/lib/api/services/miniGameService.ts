@@ -50,8 +50,8 @@ export interface CreateMiniGameResultRequest {
 }
 
 export class MiniGameService {
-  private questionEndpoint = `${API_CONFIG.BASE_URL}/mini-game-questions`;
-  private resultEndpoint = `${API_CONFIG.BASE_URL}/mini-game-results`;
+  private questionEndpoint = '/mini-game-questions';
+  private resultEndpoint = '/mini-game-results';
 
   // ===== Mini Game Questions =====
 

@@ -83,9 +83,9 @@ export interface CreateStageCharacterRequest {
 }
 
 export class StageService {
-  private endpoint = `${API_CONFIG.BASE_URL}/stages`;
-  private characterEndpoint = `${API_CONFIG.BASE_URL}/stage-characters`;
-  private prerequisiteEndpoint = `${API_CONFIG.BASE_URL}/stage-prerequisites`;
+  private endpoint = '/stage';
+  private characterEndpoint = '/stage-character';
+  private prerequisiteEndpoint = '/stage-prerequisite';
 
   // ===== Stage Management =====
 

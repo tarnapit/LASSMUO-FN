@@ -45,7 +45,7 @@ export interface UpdateQuestionRequest {
 }
 
 export class QuestionService {
-  private endpoint = `${API_CONFIG.BASE_URL}/questions`;
+  private endpoint = '/question';
 
   /**
    * Create a new question

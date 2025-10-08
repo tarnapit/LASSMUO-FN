@@ -39,7 +39,7 @@ export interface UpdateUserStageProgressRequest {
 }
 
 export class UserStageProgressService {
-  private endpoint = `${API_CONFIG.BASE_URL}/user-stage-progress`;
+  private endpoint = '/user-stage-progress';
 
   /**
    * Create new user stage progress record
