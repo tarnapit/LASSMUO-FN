@@ -3,6 +3,7 @@ export { courseService, CourseService } from './courseService';
 export { courseDetailService, CourseDetailService } from './courseDetailService';
 export { courseLessonService, CourseLessonService } from './courseLessonService';
 export { courseQuizService, CourseQuizService } from './courseQuizService';
+export { coursePostestService, CoursePostestService } from './coursePostestService';
 export { stageService, StageService } from './stageService';
 export { questionService, QuestionService } from './questionService';
 export { miniGameService, MiniGameService } from './miniGameService';

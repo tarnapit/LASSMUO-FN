@@ -12,6 +12,7 @@ export interface Course {
   createAt?: string;
   updatedAt?: string;
   courseLesson?: CourseLesson[];
+  coursePostest?: CoursePostest[];
 }
 
 export interface CreateCourseRequest {
@@ -48,6 +49,32 @@ export interface CreateCourseDetailRequest {
 }
 
 export interface UpdateCourseDetailRequest extends Partial<CreateCourseDetailRequest> {}
+
+// Course Postest Types
+export interface CoursePostest {
+  id: string;
+  courseId: string;
+  title: string;
+  description?: string;
+  timeLimit?: number;
+  passingScore?: number;
+  maxAttempts?: number;
+  question: any; // JSON field
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCoursePostestRequest {
+  courseId: string;
+  title: string;
+  description?: string;
+  timeLimit?: number;
+  passingScore?: number;
+  maxAttempts?: number;
+  question: any;
+}
+
+export interface UpdateCoursePostestRequest extends Partial<CreateCoursePostestRequest> {}
 
 // Course Lesson Types
 export interface CourseLesson {

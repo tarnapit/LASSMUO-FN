@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getLearningModuleById } from "../../lib/hooks/useLearningData";
-import { getQuizByModuleId } from "../../data/quizzes";
 import { LearningModule, Chapter } from "../../types/learning";
+import { courseQuizService, courseService, coursePostestService } from "../../lib/api/services";
 import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import ProgressBar from "../../components/ui/ProgressBar";
@@ -88,7 +88,50 @@ export default function LearningTopicPage() {
       if (params.topic) {
         try {
           const foundModule = await getLearningModuleById(params.topic as string);
-          const foundQuiz = getQuizByModuleId(params.topic as string);
+          
+          // ดึงข้อมูล quiz จาก API (PostTest)
+          let foundQuiz = null;
+          try {
+            // ลองดึง PostTest จาก coursePostest API โดยใช้ courseId
+            if (foundModule && foundModule.id) {
+              console.log('Looking for PostTest quiz for course:', foundModule.id);
+              
+              const postestResponse = await coursePostestService.getCoursePostestsByCourseId(foundModule.id);
+              
+              if (postestResponse.success && postestResponse.data && postestResponse.data.length > 0) {
+                // ใช้ PostTest แรกที่มี
+                foundQuiz = postestResponse.data[0];
+                console.log('Found PostTest quiz for course:', foundQuiz.title || foundQuiz.id);
+              } else {
+                console.log('No PostTest found for course:', foundModule.id);
+                
+                // Fallback: ลองดึงจาก course response หากมี coursePostest
+                const courseResponse = await courseService.getCourseById(foundModule.id);
+                
+                if (courseResponse.success && courseResponse.data && courseResponse.data.coursePostest) {
+                  const coursePostests = courseResponse.data.coursePostest;
+                  if (Array.isArray(coursePostests) && coursePostests.length > 0) {
+                    foundQuiz = coursePostests[0];
+                    console.log('Found PostTest from course response:', foundQuiz.title || foundQuiz.id);
+                  }
+                }
+              }
+            }
+            
+            // ถ้ายังไม่ได้ quiz จาก PostTest ให้ลองดูจาก CourseQuiz API
+            if (!foundQuiz) {
+              console.log('No PostTest found, trying CourseQuiz API as fallback');
+              const quizResponse = await courseQuizService.getAllCourseQuizzes();
+              
+              if (quizResponse && Array.isArray(quizResponse) && quizResponse.length > 0) {
+                // หาข้อมูล quiz แรกเป็น fallback (อาจต้องปรับให้จับคู่กับ course)
+                foundQuiz = quizResponse[0];
+                console.log('Using fallback quiz from CourseQuiz API:', foundQuiz.title || foundQuiz.id);
+              }
+            }
+          } catch (quizError) {
+            console.log('Error fetching quiz:', quizError);
+          }
 
           if (foundModule) {
             setModule(foundModule);
