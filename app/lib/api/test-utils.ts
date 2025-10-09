@@ -186,10 +186,6 @@ export async function testUserOperations(): Promise<{
     const loginResponse = await api.user.loginUser(testUser.email, testUser.password);
     console.log('✅ Login successful:', !!loginResponse.data?.token);
 
-    // Test getting user profile
-    const profileResponse = await api.user.getUserProfile(createUserResponse.data.id);
-    console.log('✅ Got user profile:', !!profileResponse.data);
-
     // Clean up - delete test user
     try {
       await api.user.deleteUser(createUserResponse.data.id);
@@ -203,8 +199,7 @@ export async function testUserOperations(): Promise<{
       message: 'User operations test completed successfully',
       results: {
         userCreated: !!createUserResponse.data,
-        loginSuccessful: !!loginResponse.data?.token,
-        profileRetrieved: !!profileResponse.data
+        loginSuccessful: !!loginResponse.data?.token
       }
     };
 

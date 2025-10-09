@@ -19,10 +19,7 @@ export function useUserByEmail(email: string) {
   return useFetch(() => userService.getUserByEmail(email), [email]);
 }
 
-// Hook for fetching user profile with additional data
-export function useUserProfile(userId: string) {
-  return useFetch(() => userService.getUserProfile(userId), [userId]);
-}
+
 
 // Hook for user authentication (using userService)
 export function useUserAuth() {

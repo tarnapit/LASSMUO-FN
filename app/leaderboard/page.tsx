@@ -4,7 +4,7 @@ import { Trophy, Star, Target, Medal, Crown, Users } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import { progressManager } from "../lib/progress";
 import { authManager } from "../lib/auth";
-import { useLeaderboard, useUserProfile } from "../lib/api/hooks";
+import { useLeaderboard } from "../lib/api/hooks";
 
 interface LeaderboardEntry {
   username: string;
@@ -19,9 +19,8 @@ export default function LeaderboardPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // API hooks
+  // API hooks - removed unused useUserProfile
   const { data: apiLeaderboard, loading: leaderboardLoading } = useLeaderboard();
-  const { data: userProfile, loading: profileLoading } = useUserProfile(currentUser?.id || '');
 
   useEffect(() => {
     const progress = progressManager.getProgress();

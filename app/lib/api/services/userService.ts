@@ -115,17 +115,7 @@ export class UserService {
     return apiClient.post(`${this.endpoint}/verify-email`, { token });
   }
 
-  /**
-   * Get user profile with additional data
-   */
-  async getUserProfile(userId: string): Promise<ApiResponse<User & {
-    totalCourses: number;
-    completedCourses: number;
-    totalScore: number;
-    achievements: any[];
-  }>> {
-    return apiClient.get(`${this.endpoint}/${userId}/profile`);
-  }
+
 
   /**
    * Search users

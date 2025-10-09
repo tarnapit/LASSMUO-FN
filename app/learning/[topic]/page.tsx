@@ -208,18 +208,18 @@ export default function LearningTopicPage() {
   const isFirstContent = currentContentIndex === 0;
   const isFirstChapter = currentChapterIndex === 0;
 
-  const nextContent = () => {
+  const nextContent = async () => {
     if (!isLastContent) {
       setCurrentContentIndex((prev) => prev + 1);
     } else if (!isLastChapter) {
       // บันทึก progress ของ chapter ปัจจุบันเมื่อจบ chapter
-      completeCurrentChapter();
+      await completeCurrentChapter();
       setCurrentChapterIndex((prev) => prev + 1);
       setCurrentContentIndex(0);
     } else {
       // จบ module แล้ว
-      completeCurrentChapter();
-      completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
+      await completeCurrentChapter();
+      await completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
 
       // ถ้ามี quiz ให้ไปหน้า quiz เลย
       if (quiz) {
@@ -240,7 +240,7 @@ export default function LearningTopicPage() {
   };
 
   // บันทึก progress ของ chapter ปัจจุบัน
-  const completeCurrentChapter = () => {
+  const completeCurrentChapter = async () => {
     if (!module) return;
 
     const timeSpent = Math.round(
@@ -252,7 +252,7 @@ export default function LearningTopicPage() {
       `Completing chapter ${currentChapter.id} in module ${module.id}`
     );
 
-    progressManager.updateChapterProgress(
+    await progressManager.updateChapterProgress(
       module.id,
       currentChapter.id,
       100, // อ่านครบ 100%
@@ -288,13 +288,13 @@ export default function LearningTopicPage() {
   };
 
   // จบการเรียน module
-  const completeModule = (shouldRedirect = false) => {
+  const completeModule = async (shouldRedirect = false) => {
     if (!module) return;
 
     console.log(
       `Completing module ${module.id} with ${module.chapters.length} chapters`
     );
-    progressManager.completeModule(module.id, module.chapters.length);
+    await progressManager.completeModule(module.id, module.chapters.length);
 
     // ถ้าไม่ต้องการ redirect ให้แสดงหน้าสรุป
     if (!shouldRedirect) {
@@ -730,7 +730,7 @@ export default function LearningTopicPage() {
                     <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
                       <div className="flex items-center">
                         <Brain size={16} className="mr-1 text-orange-400" />
-                        {quiz.questions.length} ข้อ
+                        {quiz.question?.questions?.length || 0} ข้อ
                       </div>
                       <div className="flex items-center">
                         <Clock size={16} className="mr-1 text-orange-400" />

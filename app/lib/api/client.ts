@@ -11,7 +11,7 @@ class ApiClient {
 
   private async handleResponse<T>(response: Response): Promise<T> {
     const responseText = await response.text();
-    console.log(`Response text from ${response.url}:`, responseText);
+    // console.log(`Response text from ${response.url}:`, responseText);
 
     if (!response.ok) {
       let errorMessage = `HTTP Error: ${response.status}`;

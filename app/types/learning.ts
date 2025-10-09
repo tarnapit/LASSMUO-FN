@@ -141,5 +141,15 @@ export interface ModuleProgress {
   completedChapters: string[];
   totalTimeSpent: number; // เวลารวมที่ใช้เรียน (นาที)
   completedAt?: Date;
-  chapters: Record<string, LearningProgress>;
+  chapters: Record<string, ChapterProgress>;
+}
+
+// Chapter progress เฉพาะสำหรับ local storage
+export interface ChapterProgress {
+  moduleId: string;
+  chapterId: string;
+  completed: boolean;
+  readProgress: number; // เปอร์เซ็นต์ที่อ่านแล้ว (0-100)
+  timeSpent: number; // เวลาที่ใช้เรียน (นาที)
+  completedAt?: Date;
 }

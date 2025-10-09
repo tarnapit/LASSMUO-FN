@@ -7,14 +7,13 @@ import ApiStatusIndicator from "./components/ui/ApiStatusIndicator";
 import { progressManager } from "./lib/progress";
 import { authManager } from "./lib/auth";
 import { PlayerProgress } from "./types/stage";
-import { useUser, useUserProfile } from "./lib/api/hooks";
+import { useUser } from "./lib/api/hooks";
 
 export default function HomePage() {
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
   const [learningStats, setLearningStats] = useState<any>(null);
 
-  // API hooks for user data
-  const { data: userProfile, loading: userProfileLoading, error: userProfileError } = useUserProfile('');
+  // API hooks for user data - removed unused useUserProfile
 
   useEffect(() => {
     // มิเกรตข้อมูลเก่าก่อน

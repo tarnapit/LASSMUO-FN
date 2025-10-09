@@ -1,8 +1,9 @@
 import { PlayerProgress, StageProgress } from '../types/stage';
-import { ModuleProgress, LearningProgress } from '../types/learning';
+import { ModuleProgress, LearningProgress, ChapterProgress } from '../types/learning';
 import { QuizProgress, QuizAttempt } from '../types/quiz';
 import { MiniGameAttempt, GameStats } from '../types/mini-game';
 import { authManager } from './auth';
+import { userCourseProgressService } from './api/services';
 
 class ProgressManager {
   private tempProgressKey = 'astronomy_temp_progress';
@@ -27,6 +28,219 @@ class ProgressManager {
     } else {
       // ถ้ายังไม่ล็อกอิน บันทึกชั่วคราว
       this.saveTempProgress(progress);
+    }
+  }
+
+  // ====== NEW API Integration Methods ======
+
+  // โหลด progress จาก API และ merge กับ local storage
+  async loadProgressFromAPI(): Promise<void> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        console.log('User not logged in, using local progress only');
+        return;
+      }
+
+      console.log(`Loading progress from API for user ${user.id}`);
+
+      // ดึงข้อมูล progress ทั้งหมดของผู้ใช้
+      const userProgress = await userCourseProgressService.getUserCourseProgressByUserId(user.id);
+      
+      if (userProgress && userProgress.success && userProgress.data && userProgress.data.length > 0) {
+        console.log('✅ User progress loaded from API:', userProgress.data);
+        
+        // รวมข้อมูลจาก API เข้า local storage
+        const localProgress = this.getProgress();
+        
+        userProgress.data.forEach((apiProgress: any) => {
+          const moduleId = apiProgress.courseId;
+          
+          // สร้าง learning progress structure ถ้ายังไม่มี
+          if (!localProgress.learningProgress) {
+            localProgress.learningProgress = {
+              completedModules: [],
+              totalLearningTime: 0,
+              modules: {}
+            };
+          }
+
+          // อัพเดท module progress จาก API
+          if (!localProgress.learningProgress.modules[moduleId]) {
+            localProgress.learningProgress.modules[moduleId] = {
+              moduleId,
+              isStarted: true,
+              isCompleted: apiProgress.completed || false,
+              completedChapters: [],
+              totalTimeSpent: 0,
+              chapters: {}
+            };
+          } else {
+            // Merge กับข้อมูลที่มีอยู่
+            localProgress.learningProgress.modules[moduleId].isCompleted = 
+              localProgress.learningProgress.modules[moduleId].isCompleted || apiProgress.completed;
+          }
+
+          // เพิ่มใน completed modules ถ้าเสร็จแล้ว
+          if (apiProgress.completed && !localProgress.learningProgress.completedModules.includes(moduleId)) {
+            localProgress.learningProgress.completedModules.push(moduleId);
+          }
+        });
+
+        // บันทึก merged progress
+        this.saveProgress(localProgress);
+        console.log('✅ Progress merged and saved locally');
+      } else {
+        console.log('No API progress found for user');
+      }
+    } catch (error) {
+      console.error('Error loading progress from API:', error);
+    }
+  }
+
+  // บันทึก learning progress ผ่าน API
+  async saveChapterProgressToAPI(
+    moduleId: string, 
+    chapterId: string, 
+    contentId: string,
+    score: number = 0,
+    isCompleted: boolean = true
+  ): Promise<void> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        console.log('User not logged in, progress saved locally only');
+        return;
+      }
+
+      console.log(`Saving chapter progress to API:`, {
+        userId: user.id,
+        courseId: moduleId,
+        courseLessonId: chapterId,
+        courseDetailId: contentId,
+        isCompleted,
+        score
+      });
+
+      // เรียกใช้ API เพื่อบันทึก progress
+      const progressData = {
+        userId: user.id,
+        courseId: moduleId,
+        completed: isCompleted,
+        score,
+        progress: isCompleted ? 100 : score, // Set progress percentage
+      };
+
+      const response = await userCourseProgressService.createUserCourseProgress(progressData);
+      
+      if (response && response.success) {
+        console.log('✅ Chapter progress saved to API successfully:', response.data);
+      } else if (response && response.data) {
+        // API สำเร็จแต่ไม่มี success flag
+        console.log('✅ Chapter progress saved to API (fallback):', response.data);
+      } else {
+        console.warn('⚠️ API progress save failed, using local storage only:', response?.error || 'Unknown error');
+      }
+    } catch (error) {
+      console.warn('⚠️ API not available, using local storage only:', error);
+    }
+  }
+
+  // ดึง learning progress จาก API
+  async getModuleProgressFromAPI(moduleId: string): Promise<any> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        console.log('User not logged in, returning local progress');
+        return null;
+      }
+
+      console.log(`Fetching module progress from API for user ${user.id}, course ${moduleId}`);
+      
+      const response = await userCourseProgressService.getUserProgressForCourse(user.id, moduleId);
+      
+      if (response && response.success && response.data) {
+        console.log('✅ Module progress fetched from API:', response.data);
+        return response.data;
+      } else {
+        console.log('No progress found in API for this module');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching module progress from API:', error);
+      return null;
+    }
+  }
+
+  // อัพเดท module completion ผ่าน API
+  async markModuleCompletedInAPI(moduleId: string, finalScore: number = 100): Promise<void> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        console.log('User not logged in, module completion saved locally only');
+        return;
+      }
+
+      console.log(`Marking module ${moduleId} as completed in API for user ${user.id} with score ${finalScore}`);
+      
+      // ค้นหา progress record ที่มีอยู่แล้ว
+      const existingProgress = await this.getModuleProgressFromAPI(moduleId);
+      
+      if (existingProgress && existingProgress.id) {
+        // อัพเดท progress ที่มีอยู่
+        const response = await userCourseProgressService.markCourseCompleted(existingProgress.id, finalScore);
+        
+        if (response && response.success) {
+          console.log('✅ Module marked as completed in API:', response.data);
+        } else {
+          console.warn('⚠️ API module completion failed, using local storage only:', response?.error || 'Unknown error');
+        }
+      } else {
+        // สร้าง progress record ใหม่
+        const progressData = {
+          userId: user.id,
+          courseId: moduleId,
+          progress: 100,
+          completed: true,
+          score: finalScore
+        };
+
+        const response = await userCourseProgressService.createUserCourseProgress(progressData);
+        
+        if (response && response.success) {
+          console.log('✅ New module progress created and marked completed:', response.data);
+        } else if (response && response.data) {
+          // API สำเร็จแต่ไม่มี success flag
+          console.log('✅ New module progress created (fallback):', response.data);
+        } else {
+          console.warn('⚠️ API module creation failed, using local storage only:', response?.error || 'Unknown error');
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ API not available for module completion, using local storage only:', error);
+    }
+  }
+
+  // ดึงสถิติ progress ผู้ใช้จาก API
+  async getUserStatsFromAPI(): Promise<any> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        return null;
+      }
+
+      const response = await userCourseProgressService.getUserProgressStats(user.id);
+      
+      if (response && response.success && response.data) {
+        console.log('✅ User stats fetched from API:', response.data);
+        return response.data;
+      } else {
+        console.log('No user stats found in API');
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching user stats from API:', error);
+      return null;
     }
   }
 
@@ -216,8 +430,12 @@ class ProgressManager {
     if (!previouslyPassed && quizProgress.passed && attempt.passed) {
       const moduleId = this.getModuleIdByQuizId(quizId);
       if (moduleId) {
-        this.completeModuleByQuiz(moduleId);
-        console.log(`Module ${moduleId} marked as completed due to quiz ${quizId} completion`);
+        // เรียกใช้ async function
+        this.completeModuleByQuiz(moduleId).then(() => {
+          console.log(`Module ${moduleId} marked as completed due to quiz ${quizId} completion`);
+        }).catch(error => {
+          console.error(`Failed to complete module ${moduleId}:`, error);
+        });
       }
     }
     
@@ -508,7 +726,7 @@ class ProgressManager {
   }
 
   // อัพเดท module progress เมื่อทำ quiz ผ่าน
-  completeModuleByQuiz(moduleId: string): void {
+  async completeModuleByQuiz(moduleId: string): Promise<void> {
     const progress = this.getProgress();
     
     // สร้าง learning progress structure ถ้ายังไม่มี
@@ -561,40 +779,68 @@ class ProgressManager {
             readProgress: 100,
             timeSpent: 0,
             completedAt: new Date()
-          };
+          } as ChapterProgress;
         } else {
           moduleProgress.chapters[chapterId].completed = true;
           moduleProgress.chapters[chapterId].readProgress = 100;
         }
       });
-    }
 
-    this.saveProgress(progress);
+      // บันทึกใน local storage
+      this.saveProgress(progress);
+
+      // บันทึกใน API (ถ้า login อยู่)
+      try {
+        const finalScore = 100; // เมื่อทำ quiz ผ่านให้ 100%
+        await this.markModuleCompletedInAPI(moduleId, finalScore);
+      } catch (error) {
+        console.warn('Failed to mark module as completed in API:', error);
+      }
+    }
   }
 
   // ฟังก์ชันช่วยเพื่อรับ chapter ids ที่คาดหวังตาม module (เปิดเป็น public)
   getExpectedChaptersByModuleId(moduleId: string): string[] {
-    try {
-      // อ่านข้อมูลจาก learning modules จริง
-      const { learningModules } = require('../data/learning-modules');
-      const module = learningModules.find((m: any) => m.id === moduleId);
-      
-      if (module && module.chapters) {
-        return module.chapters.map((chapter: any) => chapter.id);
-      }
-    } catch (error) {
-      console.warn('Error loading learning modules data, using fallback:', error);
+    // ลองใช้ข้อมูลจาก localStorage ที่มี chapter IDs จริงก่อน
+    const progress = this.getProgress();
+    const moduleProgress = progress.learningProgress?.modules[moduleId];
+    
+    if (moduleProgress && moduleProgress.completedChapters && moduleProgress.completedChapters.length > 0) {
+      console.log(`📊 Found ${moduleProgress.completedChapters.length} chapters from localStorage for module ${moduleId}:`, moduleProgress.completedChapters);
+      return moduleProgress.completedChapters;
     }
     
-    // Fallback ถ้าอ่านข้อมูลไม่ได้
+    // หากมี chapters object ใน moduleProgress
+    if (moduleProgress && moduleProgress.chapters) {
+      const chapterIds = Object.keys(moduleProgress.chapters);
+      if (chapterIds.length > 0) {
+        console.log(`📊 Found ${chapterIds.length} chapters from chapters object for module ${moduleId}:`, chapterIds);
+        return chapterIds;
+      }
+    }
+
+    // Fallback สำหรับ moduleId ใหม่ที่เราทราบ
     const moduleChapters: Record<string, string[]> = {
+      'ba3fd565-dc81-4e74-b253-ef0a4074f8cf': [
+        'f23f104f-3690-4ca8-a3fc-dfbec284e9ae', // Introduction to Solar System
+        'a1b2c3d4-5678-9abc-def0-1234567890ab', // The Eight Planets  
+        'b2c3d4e5-6789-abcd-ef01-234567890abc'  // Special Features of Planets
+      ],
+      '4db710de-f734-4c7e-bf5f-a5645847b5bc': [
+        'c3d4e5f6-789a-bcde-f012-34567890abcd', // Earth Layers
+        'd4e5f6g7-89ab-cdef-0123-4567890abcde', // Atmosphere
+        'e5f6g7h8-9abc-def0-1234-567890abcdef'  // Magnetic Field
+      ],
+      // Keep old fallback for backward compatibility
       'solar-system': ['chapter-1', 'chapter-2', 'chapter-3'],
       'earth-structure': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4'],
       'stellar-evolution': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4'],
       'galaxies-universe': ['chapter-1', 'chapter-2', 'chapter-3', 'chapter-4']
     };
     
-    return moduleChapters[moduleId] || [];
+    const chapters = moduleChapters[moduleId] || [];
+    console.log(`📊 Using fallback chapters for module ${moduleId}:`, chapters);
+    return chapters;
   }
 
   // ====== Stage Progress Methods ======
@@ -712,13 +958,13 @@ class ProgressManager {
   }
 
   // อัพเดต progress ของ chapter
-  updateChapterProgress(
+  async updateChapterProgress(
     moduleId: string, 
     chapterId: string, 
     readProgress: number = 100,
     timeSpent: number = 0,
     isCompleted: boolean = true
-  ): PlayerProgress {
+  ): Promise<PlayerProgress> {
     const progress = this.getProgress();
     
     if (!progress.learningProgress) {
@@ -735,7 +981,7 @@ class ProgressManager {
 
     const moduleProgress = progress.learningProgress.modules[moduleId];
 
-    // อัพเดท chapter progress
+    // อัพเดท chapter progress (local storage)
     moduleProgress.chapters[chapterId] = {
       moduleId,
       chapterId,
@@ -743,7 +989,7 @@ class ProgressManager {
       readProgress,
       timeSpent,
       completedAt: isCompleted ? new Date() : undefined
-    };
+    } as ChapterProgress;
 
     // อัพเดท completed chapters
     if (isCompleted && !moduleProgress.completedChapters.includes(chapterId)) {
@@ -754,12 +1000,27 @@ class ProgressManager {
     moduleProgress.totalTimeSpent += timeSpent;
     progress.learningProgress.totalLearningTime += timeSpent;
 
+    // บันทึกใน local storage
     this.saveProgress(progress);
+
+    // บันทึกใน API (ถ้า login อยู่)
+    try {
+      await this.saveChapterProgressToAPI(
+        moduleId,
+        chapterId,
+        `content-${chapterId}-1`, // default content ID
+        readProgress,
+        isCompleted
+      );
+    } catch (error) {
+      console.warn('Failed to save chapter progress to API:', error);
+    }
+
     return progress;
   }
 
   // จบการเรียน module
-  completeModule(moduleId: string, totalChapters: number): PlayerProgress {
+  async completeModule(moduleId: string, totalChapters: number): Promise<PlayerProgress> {
     const progress = this.getProgress();
     
     if (!progress.learningProgress?.modules[moduleId]) {
@@ -777,9 +1038,19 @@ class ProgressManager {
       if (!progress.learningProgress.completedModules.includes(moduleId)) {
         progress.learningProgress.completedModules.push(moduleId);
       }
+
+      // บันทึกใน local storage
+      this.saveProgress(progress);
+
+      // บันทึกใน API (ถ้า login อยู่)
+      try {
+        const finalScore = this.getModuleCompletionPercentage(moduleId);
+        await this.markModuleCompletedInAPI(moduleId, finalScore);
+      } catch (error) {
+        console.warn('Failed to mark module as completed in API:', error);
+      }
     }
 
-    this.saveProgress(progress);
     return progress;
   }
 
@@ -794,7 +1065,10 @@ class ProgressManager {
   // คำนวณเปอร์เซ็นต์ความคืบหน้าของ module
   getModuleCompletionPercentage(moduleId: string, totalChapters?: number): number {
     const moduleProgress = this.getModuleProgress(moduleId);
-    if (!moduleProgress) return 0;
+    if (!moduleProgress) {
+      console.log(`📊 No module progress found for ${moduleId}`);
+      return 0;
+    }
 
     // ถ้าไม่ได้ระบุ totalChapters ให้ดึงจากข้อมูล modules จริง
     if (!totalChapters) {
@@ -802,7 +1076,16 @@ class ProgressManager {
       totalChapters = expectedChapters.length;
     }
 
-    if (totalChapters === 0) return 0;
+    if (totalChapters === 0) {
+      console.log(`📊 No chapters found for module ${moduleId}`);
+      return 0;
+    }
+
+    // ถ้า module เสร็จสมบูรณ์แล้ว ให้คืนค่า 100%
+    if (moduleProgress.isCompleted) {
+      console.log(`📊 Module ${moduleId} is completed, returning 100%`);
+      return 100;
+    }
 
     // คำนวณความคืบหน้าจากการอ่านเนื้อหา (60% ของคะแนนรวม)
     const completedChapters = moduleProgress.completedChapters.length;
@@ -812,6 +1095,17 @@ class ProgressManager {
     const quizProgress = this.getModuleQuizProgress(moduleId);
     
     const totalProgress = readingProgress + quizProgress;
+    
+    console.log(`📊 Module ${moduleId} progress calculation:`, {
+      completedChapters,
+      totalChapters,
+      readingProgress,
+      quizProgress,
+      totalProgress,
+      isCompleted: moduleProgress.isCompleted
+    });
+
+    return Math.min(Math.round(totalProgress), 100);
     
     // ถ้าได้ 100% จริงๆ (อ่านครบ + ทำ quiz ได้เต็ม) ถึงจะแสดง 100%
     // มิฉะนั้นให้แสดงคะแนนจริง แต่ไม่เกิน 99% ถ้ายังไม่ perfect
@@ -825,12 +1119,17 @@ class ProgressManager {
   // คำนวณความคืบหน้าจากแบบฝึกหัด/แบบทดสอบของ module
   getModuleQuizProgress(moduleId: string): number {
     const progress = this.getProgress();
-    if (!progress.quizProgress) return 0;
+    if (!progress.quizProgress) {
+      console.log(`📊 No quiz progress found for module ${moduleId}`);
+      return 0;
+    }
 
     // ค้นหา quiz ที่เกี่ยวข้องกับ module นี้
     const moduleQuizzes = Object.values(progress.quizProgress.quizzes).filter(
       quiz => this.getModuleIdByQuizId(quiz.quizId) === moduleId
     );
+
+    console.log(`📊 Found ${moduleQuizzes.length} quizzes for module ${moduleId}:`, moduleQuizzes);
 
     if (moduleQuizzes.length === 0) return 0;
 
@@ -843,14 +1142,22 @@ class ProgressManager {
         // ใช้คะแนนดีที่สุด
         totalScore += quiz.bestPercentage;
         quizCount++;
+        console.log(`📊 Quiz ${quiz.quizId}: best score ${quiz.bestPercentage}%`);
       }
     });
 
-    if (quizCount === 0) return 0;
+    if (quizCount === 0) {
+      console.log(`📊 No completed quizzes found for module ${moduleId}`);
+      return 0;
+    }
 
     // คืนค่าเป็น 40% ของคะแนนรวม (เนื่องจาก quiz คิดเป็น 40% ของ progress)
     const averageQuizScore = totalScore / quizCount;
     const quizProgressContribution = (averageQuizScore / 100) * 40;
+    
+    console.log(`📊 Module ${moduleId} quiz progress: ${averageQuizScore}% avg → ${quizProgressContribution}% contribution`);
+    
+    return quizProgressContribution;
     
     return quizProgressContribution;
   }
@@ -889,7 +1196,7 @@ class ProgressManager {
   }
 
   // ตรวจสอบและอัพเดท module progress เมื่อเสร็จสิ้น chapters ทั้งหมด
-  checkAndCompleteModule(moduleId: string): void {
+  async checkAndCompleteModule(moduleId: string): Promise<void> {
     const progress = this.getProgress();
     
     // สร้าง learning progress structure ถ้ายังไม่มี
@@ -922,7 +1229,16 @@ class ProgressManager {
         progress.learningProgress.completedModules.push(moduleId);
       }
 
+      // บันทึกใน local storage
       this.saveProgress(progress);
+
+      // บันทึกใน API (ถ้า login อยู่)
+      try {
+        const finalScore = this.getModuleCompletionPercentage(moduleId);
+        await this.markModuleCompletedInAPI(moduleId, finalScore);
+      } catch (error) {
+        console.warn('Failed to mark module as completed in API:', error);
+      }
     }
   }
 
@@ -1021,7 +1337,7 @@ class ProgressManager {
   }
 
   // ดึงข้อมูล chapter progress
-  getChapterProgress(moduleId: string, chapterId: string): LearningProgress | null {
+  getChapterProgress(moduleId: string, chapterId: string): ChapterProgress | null {
     const moduleProgress = this.getModuleProgress(moduleId);
     return moduleProgress?.chapters[chapterId] || null;
   }

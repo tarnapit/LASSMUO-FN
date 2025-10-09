@@ -37,32 +37,80 @@ export default function LearningPage() {
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
 
-    // ฟังก์ชันโหลด progress
-    const loadProgress = () => {
-      const progresses: Record<string, any> = {};
-      learningModules?.forEach((module: any) => {
-        // ตรวจสอบและ complete module ถ้าจำเป็น
-        progressManager.checkAndCompleteModule(module.id);
+    // โหลด progress จาก API (ถ้า login อยู่)
+    const initializeProgress = async () => {
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('✅ Progress loaded from API');
+      }
+      
+      // ฟังก์ชันโหลด progress
+      const loadProgress = async () => {
+        const progresses: Record<string, any> = {};
+        
+        if (learningModules) {
+          // ใช้ Promise.all เพื่อรอให้ async operations เสร็จ
+          await Promise.all(learningModules.map(async (module: any) => {
+            // ตรวจสอบและ complete module ถ้าจำเป็น
+            await progressManager.checkAndCompleteModule(module.id);
 
-        const moduleProgress = progressManager.getModuleProgress(module.id);
-        const completionPercentage =
-          progressManager.getModuleCompletionPercentage(module.id);
-        progresses[module.id] = {
-          ...moduleProgress,
-          completionPercentage,
-        };
-      });
-      setModuleProgresses(progresses);
+            const moduleProgress = progressManager.getModuleProgress(module.id);
+            const completionPercentage =
+              progressManager.getModuleCompletionPercentage(module.id);
+            
+            console.log(`📊 Progress for ${module.title} (${module.id}):`, {
+              moduleProgress,
+              completionPercentage,
+              isCompleted: moduleProgress?.isCompleted,
+              completedChapters: moduleProgress?.completedChapters?.length || 0
+            });
+            
+            progresses[module.id] = {
+              ...moduleProgress,
+              completionPercentage,
+            };
+          }));
+        }
+        
+        console.log('📊 All module progresses loaded:', progresses);
+        setModuleProgresses(progresses);
+      };
+
+      // โหลด progress ครั้งแรก
+      await loadProgress();
     };
 
-    // โหลด progress ครั้งแรก
-    loadProgress();
+    initializeProgress();
 
     // ฟัง progress updates จาก quiz completion หรือ chapter completion
     const handleProgressUpdate = (event: CustomEvent) => {
       console.log("Progress updated:", event.detail);
-      setTimeout(() => {
-        loadProgress(); // โหลด progress ใหม่หลังจาก delay เล็กน้อย
+      setTimeout(async () => {
+        // โหลด progress ใหม่หลังจาก delay เล็กน้อย
+        const progresses: Record<string, any> = {};
+        
+        if (learningModules) {
+          await Promise.all(learningModules.map(async (module: any) => {
+            await progressManager.checkAndCompleteModule(module.id);
+            const moduleProgress = progressManager.getModuleProgress(module.id);
+            const completionPercentage =
+              progressManager.getModuleCompletionPercentage(module.id);
+            
+            console.log(`🔄 Refreshed progress for ${module.title} (${module.id}):`, {
+              moduleProgress,
+              completionPercentage,
+              isCompleted: moduleProgress?.isCompleted,
+              completedChapters: moduleProgress?.completedChapters?.length || 0
+            });
+            
+            progresses[module.id] = {
+              ...moduleProgress,
+              completionPercentage,
+            };
+          }));
+        }
+        
+        setModuleProgresses(progresses);
       }, 100);
     };
 
@@ -70,8 +118,33 @@ export default function LearningPage() {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log("Page visible again, reloading progress...");
-        setTimeout(() => {
-          loadProgress();
+        setTimeout(async () => {
+          if (user) {
+            await progressManager.loadProgressFromAPI();
+          }
+          
+          const progresses: Record<string, any> = {};
+          if (learningModules) {
+            await Promise.all(learningModules.map(async (module: any) => {
+              await progressManager.checkAndCompleteModule(module.id);
+              const moduleProgress = progressManager.getModuleProgress(module.id);
+              const completionPercentage =
+                progressManager.getModuleCompletionPercentage(module.id);
+              
+              console.log(`👁️ Visibility refresh for ${module.title} (${module.id}):`, {
+                moduleProgress,
+                completionPercentage,
+                isCompleted: moduleProgress?.isCompleted,
+                completedChapters: moduleProgress?.completedChapters?.length || 0
+              });
+              
+              progresses[module.id] = {
+                ...moduleProgress,
+                completionPercentage,
+              };
+            }));
+          }
+          setModuleProgresses(progresses);
         }, 200);
       }
     };
