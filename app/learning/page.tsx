@@ -19,6 +19,51 @@ import {
 } from "lucide-react";
 import styles from "../styles/learning.module.css";
 
+// Component สำหรับแสดง Progress Bar
+const ProgressBar = ({ percentage, type }: { percentage: number; type: 'green' | 'yellow' | 'purple' }) => {
+  const getProgressColors = () => {
+    switch (type) {
+      case 'green': return 'bg-gradient-to-r from-green-400 to-green-600';
+      case 'yellow': return 'bg-gradient-to-r from-green-400 to-yellow-500';
+      case 'purple': return 'bg-gradient-to-r from-purple-500 to-blue-500';
+      default: return 'bg-gradient-to-r from-purple-500 to-blue-500';
+    }
+  };
+
+  // จัดเป็นช่วงเพื่อใช้ Tailwind classes
+  const getWidthClass = (pct: number) => {
+    if (pct === 0) return 'w-0';
+    if (pct <= 5) return 'w-[5%]';
+    if (pct <= 10) return 'w-[10%]';
+    if (pct <= 15) return 'w-[15%]';
+    if (pct <= 20) return 'w-[20%]';
+    if (pct <= 25) return 'w-1/4';
+    if (pct <= 30) return 'w-[30%]';
+    if (pct <= 35) return 'w-[35%]';
+    if (pct <= 40) return 'w-[40%]';
+    if (pct <= 45) return 'w-[45%]';
+    if (pct <= 50) return 'w-1/2';
+    if (pct <= 55) return 'w-[55%]';
+    if (pct <= 60) return 'w-[60%]';
+    if (pct <= 65) return 'w-[65%]';
+    if (pct <= 70) return 'w-[70%]';
+    if (pct <= 75) return 'w-3/4';
+    if (pct <= 80) return 'w-[80%]';
+    if (pct <= 85) return 'w-[85%]';
+    if (pct <= 90) return 'w-[90%]';
+    if (pct <= 95) return 'w-[95%]';
+    return 'w-full';
+  };
+
+  return (
+    <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
+      <div
+        className={`h-2 rounded-full transition-all duration-300 absolute left-0 top-0 ${getProgressColors()} ${getWidthClass(percentage)}`}
+      />
+    </div>
+  );
+};
+
 export default function LearningPage() {
   const [moduleProgresses, setModuleProgresses] = useState<Record<string, any>>(
     {}
@@ -285,16 +330,19 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return <BookOpen className="text-yellow-400" size={32} />;
 
-    // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
-    if (progressManager.isModulePerfect(moduleId)) {
+    // ตรวจสอบจาก progress percentage จาก API
+    const completionPercentage = progress.completionPercentage || 0;
+    
+    // เสร็จสมบูรณ์ 100%
+    if (completionPercentage >= 100) {
       return <CheckCircle className="text-green-500" size={32} />;
     }
-    // ตรวจสอบว่าผ่านเกณฑ์ (70%)
-    else if (progressManager.isModulePassed(moduleId)) {
+    // ผ่านเกณฑ์ (70% ขึ้นไป)
+    else if (completionPercentage >= 70) {
       return <CheckCircle className="text-green-400" size={32} />;
     }
-    // กำลังเรียนอยู่
-    else if (progress.isStarted) {
+    // กำลังเรียนอยู่ (มี progress แต่ยังไม่ผ่าน)
+    else if (completionPercentage > 0) {
       return <PlayCircle className="text-blue-400" size={32} />;
     }
     // ยังไม่เริ่ม
@@ -307,17 +355,20 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return "เริ่มเรียน";
 
-    // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
-    if (progressManager.isModulePerfect(moduleId)) {
+    // ตรวจสอบจาก progress percentage จาก API
+    const completionPercentage = progress.completionPercentage || 0;
+    
+    // เสร็จสมบูรณ์ 100%
+    if (completionPercentage >= 100) {
       return "เรียนจบแล้ว";
     }
-    // ตรวจสอบว่าผ่านเกณฑ์ (70%)
-    else if (progressManager.isModulePassed(moduleId)) {
-      return `ผ่านแล้ว`;
+    // ผ่านเกณฑ์ (70% ขึ้นไป)
+    else if (completionPercentage >= 70) {
+      return "ผ่านแล้ว";
     }
-    // กำลังเรียนอยู่
-    else if (progress.isStarted) {
-      return `กำลังเรียน`;
+    // กำลังเรียนอยู่ (มี progress แต่ยังไม่ผ่าน)
+    else if (completionPercentage > 0) {
+      return "กำลังเรียน";
     }
     // ยังไม่เริ่ม
     else {
@@ -349,16 +400,19 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return "text-yellow-400";
 
-    // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
-    if (progressManager.isModulePerfect(moduleId)) {
+    // ตรวจสอบจาก progress percentage จาก API
+    const completionPercentage = progress.completionPercentage || 0;
+    
+    // เสร็จสมบูรณ์ 100%
+    if (completionPercentage >= 100) {
       return "text-green-500";
     }
-    // ตรวจสอบว่าผ่านเกณฑ์ (70%)
-    else if (progressManager.isModulePassed(moduleId)) {
+    // ผ่านเกณฑ์ (70% ขึ้นไป)
+    else if (completionPercentage >= 70) {
       return "text-green-400";
     }
-    // กำลังเรียนอยู่
-    else if (progress.isStarted) {
+    // กำลังเรียนอยู่ (มี progress แต่ยังไม่ผ่าน)
+    else if (completionPercentage > 0) {
       return "text-blue-400";
     }
     // ยังไม่เริ่ม
@@ -546,53 +600,49 @@ export default function LearningPage() {
                     </div>
 
                     {/* Progress Bar */}
-                    {moduleProgresses[module.id]?.isStarted && (
+                    {moduleProgresses[module.id] && moduleProgresses[module.id].completionPercentage > 0 && (
                       <div className="mb-4">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-gray-400">ความคืบหน้า</span>
                           <span
                             className={
-                              progressManager.isModulePerfect(module.id)
+                              moduleProgresses[module.id].completionPercentage >= 100
                                 ? "text-green-500"
-                                : progressManager.isModulePassed(module.id)
+                                : moduleProgresses[module.id].completionPercentage >= 70
                                 ? "text-green-400"
                                 : "text-blue-400"
                             }
                           >
-                            {console.log(`🎨 Rendering progress for ${module.id}:`, moduleProgresses[module.id]?.completionPercentage)}
                             {moduleProgresses[module.id]?.completionPercentage || 0}%
                           </span>
                         </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
-                          <div
-                            className={`h-2 rounded-full transition-all duration-300 absolute left-0 top-0 ${
-                              progressManager.isModulePerfect(module.id)
-                                ? styles.progressFillGreen
-                                : progressManager.isModulePassed(module.id)
-                                ? styles.progressFillYellow
-                                : styles.progressFillPurple
-                            }`}
-                            data-progress={moduleProgresses[module.id].completionPercentage}
-                          />
-                        </div>
+                        <ProgressBar 
+                          percentage={moduleProgresses[module.id].completionPercentage || 0}
+                          type={
+                            moduleProgresses[module.id].completionPercentage >= 100 ? 'green' :
+                            moduleProgresses[module.id].completionPercentage >= 70 ? 'yellow' : 'purple'
+                          }
+                        />
                         {/* แสดงข้อมูลเพิ่มเติมเกี่ยวกับสิ่งที่ต้องทำ */}
-                        {moduleProgresses[module.id]?.isStarted && (
-                          <div className="text-xs mt-1">
-                            {progressManager.isModulePerfect(module.id) ? (
-                              <div className="text-green-400">
-                                ✅ เรียนจบแล้ว คะแนนเต็ม!
-                              </div>
-                            ) : progressManager.isModulePassed(module.id) ? (
-                              <div className="text-yellow-400">
-                                💡 ทำแบบฝึกหัดให้ได้คะแนนเต็มเพื่อให้ได้ 100%
-                              </div>
-                            ) : (
-                              <div className="text-red-400">
-                                ⚠️ ต้องได้คะแนนรวม 70% ขึ้นไปจึงจะผ่าน
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <div className="text-xs mt-1">
+                          {moduleProgresses[module.id].completionPercentage >= 100 ? (
+                            <div className="text-green-400">
+                              ✅ เรียนจบแล้ว คะแนนเต็ม!
+                            </div>
+                          ) : moduleProgresses[module.id].completionPercentage >= 70 ? (
+                            <div className="text-green-400">
+                              ✅ ผ่านเกณฑ์แล้ว สามารถศึกษาต่อได้
+                            </div>
+                          ) : moduleProgresses[module.id].completionPercentage > 0 ? (
+                            <div className="text-blue-400">
+                              📚 กำลังเรียน ต้องได้ 70% ขึ้นไปจึงจะผ่าน
+                            </div>
+                          ) : (
+                            <div className="text-gray-400">
+                              🎯 เริ่มเรียนเพื่อปลดล็อกความคืบหน้า
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -638,7 +688,7 @@ export default function LearningPage() {
                   </Link>
 
                   {/* Quiz Section - Show when reading is complete (can attempt quiz) */}
-                  {moduleProgresses[module.id]?.isStarted && quiz && (
+                  {moduleProgresses[module.id] && moduleProgresses[module.id].completionPercentage > 0 && quiz && (
                     <div className="mt-4 pt-4 border-t border-white/10">
                       <QuizCard quiz={quiz} moduleTitle={module.title} />
                     </div>
