@@ -74,6 +74,18 @@ export default function LearningPage() {
   // Use data adapter for learning modules
   const { modules: learningModules, loading: modulesLoading, error: modulesError } = useLearningData();
 
+  // Debug: ดู structure ของ learning modules
+  useEffect(() => {
+    if (learningModules && learningModules.length > 0) {
+      console.log('📚 Learning modules loaded:', learningModules.map(m => ({
+        id: m.id,
+        title: m.title,
+        chaptersCount: m.chapters?.length || 0,
+        chapters: m.chapters?.map(c => ({ id: c.id, title: c.title })) || []
+      })));
+    }
+  }, [learningModules]);
+
   useEffect(() => {
     // โหลดข้อมูล user
     const user = authManager.getCurrentUser();
@@ -326,6 +338,27 @@ export default function LearningPage() {
     advanced: "ขั้นสูง",
   };
 
+  // ฟังก์ชันดึงจำนวนบทจาก API จริง
+  const getActualChapterCount = (moduleId: string): number => {
+    const module = learningModules?.find((m: any) => m.id === moduleId);
+    if (module && module.chapters && Array.isArray(module.chapters)) {
+      const chapterCount = module.chapters.length;
+      console.log(`📊 Module ${moduleId} (${module.title}) has ${chapterCount} chapters from API`);
+      return chapterCount;
+    }
+    
+    // Fallback ถ้าไม่เจอ - ดูจาก progress manager
+    const expectedChapters = progressManager.getExpectedChaptersByModuleId(moduleId);
+    if (expectedChapters && expectedChapters.length > 0) {
+      console.log(`📊 Module ${moduleId} fallback to progress manager: ${expectedChapters.length} chapters`);
+      return expectedChapters.length;
+    }
+    
+    // สุดท้าย fallback เป็น 3 (ตามที่เห็นในรูป)
+    console.log(`⚠️ No chapters found for module ${moduleId}, using default 3`);
+    return 3;
+  };
+
   const getModuleStatusIcon = (moduleId: string) => {
     const progress = moduleProgresses[moduleId];
     if (!progress) return <BookOpen className="text-yellow-400" size={32} />;
@@ -380,13 +413,19 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return null;
 
-    // ใช้ข้อมูลจาก learning modules โดยตรง
-    const module = learningModules?.find((m: any) => m.id === moduleId);
-    const totalChapters = module?.chapters?.length || 0;
+    // ใช้ข้อมูลจาก API จริง
+    const totalChapters = getActualChapterCount(moduleId);
     const completedChapters = progress.completedChapters?.length || 0;
     const readingProgress =
       totalChapters > 0 ? (completedChapters / totalChapters) * 60 : 0;
     const quizProgress = progressManager.getModuleQuizProgress?.(moduleId) || 0;
+
+    console.log(`📊 Progress details for ${moduleId}:`, {
+      totalChapters,
+      completedChapters,
+      readingProgress,
+      quizProgress
+    });
 
     return {
       readingProgress: Math.round(readingProgress),
@@ -529,6 +568,15 @@ export default function LearningPage() {
             const quiz = getQuizByModuleId(module.id);
             const progress = moduleProgresses[module.id];
             const isCompleted = progress?.isCompleted;
+            const actualChapterCount = getActualChapterCount(module.id);
+
+            // Debug log แต่ละ module
+            console.log(`🔍 Rendering module ${module.id}:`, {
+              title: module.title,
+              chaptersFromAPI: module.chapters?.length || 0,
+              actualChapterCount: actualChapterCount,
+              completionPercentage: progress?.completionPercentage || 0
+            });
 
             return (
               <div key={module.id} className="group h-full">
@@ -670,7 +718,7 @@ export default function LearningPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="text-sm text-gray-400">
-                            {module.chapters.length} บท
+                            {getActualChapterCount(module.id)} บท
                           </span>
                           <span
                             className={`text-sm font-semibold ${getModuleStatusColor(

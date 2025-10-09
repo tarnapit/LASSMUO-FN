@@ -639,7 +639,7 @@ export default function LearningTopicPage() {
                   }`}
                 >
                   {isCompleted && <CheckCircle size={16} />}
-                  <span>บทที่ {index + 1}</span>
+                  <span>ส่วนที่ {index + 1}</span>
                 </button>
               );
             })}
