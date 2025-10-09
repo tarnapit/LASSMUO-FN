@@ -396,7 +396,7 @@ export default function LearningTopicPage() {
 
       case "image":
         return (
-          <div className="space-y-4">
+          <div className="space-y-6">
             <div className="text-center">
               {currentContent.imageUrl ? (
                 <div className="bg-white/5 rounded-lg p-4 mb-4">
@@ -463,66 +463,36 @@ export default function LearningTopicPage() {
         );
 
       case "interactive":
-        return (
-          <div className="bg-gradient-to-br from-orange-500/30 to-red-500/20 rounded-xl p-8 text-center border-2 border-orange-500/40">
-            <h3 className="text-3xl font-bold text-orange-400 mb-4">
-              แบบฝึกหัด
-            </h3>
-            <p className="text-white text-lg mb-2">{currentContent.content}</p>
-            <p className="text-gray-300 text-sm mb-6">
-              ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้
-            </p>
-
-            {quiz ? (
-              <div className="space-y-4">
-                {isLastChapter && (
-                  <div className="bg-green-500/20 border border-green-500/40 rounded-lg p-4 mb-4">
-                    <div className="flex items-center text-green-400 text-sm font-medium">
-                      <CheckCircle size={16} className="mr-2" />
-                      เมื่อไปทำแบบทดสอบ จะถือว่าเรียนจบบทเรียนนี้แล้ว
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    // บันทึก progress ของ chapter ปัจจุบันก่อนไปทำ quiz
-                    completeCurrentChapter();
-                    // ถ้าเป็น chapter สุดท้าย ให้ complete module ด้วย (แต่ไม่แสดงหน้าสรุป)
-                    if (isLastChapter) {
-                      completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
-                    }
-                    // ไปหน้า quiz
-                    router.push(`/quiz/${quiz.id}`);
-                  }}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
-                >
-                  <Brain size={24} className="mr-3" />
-                  {isLastChapter ? "เสร็จสิ้นและไปทำแบบทดสอบ" : "ไปทำแบบทดสอบ"}
-                </button>
-              </div>
-            ) : (
-              <div className="text-gray-400 py-4">
-                <p>ยังไม่มีแบบทดสอบสำหรับบทเรียนนี้</p>
-              </div>
-            )}
-
-            {quiz && (
-              <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
-                <div className="flex items-center">
-                  <Brain size={16} className="mr-1 text-orange-400" />
-                  {quiz.questions.length} ข้อ
-                </div>
-                <div className="flex items-center">
-                  <Clock size={16} className="mr-1 text-orange-400" />
-                  {quiz.timeLimit ? `${quiz.timeLimit} นาที` : "ไม่จำกัด"}
-                </div>
-                <div className="flex items-center">
-                  <Trophy size={16} className="mr-1 text-orange-400" />
-                  ผ่าน {quiz.passingScore}%
-                </div>
-              </div>
-            )}
+        return currentContent.activity ? (
+          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl p-8 border border-blue-500/30">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-blue-400 mb-2">
+                💡 กิจกรรมปฏิสัมพันธ์
+              </h3>
+              <p className="text-white text-lg mb-2">
+                {currentContent.activity.title}
+              </p>
+              <p className="text-gray-300 text-sm">
+                ทดสอบความเข้าใจจากเนื้อหาที่เพิ่งศึกษา
+              </p>
+            </div>
+            <InteractiveActivityComponent
+              key={`${currentChapterIndex}-${currentContentIndex}-${currentContent.activity.id}`}
+              activity={currentContent.activity}
+              onComplete={(score, timeSpent, passed) =>
+                handleActivityComplete(
+                  currentContent.activity!.id,
+                  score,
+                  timeSpent,
+                  passed
+                )
+              }
+              required={currentContent.required}
+              minimumScore={currentContent.minimumScore}
+            />
           </div>
+        ) : (
+          <div className="text-red-400">ข้อมูลกิจกรรมไม่ถูกต้อง</div>
         );
 
       default:

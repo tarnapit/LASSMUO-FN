@@ -369,9 +369,29 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
           
           console.log(`Found ${lessonsWithDetail.length} lessons with detail for course ${course.id}`);
           
+          // ดึงข้อมูล CourseQuiz ทั้งหมดเพื่อใช้สร้าง interactive activities (ดึงครั้งเดียวสำหรับทุก lesson)
+          let allCourseQuizzes: any[] = [];
+          try {
+            const courseQuizzesResponse = await courseQuizService.getAllCourseQuizzes();
+            console.log('CourseQuiz API response structure:', typeof courseQuizzesResponse, courseQuizzesResponse);
+            
+            // ตรวจสอบว่า response เป็น array โดยตรง หรือเป็น object ที่มี data property
+            if (Array.isArray(courseQuizzesResponse)) {
+              allCourseQuizzes = courseQuizzesResponse;
+              console.log(`Found ${allCourseQuizzes.length} course quizzes from API (direct array)`);
+            } else if (courseQuizzesResponse.success && courseQuizzesResponse.data) {
+              allCourseQuizzes = courseQuizzesResponse.data;
+              console.log(`Found ${allCourseQuizzes.length} course quizzes from API (wrapped response)`);
+            } else {
+              console.log('CourseQuiz API response was not successful or unexpected format:', courseQuizzesResponse);
+            }
+          } catch (quizError) {
+            console.log('Error fetching course quizzes:', quizError);
+          }
+          
           if (lessonsWithDetail.length > 0) {
             // แปลง lessonsWithDetail เป็น chapters
-            chapters = lessonsWithDetail.map((lesson: any, index: number) => {
+            chapters = await Promise.all(lessonsWithDetail.map(async (lesson: any, index: number) => {
               console.log(`\n=== Processing lesson ${index + 1} ===`);
               console.log(`Lesson ID: ${lesson.id}`);
               console.log(`Lesson Title: ${lesson.title}`);
@@ -382,8 +402,9 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
               // ตรวจสอบว่ามี courseDetail หรือไม่
               if (lesson.courseDetail && Array.isArray(lesson.courseDetail)) {
                 console.log(`Found ${lesson.courseDetail.length} details for lesson ${lesson.id}`);
+                console.log(`Using ${allCourseQuizzes.length} course quizzes for matching`);
                 
-                chapterContent = lesson.courseDetail.map((detail: any, detailIndex: number) => {
+                chapterContent = lesson.courseDetail.flatMap((detail: any, detailIndex: number) => {
                   console.log(`\n  Processing detail ${detailIndex + 1}/${lesson.courseDetail.length}:`);
                   console.log(`    Detail ID: ${detail.id}`);
                   console.log(`    Detail Type: ${detail.type}`);
@@ -394,6 +415,7 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
                   let contentType: 'text' | 'image' | 'video' | 'interactive' | 'quiz' = 'text';
                   let activity: any = null;
                   let imageUrl: string | undefined = undefined;
+                  const contentItems: any[] = [];
                   
                   // ตรวจสอบ type ของ content
                   if (detail.type) {
@@ -458,7 +480,44 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
                     }
                   }
                   
-                  const processedContent = {
+                  // ค้นหา CourseQuiz ที่เชื่อมโยงกับ detail นี้
+                  console.log(`    Looking for quiz with courseDetailId: ${detail.id}`);
+                  console.log(`    Available CourseQuiz courseDetailIds:`, allCourseQuizzes.map((q: any) => q.courseDetailId));
+                  const relatedQuiz = allCourseQuizzes.find((quiz: any) => quiz.courseDetailId === detail.id);
+                  console.log(`    Found relatedQuiz:`, !!relatedQuiz);
+                  if (relatedQuiz) {
+                    console.log(`    Found related quiz for detail ${detail.id}:`, relatedQuiz.title);
+                    
+                    // สร้าง activity จากข้อมูล CourseQuiz แต่ไม่เปลี่ยน contentType
+                    activity = {
+                      id: relatedQuiz.id,
+                      courseDetailId: relatedQuiz.courseDetailId,
+                      title: relatedQuiz.title,
+                      type: relatedQuiz.type,
+                      instruction: relatedQuiz.instruction,
+                      maxAttempts: relatedQuiz.maxAttempts || 3,
+                      passingScore: relatedQuiz.passingScore || 10,
+                      timeLimite: relatedQuiz.timeLimite || 0,
+                      difficulty: relatedQuiz.difficulty || 'Easy',
+                      data: relatedQuiz.data,
+                      point: relatedQuiz.point || 10,
+                      feedback: relatedQuiz.feedback || {
+                        correct: 'ยินดีด้วย! คำตอบถูกต้อง',
+                        incorrect: 'ลองใหม่อีกครั้งนะ'
+                      },
+                      createdAt: relatedQuiz.createdAt || new Date().toISOString(),
+                      updatedAt: relatedQuiz.updatedAt || new Date().toISOString()
+                    };
+                    
+                    console.log(`    Created activity from CourseQuiz:`, {
+                      id: activity.id,
+                      type: activity.type,
+                      title: activity.title
+                    });
+                  }
+                  
+                  // สร้าง content item หลัก (เนื้อหา)
+                  const mainContent = {
                     id: detail.id || `content-${lesson.id}-${detailIndex}`,
                     courseLessonId: lesson.id,
                     type: contentType,
@@ -466,20 +525,50 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
                     imageUrl: imageUrl,
                     required: detail.required || false,
                     score: detail.score || 0,
-                    activity: activity,
-                    minimumScore: activity?.passingScore || detail.minimumScore || 0,
+                    activity: undefined, // ไม่แนบ activity ที่เนื้อหา
+                    minimumScore: detail.minimumScore || 0,
                     createdAt: detail.createdAt || new Date().toISOString(),
                     updatedAt: detail.updatedAt || new Date().toISOString()
                   } as ChapterContent;
                   
+                  contentItems.push(mainContent);
+                  
                   console.log(`    Created content item:`, { 
-                    id: processedContent.id, 
-                    type: processedContent.type, 
-                    contentLength: processedContent.content.length,
-                    hasActivity: !!processedContent.activity,
-                    hasImage: !!processedContent.imageUrl
+                    id: mainContent.id, 
+                    type: mainContent.type, 
+                    contentLength: mainContent.content.length,
+                    hasActivity: false,
+                    hasImage: !!mainContent.imageUrl
                   });
-                  return processedContent;
+                  
+                  // ถ้ามี activity ให้สร้าง content item แยกสำหรับ activity
+                  if (activity) {
+                    const activityContent = {
+                      id: `${activity.id}-interactive`,
+                      courseLessonId: lesson.id,
+                      type: 'interactive' as const, // ใช้ type เดียวสำหรับ activity ทั้งหมด
+                      content: activity.instruction || 'ทำกิจกรรมต่อไปนี้',
+                      imageUrl: undefined,
+                      required: detail.required || false,
+                      score: activity.point || 10,
+                      activity: activity,
+                      minimumScore: activity.passingScore || 10,
+                      createdAt: activity.createdAt || new Date().toISOString(),
+                      updatedAt: activity.updatedAt || new Date().toISOString()
+                    } as ChapterContent;
+                    
+                    contentItems.push(activityContent);
+                    
+                    console.log(`    Created activity item:`, { 
+                      id: activityContent.id, 
+                      type: activityContent.type, 
+                      contentLength: activityContent.content.length,
+                      hasActivity: true,
+                      activityType: activity.type
+                    });
+                  }
+                  
+                  return contentItems;
                 });
                 
                 console.log(`  Total content items created for lesson ${lesson.id}: ${chapterContent.length}`);
@@ -519,7 +608,7 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
               console.log(`================================\n`);
               
               return finalChapter;
-            });
+            }));
             
             console.log('\n=== FINAL PROCESSING SUMMARY ===');
             console.log(`Total chapters processed: ${chapters.length}`);

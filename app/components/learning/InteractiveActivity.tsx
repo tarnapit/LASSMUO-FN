@@ -22,7 +22,7 @@ export default function InteractiveActivityComponent({
   const [score, setScore] = useState(0);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState(activity.timeLimit || 0);
+  const [timeRemaining, setTimeRemaining] = useState(activity.timeLimite || 0);
   const [attempts, setAttempts] = useState(0);
   const [passed, setPassed] = useState(false);
   const [showHint, setShowHint] = useState(false);
@@ -33,17 +33,17 @@ export default function InteractiveActivityComponent({
     setScore(0);
     setShowFeedback(false);
     setIsCorrect(false);
-    setTimeRemaining(activity.timeLimit || 0);
+    setTimeRemaining(activity.timeLimite || 0);
     setAttempts(0);
     setPassed(false);
     setShowHint(false);
-  }, [activity.id, activity.timeLimit]);
+  }, [activity.id, activity.timeLimite]);
 
   // Timer effect
   useEffect(() => {
-    if (activity.timeLimit && timeRemaining > 0 && !isCompleted) {
+    if (activity.timeLimite && timeRemaining > 0 && !isCompleted) {
       const timer = setInterval(() => {
-        setTimeRemaining(prev => {
+        setTimeRemaining((prev: number) => {
           if (prev <= 1) {
             // Time's up!
             handleTimeUp();
@@ -55,7 +55,7 @@ export default function InteractiveActivityComponent({
 
       return () => clearInterval(timer);
     }
-  }, [timeRemaining, isCompleted, activity.timeLimit]);
+  }, [timeRemaining, isCompleted, activity.timeLimite]);
 
   const handleTimeUp = () => {
     setIsCompleted(true);
@@ -102,7 +102,7 @@ export default function InteractiveActivityComponent({
     setShowFeedback(false);
     setScore(0);
     setShowHint(false);
-    setTimeRemaining(activity.timeLimit || 0);
+    setTimeRemaining(activity.timeLimite || 0);
     // ไม่รีเซ็ต attempts เพื่อให้นับสะสม
   };
 
@@ -146,17 +146,18 @@ export default function InteractiveActivityComponent({
             )}
             {activity.difficulty && (
               <span className={`ml-2 px-2 py-1 rounded text-sm font-normal ${
-                activity.difficulty === 'easy' ? 'bg-green-500/20 border border-green-500/40 text-green-300' :
-                activity.difficulty === 'medium' ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' :
+                activity.difficulty.toLowerCase() === 'easy' ? 'bg-green-500/20 border border-green-500/40 text-green-300' :
+                activity.difficulty.toLowerCase() === 'medium' ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' :
                 'bg-red-500/20 border border-red-500/40 text-red-300'
               }`}>
-                {activity.difficulty === 'easy' ? 'ง่าย' : activity.difficulty === 'medium' ? 'ปานกลาง' : 'ยาก'}
+                {activity.difficulty.toLowerCase() === 'easy' ? 'ง่าย' : 
+                 activity.difficulty.toLowerCase() === 'medium' ? 'ปานกลาง' : 'ยาก'}
               </span>
             )}
           </h3>
           
           <div className="flex items-center space-x-3">
-            {activity.timeLimit && (
+            {activity.timeLimite && (
               <div className={`flex items-center px-3 py-1 rounded-lg ${
                 timeRemaining <= 10 ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
               }`}>
@@ -180,10 +181,10 @@ export default function InteractiveActivityComponent({
         <p className="text-gray-300">{activity.instruction}</p>
         
         <div className="flex items-center mt-3 space-x-4">
-          {activity.points && (
+          {activity.point && (
             <div className="flex items-center text-yellow-400 text-sm">
               <Trophy size={16} className="mr-1" />
-              คะแนนเต็ม: {activity.points} แต้ม
+              คะแนนเต็ม: {activity.point} แต้ม
             </div>
           )}
           
@@ -326,7 +327,7 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
         
         if (matches.length + 1 === activity.data.pairs.length) {
           // เสร็จแล้ว
-          setTimeout(() => onAnswer(true, activity.points || 10), 500);
+          setTimeout(() => onAnswer(true, activity.point || 10), 500);
         }
       } else {
         // ผิด - ล้างการเลือก
@@ -361,7 +362,7 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
             </div>
             <p className="text-lg font-semibold">{feedback.message}</p>
             {feedback.type === 'correct' && (
-              <div className="mt-2 text-sm opacity-90">+{Math.floor((activity.points || 10) / activity.data.pairs.length)} แต้ม</div>
+              <div className="mt-2 text-sm opacity-90">+{Math.floor((activity.point || 10) / activity.data.pairs.length)} แต้ม</div>
             )}
           </div>
         </div>
@@ -473,7 +474,7 @@ function FillBlanksGame({ activity, onAnswer, disabled }: any) {
         setTimeout(() => {
           const newAnswers = [...selectedAnswers, option];
           const isCorrect = JSON.stringify(newAnswers) === JSON.stringify(data.correctAnswers);
-          onAnswer(isCorrect, isCorrect ? (activity.points || 10) : 0);
+          onAnswer(isCorrect, isCorrect ? (activity.point || 10) : 0);
         }, 500);
       }
     }
@@ -539,7 +540,7 @@ function MultipleChoiceGame({ activity, onAnswer, disabled }: any) {
   const handleChoiceClick = (choiceIndex: number) => {
     if (disabled) return;
     const isCorrect = choiceIndex === data.correctAnswer;
-    onAnswer(isCorrect, isCorrect ? (activity.points || 10) : 0);
+    onAnswer(isCorrect, isCorrect ? (activity.point || 10) : 0);
   };
 
   return (
@@ -581,7 +582,7 @@ function ImageIdentificationGame({ activity, onAnswer, disabled }: any) {
   const handleChoiceClick = (choiceIndex: number) => {
     if (disabled) return;
     const isCorrect = choiceIndex === data.correctAnswer;
-    onAnswer(isCorrect, isCorrect ? (activity.points || 10) : 0);
+    onAnswer(isCorrect, isCorrect ? (activity.point || 10) : 0);
   };
 
   return (
@@ -620,7 +621,7 @@ function TrueFalseGame({ activity, onAnswer, disabled }: any) {
   const handleAnswer = (answer: boolean) => {
     if (disabled) return;
     const isCorrect = answer === data.correctAnswer;
-    onAnswer(isCorrect, isCorrect ? (activity.points || 10) : 0);
+    onAnswer(isCorrect, isCorrect ? (activity.point || 10) : 0);
   };
 
   return (
@@ -682,7 +683,7 @@ function SentenceOrderingGame({ activity, onAnswer, disabled }: any) {
         const newOrder = [...orderedSentences, sentence];
         const correctOrder = activity.data.correctOrder.map((index: number) => activity.data.sentences[index]);
         const isCorrect = JSON.stringify(newOrder) === JSON.stringify(correctOrder);
-        onAnswer(isCorrect, isCorrect ? (activity.points || 10) : 0);
+        onAnswer(isCorrect, isCorrect ? (activity.point || 10) : 0);
       }, 500);
     }
   };
@@ -753,7 +754,7 @@ function RangeAnswerGame({ activity, onAnswer, disabled }: any) {
     const tolerance = data.tolerance || 0;
     const isCorrect = Math.abs(numValue - data.correctAnswer) <= tolerance;
     
-    onAnswer(isCorrect, isCorrect ? (activity.points || 10) : 0);
+    onAnswer(isCorrect, isCorrect ? (activity.point || 10) : 0);
   };
 
   return (
