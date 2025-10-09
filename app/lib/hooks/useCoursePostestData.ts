@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { coursePostestService } from '../api/services/coursePostestService';
 import { CoursePostest } from '../api/types';
 import { Quiz, QuizQuestion } from '../../types/quiz';
@@ -75,7 +75,7 @@ function adaptCoursePostestToQuiz(postest: CoursePostest): Quiz {
 
   return {
     id: postest.id,
-    moduleId: postest.courseId, // Use courseId as moduleId
+    moduleId: postest.courseId, // Use courseId as moduleId for now
     title: postest.title,
     description: postest.description || '',
     questions: questions,
@@ -85,10 +85,63 @@ function adaptCoursePostestToQuiz(postest: CoursePostest): Quiz {
   };
 }
 
+// Create mapping between courseId and legacy moduleId for backward compatibility
+function createCourseModuleMapping(quizzes: Quiz[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  
+  // Create a reverse mapping based on quiz titles for backward compatibility
+  quizzes.forEach(quiz => {
+    if (quiz.title.includes('ระบบสุริยะ') || quiz.title.includes('Solar System')) {
+      mapping[quiz.moduleId] = 'solar-system';
+    } else if (quiz.title.includes('โครงสร้างโลก') || quiz.title.includes('Earth Structure')) {
+      mapping[quiz.moduleId] = 'earth-structure';
+    } else if (quiz.title.includes('การเกิดดาว') || quiz.title.includes('Stellar Evolution')) {
+      mapping[quiz.moduleId] = 'stellar-evolution';
+    } else if (quiz.title.includes('กาแลคซี่') || quiz.title.includes('Galaxies')) {
+      mapping[quiz.moduleId] = 'galaxies-universe';
+    }
+  });
+  
+  console.log('📋 [Course Module Mapping]:', mapping);
+  return mapping;
+}
+
 export function useCoursePostestData() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Use useMemo to prevent courseModuleMapping from changing unnecessarily
+  const courseModuleMapping = useMemo(() => createCourseModuleMapping(quizzes), [quizzes]);
+
+  // Memoize helper functions to prevent infinite re-renders
+  const getQuizByModuleId = useCallback((moduleId: string) => {
+    return quizzes.find(quiz => quiz.moduleId === moduleId);
+  }, [quizzes]);
+
+  const getQuizById = useCallback((quizId: string) => {
+    return quizzes.find(quiz => quiz.id === quizId);
+  }, [quizzes]);
+
+  const getTotalQuestionsInQuiz = useCallback((quizId: string) => {
+    const quiz = quizzes.find(q => q.id === quizId);
+    return quiz ? quiz.questions.length : 0;
+  }, [quizzes]);
+
+  const getMaxScoreInQuiz = useCallback((quizId: string) => {
+    const quiz = quizzes.find(q => q.id === quizId);
+    return quiz ? quiz.questions.reduce((total, q) => total + q.points, 0) : 0;
+  }, [quizzes]);
+
+  const isQuizUnlockedByCourseProgress = useCallback(async (quizId: string) => {
+    const quiz = quizzes.find(q => q.id === quizId);
+    if (!quiz) return false;
+    
+    // This will be implemented to check actual course progress from API
+    // For now, return true to unlock all quizzes for testing
+    console.log(`🔓 [Quiz Unlock] Checking unlock status for quiz ${quizId} (courseId: ${quiz.moduleId})`);
+    return true; // Temporary: unlock all quizzes
+  }, [quizzes]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -147,16 +200,12 @@ export function useCoursePostestData() {
     quizzes,
     loading,
     error,
-    // Helper functions
-    getQuizByModuleId: (moduleId: string) => quizzes.find(quiz => quiz.moduleId === moduleId),
-    getQuizById: (quizId: string) => quizzes.find(quiz => quiz.id === quizId),
-    getTotalQuestionsInQuiz: (quizId: string) => {
-      const quiz = quizzes.find(q => q.id === quizId);
-      return quiz ? quiz.questions.length : 0;
-    },
-    getMaxScoreInQuiz: (quizId: string) => {
-      const quiz = quizzes.find(q => q.id === quizId);
-      return quiz ? quiz.questions.reduce((total, q) => total + q.points, 0) : 0;
-    }
+    courseModuleMapping, // Export mapping for use in progress system
+    // Helper functions - now memoized to prevent infinite re-renders
+    getQuizByModuleId,
+    getQuizById,
+    getTotalQuestionsInQuiz,
+    getMaxScoreInQuiz,
+    isQuizUnlockedByCourseProgress
   };
 }

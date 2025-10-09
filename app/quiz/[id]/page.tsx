@@ -53,14 +53,16 @@ export default function QuizDetailPage() {
     // Wait for quiz data to load, then find the quiz
     if (!quizLoading && getQuizById) {
       const foundQuiz = getQuizById(quizId);
+      console.log('🧠 [Quiz Detail] Looking for quiz:', quizId);
+      console.log('🧠 [Quiz Detail] Found quiz:', foundQuiz);
+      
       if (foundQuiz) {
-        // ตรวจสอบการปลดล็อกก่อน
-        const isUnlocked = progressManager.isQuizUnlocked(quizId);
-        if (!isUnlocked) {
-          // ถ้ายังไม่ปลดล็อก ให้เปลี่ยนเส้นทางกลับไปหน้า quiz
-          router.push('/quiz');
-          return;
-        }
+        // ตรวจสอบการปลดล็อกก่อน (ปิดการตรวจสอบชั่วคราวเพื่อทดสอบ)
+        // const isUnlocked = progressManager.isQuizUnlocked(quizId);
+        // if (!isUnlocked) {
+        //   router.push('/quiz');
+        //   return;
+        // }
 
         setOriginalQuiz(foundQuiz);
         setQuiz(foundQuiz); // เริ่มต้นด้วย quiz เดิม
@@ -74,7 +76,11 @@ export default function QuizDetailPage() {
         if (quizProgress) {
           setPreviousAttempts(quizProgress.attempts || []);
         }
+      } else {
+        console.log('❌ [Quiz Detail] Quiz not found:', quizId);
       }
+    } else {
+      console.log('🔄 [Quiz Detail] Still loading quiz data...');
     }
   }, [quizId, router, quizLoading, getQuizById]);
 
