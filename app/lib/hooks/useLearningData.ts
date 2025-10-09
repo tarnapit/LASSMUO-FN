@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { courseService, courseLessonService, courseDetailService, courseQuizService } from '../api/services';
 import { LearningModule, Chapter, ChapterContent } from '../../types/learning';
-import { learningModules as mockLearningModules, getLearningModuleById as getMockLearningModuleById } from '../../data/learning-modules';
 
 // Custom hook for learning modules with API integration
 export function useLearningModuleData() {
@@ -80,36 +79,30 @@ export function useLearningModuleData() {
               console.log('No lessons found for course:', course.id, lessonError);
             }
 
-            // ถ้าไม่มี lessons จาก API ให้ใช้ mock data
+            // ถ้าไม่มี lessons จาก API ให้สร้าง default chapter เปล่า
             if (chapters.length === 0) {
-              console.log(`No API lessons found for course ${course.id}, using mock data`);
-              const mockModule = getMockLearningModuleById(course.id.toString());
-              if (mockModule) {
-                return mockModule; // ใช้ mock data เต็มที่
-              } else {
-                // สร้าง default chapter
-                chapters = [
-                  {
-                    id: 'chapter-1',
-                    courseId: course.id.toString(),
-                    title: 'Introduction',
-                    estimatedTime: '15 minutes',
-                    content: [
-                      {
-                        id: 'content-1',
-                        courseLessonId: '1',
-                        type: 'text' as const,
-                        content: course.description || 'เนื้อหาการเรียนจะมาเร็วๆ นี้',
-                        required: false,
-                        score: 0,
-                        createdAt: new Date().toISOString(),
-                        updatedAt: new Date().toISOString()
-                      }
-                    ],
-                    createdAt: new Date().toISOString()
-                  }
-                ];
-              }
+              console.log(`No API lessons found for course ${course.id}, creating basic structure`);
+              chapters = [
+                {
+                  id: 'chapter-1',
+                  courseId: course.id.toString(),
+                  title: 'Introduction',
+                  estimatedTime: '15 minutes',
+                  content: [
+                    {
+                      id: 'content-1',
+                      courseLessonId: '1',
+                      type: 'text' as const,
+                      content: course.description || 'เนื้อหาการเรียนจะมาเร็วๆ นี้',
+                      required: false,
+                      score: 0,
+                      createdAt: new Date().toISOString(),
+                      updatedAt: new Date().toISOString()
+                    }
+                  ],
+                  createdAt: new Date().toISOString()
+                }
+              ];
             }
 
             return {
@@ -118,7 +111,7 @@ export function useLearningModuleData() {
               description: course.description || 'No description available',
               level: (course.level as 'Fundamental' | 'Intermediate' | 'Advanced') || 'Fundamental',
               estimatedTime: course.duration ? `${course.duration} minutes` : '30 minutes',
-              coverImage: '/images/space/default-course.jpg',
+              coverImage: '/images/learning/solar-system/default-course.jpg',
               isActive: course.isActive ?? true,
               createAt: course.createdAt || new Date().toISOString(),
               chapters: chapters,
@@ -134,14 +127,14 @@ export function useLearningModuleData() {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         setError(errorMessage);
         
-        // Fallback to mock data on error
+        // Fallback to basic error handling - ไม่ใช้ mock data
         try {
-          console.log('Loading fallback mock data...');
-          setModules(mockLearningModules);
-          setError(null); // Clear error since we have fallback data
-          console.log('Successfully loaded fallback data');
+          console.log('Error occurred, creating basic error structure...');
+          setModules([]);
+          console.log('Set empty modules due to error');
         } catch (fallbackError) {
-          console.error('Failed to load fallback data:', fallbackError);
+          console.error('Complete failure:', fallbackError);
+          setModules([]);
         }
       } finally {
         setLoading(false);
@@ -174,15 +167,7 @@ export function useLearningModuleDetail(moduleId: string) {
 
         console.log('Fetching module detail for ID:', moduleId);
 
-        // ลองใช้ mock data ก่อน เพราะมีข้อมูลครบถ้วน
-        const mockModule = getMockLearningModuleById(moduleId);
-        if (mockModule) {
-          console.log('Using mock data for module:', moduleId);
-          setModule(mockModule);
-          return;
-        }
-
-        // หากไม่มี mock data จึงลอง API
+        // ลองดึงข้อมูลจาก API
         const courseResponse = await courseService.getCourseById(moduleId);
         
         console.log('Course detail response:', courseResponse);
@@ -200,7 +185,7 @@ export function useLearningModuleDetail(moduleId: string) {
           description: course.description || 'No description available',
           level: (course.level as 'Fundamental' | 'Intermediate' | 'Advanced') || 'Fundamental',
           estimatedTime: course.duration ? `${course.duration} minutes` : '30 minutes',
-          coverImage: '/images/space/default-course.jpg',
+          coverImage: '/images/learning/solar-system/default-course.jpg',
           isActive: course.isActive ?? true,
           createAt: course.createdAt || new Date().toISOString(),
           chapters: [
@@ -234,17 +219,13 @@ export function useLearningModuleDetail(moduleId: string) {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
         setError(errorMessage);
         
-        // Final fallback to mock data
+        // Final error handling - ไม่ใช้ mock data
         try {
-          console.log('Loading fallback mock data for module:', moduleId);
-          const mockModule = getMockLearningModuleById(moduleId);
-          if (mockModule) {
-            setModule(mockModule);
-            setError(null);
-            console.log('Successfully loaded fallback module');
-          }
+          console.log('Error occurred, setting module to null');
+          setModule(null);
         } catch (fallbackError) {
-          console.error('Failed to load fallback module:', fallbackError);
+          console.error('Complete failure:', fallbackError);
+          setModule(null);
         }
       } finally {
         setLoading(false);
@@ -410,9 +391,57 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
                   
                   // แปลง content ที่เป็น JSON object
                   let contentText = '';
-                  if (detail.content && typeof detail.content === 'object' && detail.content.text) {
-                    contentText = detail.content.text;
-                    console.log(`    Extracted Text (object): "${contentText.substring(0, 50)}..."`);
+                  let contentType: 'text' | 'image' | 'video' | 'interactive' | 'quiz' = 'text';
+                  let activity: any = null;
+                  let imageUrl: string | undefined = undefined;
+                  
+                  // ตรวจสอบ type ของ content
+                  if (detail.type) {
+                    contentType = detail.type as 'text' | 'image' | 'video' | 'interactive' | 'quiz';
+                  }
+                  
+                  // แปลง content ตาม type
+                  if (detail.content && typeof detail.content === 'object') {
+                    // ถ้า content เป็น object
+                    if (detail.content.text) {
+                      contentText = detail.content.text;
+                      console.log(`    Extracted Text (object): "${contentText.substring(0, 50)}..."`);
+                    } else if (detail.content.data) {
+                      // อาจเป็นข้อมูล interactive activity
+                      contentText = detail.content.instruction || detail.content.title || 'กิจกรรมอินเตอร์แอคทีฟ';
+                      
+                      // สร้าง activity object
+                      if (contentType === 'quiz' || contentType === 'interactive') {
+                        activity = {
+                          id: detail.id || `activity-${lesson.id}-${detailIndex}`,
+                          courseDetailId: detail.id,
+                          title: detail.content.title || 'กิจกรรมการเรียนรู้',
+                          type: detail.content.type || 'multiple-choice',
+                          instruction: detail.content.instruction || 'ทำกิจกรรมต่อไปนี้',
+                          maxAttempts: detail.content.maxAttempts || 3,
+                          passingScore: detail.content.passingScore || 70,
+                          timeLimite: detail.content.timeLimit || 300,
+                          difficulty: detail.content.difficulty || 'Medium',
+                          data: detail.content.data || detail.content,
+                          point: detail.content.points || detail.score || 10,
+                          feedback: detail.content.feedback || {
+                            correct: 'ยินดีด้วย! คำตอบถูกต้อง',
+                            incorrect: 'ลองใหม่อีกครั้งนะ',
+                            hint: detail.content.hint
+                          },
+                          createdAt: detail.createdAt || new Date().toISOString(),
+                          updatedAt: detail.updatedAt || new Date().toISOString()
+                        };
+                      }
+                    } else if (detail.content.imageUrl || detail.content.url) {
+                      // เป็นรูปภาพ
+                      contentType = 'image';
+                      contentText = detail.content.caption || detail.content.description || 'รูปภาพประกอบการเรียน';
+                      imageUrl = detail.content.imageUrl || detail.content.url;
+                    } else {
+                      // fallback
+                      contentText = JSON.stringify(detail.content);
+                    }
                   } else if (typeof detail.content === 'string') {
                     contentText = detail.content;
                     console.log(`    Extracted Text (string): "${contentText.substring(0, 50)}..."`);
@@ -421,19 +450,35 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
                     console.log(`    Default content used`);
                   }
                   
+                  // ตรวจสอบ imageUrl จาก field อื่น
+                  if (!imageUrl && (detail.ImageUrl || detail.imageUrl)) {
+                    imageUrl = detail.ImageUrl || detail.imageUrl;
+                    if (contentType === 'text') {
+                      contentType = 'image';
+                    }
+                  }
+                  
                   const processedContent = {
                     id: detail.id || `content-${lesson.id}-${detailIndex}`,
                     courseLessonId: lesson.id,
-                    type: (detail.type as 'text' | 'image' | 'video' | 'interactive' | 'quiz') || 'text',
+                    type: contentType,
                     content: contentText,
-                    imageUrl: detail.ImageUrl || detail.imageUrl,
+                    imageUrl: imageUrl,
                     required: detail.required || false,
                     score: detail.score || 0,
+                    activity: activity,
+                    minimumScore: activity?.passingScore || detail.minimumScore || 0,
                     createdAt: detail.createdAt || new Date().toISOString(),
                     updatedAt: detail.updatedAt || new Date().toISOString()
                   } as ChapterContent;
                   
-                  console.log(`    Created content item:`, { id: processedContent.id, type: processedContent.type, contentLength: processedContent.content.length });
+                  console.log(`    Created content item:`, { 
+                    id: processedContent.id, 
+                    type: processedContent.type, 
+                    contentLength: processedContent.content.length,
+                    hasActivity: !!processedContent.activity,
+                    hasImage: !!processedContent.imageUrl
+                  });
                   return processedContent;
                 });
                 
@@ -486,16 +531,11 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
         }
       }
       
-      // ถ้าไม่มี chapters จาก API ให้ fallback ไป mock data
+      // ถ้าไม่มี chapters จาก API ให้สร้าง default chapter
       if (chapters.length === 0) {
-        console.log('No courseLesson found in API, trying mock data');
-        const mockModule = getMockLearningModuleById(moduleId);
-        if (mockModule) {
-          console.log('Using mock data for module:', moduleId);
-          return mockModule;
-        }
+        console.log('No courseLesson found in API, creating default chapter');
         
-        // สร้าง default chapter ถ้าไม่มีทั้ง API และ mock
+        // สร้าง default chapter ถ้าไม่มี API data
         chapters = [
           {
             id: 'chapter-1',
@@ -526,7 +566,7 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
         description: course.description || 'No description available',
         level: (course.level as 'Fundamental' | 'Intermediate' | 'Advanced') || 'Fundamental',
         estimatedTime: course.estimatedTime ? `${course.estimatedTime} minutes` : '30 minutes',
-        coverImage: course.coverImage || '/images/space/default-course.jpg',
+        coverImage: course.coverImage || '/images/learning/solar-system/default-course.jpg',
         isActive: course.isActive ?? true,
         createAt: course.createAt || new Date().toISOString(),
         chapters: chapters,
@@ -536,20 +576,15 @@ export async function getLearningModuleById(moduleId: string): Promise<LearningM
       return apiModule;
     }
     
-    // ถ้าไม่ได้ข้อมูลจาก API ให้ fallback ไป mock data
-    console.log('No course data from API, trying mock data');
-    const mockModule = getMockLearningModuleById(moduleId);
-    if (mockModule) {
-      console.log('Using mock data for module:', moduleId);
-      return mockModule;
-    }
+    // ถ้าไม่ได้ข้อมูลจาก API ให้ส่งกลับ null
+    console.log('No course data from API available');
+    return null;
     
   } catch (error) {
     console.error('Error fetching learning module from API:', error);
   }
 
-  // Fallback to mock data
-  console.log('Using mock data fallback for module:', moduleId);
-  const mockModule = getMockLearningModuleById(moduleId);
-  return mockModule || null;
+  // No fallback - return null if no API data
+  console.log('API error occurred, no fallback available for module:', moduleId);
+  return null;
 }

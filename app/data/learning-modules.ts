@@ -20,7 +20,7 @@ export const learningModules: LearningModule[] = [
           {
             type: 'image',
             content: 'Solar System Overview',
-            imageUrl: '/images/solar-system-overview.jpg'
+            imageUrl: '/images/learning/solar-system/solar-system-overview.jpg'
           },
           {
             type: 'multiple-choice',
@@ -144,7 +144,7 @@ export const learningModules: LearningModule[] = [
           {
             type: 'image',
             content: 'Inner Planets',
-            imageUrl: '/images/inner-planets.jpg'
+            imageUrl: '/images/planets/inner-planets.jpg'
           },
           {
             type: 'sentence-ordering',
@@ -431,7 +431,7 @@ export const learningModules: LearningModule[] = [
           {
             type: 'image',
             content: 'Earth Layers Structure',
-            imageUrl: '/images/earth-layers.jpg'
+            imageUrl: '/images/planets/earth-layers.jpg'
           },
           {
             type: 'sentence-ordering',

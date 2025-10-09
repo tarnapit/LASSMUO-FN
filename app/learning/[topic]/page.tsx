@@ -334,19 +334,109 @@ export default function LearningTopicPage() {
           </div>
         );
 
+      case "video":
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              {currentContent.imageUrl ? (
+                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                  {/* ตรวจสอบว่าเป็น YouTube URL หรือไม่ */}
+                  {currentContent.imageUrl.includes('youtube.com') || currentContent.imageUrl.includes('youtu.be') ? (
+                    <div className="relative w-full aspect-video">
+                      <iframe
+                        src={currentContent.imageUrl.replace('watch?v=', 'embed/')}
+                        title={currentContent.content}
+                        className="absolute top-0 left-0 w-full h-full rounded-lg"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <video
+                      src={currentContent.imageUrl}
+                      controls
+                      className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLVideoElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    >
+                      ไม่สามารถเล่นวิดีโอได้
+                    </video>
+                  )}
+                  <div className="hidden text-gray-400 text-lg py-8">
+                    🎥 {currentContent.content}
+                    <div className="text-sm text-gray-500 mt-2">
+                      (ไม่สามารถโหลดวิดีโอได้)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-800 rounded-lg p-8 mb-4">
+                  <div className="text-gray-400 text-lg">
+                    🎥 {currentContent.content}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-2">
+                    (ไม่มีวิดีโอ)
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* แสดงคำบรรยายวิดีโอ */}
+            {currentContent.content && (
+              <div className="prose prose-lg prose-invert max-w-none">
+                <p className="text-gray-200 leading-relaxed text-center">
+                  {currentContent.content}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
       case "image":
         return (
-          <div className="text-center">
-            <div className="bg-gray-800 rounded-lg p-8 mb-4">
-              <div className="text-gray-400 text-lg">
-                📷 {currentContent.content}
-              </div>
-              <div className="text-sm text-gray-500 mt-2">
-                (รูปภาพจะแสดงที่นี่)
-              </div>
+          <div className="space-y-4">
+            <div className="text-center">
+              {currentContent.imageUrl ? (
+                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                  <img
+                    src={currentContent.imageUrl}
+                    alt={currentContent.content}
+                    className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg object-contain"
+                    onError={(e) => {
+                      // ถ้าโหลดรูปไม่ได้ให้แสดง placeholder
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden text-gray-400 text-lg py-8">
+                    📷 {currentContent.content}
+                    <div className="text-sm text-gray-500 mt-2">
+                      (ไม่สามารถโหลดรูปภาพได้)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-800 rounded-lg p-8 mb-4">
+                  <div className="text-gray-400 text-lg">
+                    📷 {currentContent.content}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-2">
+                    (ไม่มีรูปภาพ)
+                  </div>
+                </div>
+              )}
             </div>
-            {currentContent.imageUrl && (
-              <p className="text-sm text-gray-400">{currentContent.imageUrl}</p>
+            
+            {/* แสดงคำบรรยายรูปภาพ */}
+            {currentContent.content && currentContent.content !== 'รูปภาพประกอบการเรียน' && (
+              <div className="prose prose-lg prose-invert max-w-none">
+                <p className="text-gray-200 leading-relaxed text-center">
+                  {currentContent.content}
+                </p>
+              </div>
             )}
           </div>
         );

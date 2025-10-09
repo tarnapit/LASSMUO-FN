@@ -203,7 +203,7 @@ export const enhancedQuestions: ExtendedQuestion[] = [
     difficulty: 'easy',
     points: 15,
     timeLimit: 30,
-    imageUrl: "/images/solar-system-diagram.jpg",
+    imageUrl: "/images/learning/solar-system/solar-system-diagram.jpg",
     hotspots: [
       {
         id: "jupiter",

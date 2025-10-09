@@ -108,8 +108,77 @@ export default function LearningPage() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900">
         <Navbar />
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-red-400 text-xl">เกิดข้อผิดพลาด: {modulesError}</div>
+        <div className="flex flex-col items-center justify-center min-h-screen px-4">
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">🚧</div>
+            <h2 className="text-2xl font-bold text-white mb-4">ระบบกำลังพัฒนา</h2>
+            <p className="text-gray-300 mb-6">
+              เนื้อหาการเรียนจะมาเร็วๆ นี้ ขณะนี้ระบบยังอยู่ในขั้นตอนการเพิ่มเนื้อหาจาก API
+            </p>
+            <p className="text-sm text-gray-400">
+              ข้อผิดพลาด: {modulesError}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!learningModules || learningModules.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-screen px-4">
+          <div className="text-center max-w-lg">
+            <div className="text-8xl mb-6">📚</div>
+            <h2 className="text-3xl font-bold text-white mb-4">เนื้อหาการเรียนกำลังมา!</h2>
+            <p className="text-gray-300 text-lg mb-6 leading-relaxed">
+              ทีมงานกำลังเตรียมเนื้อหาการเรียนรู้ดาราศาสตร์ที่น่าสนใจให้คุณ
+              กรุณารอสักครู่นะครับ
+            </p>
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl p-6">
+              <h3 className="text-xl font-semibold text-blue-300 mb-3">สิ่งที่กำลังจะมา</h3>
+              <ul className="text-gray-300 space-y-2 text-left">
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  บทเรียนระบบสุริยะ
+                </li>
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  กิจกรรมอินเตอร์แอคทีฟ
+                </li>
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  แบบทดสอบความเข้าใจ
+                </li>
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  ภาพและวิดีโอประกอบ
+                </li>
+              </ul>
+            </div>
+            <div className="mt-8 space-y-4">
+              <p className="text-sm text-gray-400">
+                ในระหว่างนี้คุณสามารถลองเล่นเกมหรือทำแบบทดสอบได้
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <Link
+                  href="/mini-game"
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-semibold hover:from-green-400 hover:to-emerald-400 transition-all"
+                >
+                  <PlayCircle size={16} className="inline mr-2" />
+                  เล่นเกม
+                </Link>
+                <Link
+                  href="/quiz"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold hover:from-blue-400 hover:to-purple-400 transition-all"
+                >
+                  <Brain size={16} className="inline mr-2" />
+                  ทำแบบทดสอบ
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );
