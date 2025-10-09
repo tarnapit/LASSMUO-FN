@@ -4,6 +4,7 @@ import {
   courseDetailService, 
   courseLessonService,
   courseQuizService,
+  coursePostestService,
   stageService, 
   questionService,
   userService,
@@ -86,6 +87,15 @@ export default function ApiTestPage() {
         results.courseQuizzes = { success: true, data: courseQuizzes };
       } catch (error) {
         results.courseQuizzes = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test Course Postest APIs
+      console.log('Testing Course Postest APIs...');
+      try {
+        const coursePostests = await coursePostestService.getAllCoursePostests();
+        results.coursePostests = { success: true, data: coursePostests };
+      } catch (error) {
+        results.coursePostests = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
       // Test Stage APIs
@@ -181,6 +191,80 @@ export default function ApiTestPage() {
     } catch (error) {
       console.error('Failed to create course:', error);
       alert(`Failed to create course: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setLoading(false);
+  };
+
+  const testCreatePostest = async () => {
+    setLoading(true);
+    
+    try {
+      // Test creating a new course postest
+      const newPostest = await coursePostestService.createCoursePostest({
+        courseId: 'ba3fd565-dc81-4e74-b253-ef0a4074f8cf', // Solar System course ID
+        title: 'Test Postest from Frontend',
+        description: 'This is a test postest created from the frontend',
+        timeLimit: 1800, // 30 minutes
+        passingScore: 70,
+        maxAttempts: 3,
+        question: {
+          type: 'multiple-choice',
+          questions: [
+            {
+              id: 1,
+              question: 'ระบบสุริยะมีดาวเคราะห์กี่ดวง?',
+              options: ['7 ดวง', '8 ดวง', '9 ดวง', '10 ดวง'],
+              correctAnswer: 1,
+              explanation: 'ระบบสุริยะมีดาวเคราะห์ 8 ดวง'
+            },
+            {
+              id: 2,
+              question: 'ดาวเคราะห์ใดใกล้ดวงอาทิตย์ที่สุด?',
+              options: ['ดาวพุธ', 'ดาวศุกร์', 'โลก', 'ดาวอังคาร'],
+              correctAnswer: 0,
+              explanation: 'ดาวพุธอยู่ใกล้ดวงอาทิตย์ที่สุด'
+            }
+          ]
+        }
+      });
+      
+      console.log('Created postest:', newPostest);
+      alert('Course Postest created successfully! Check console for details.');
+      
+      // Refresh the test results
+      await runTests();
+    } catch (error) {
+      console.error('Failed to create postest:', error);
+      alert(`Failed to create postest: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setLoading(false);
+  };
+
+  const testPostestByCourse = async () => {
+    setLoading(true);
+    
+    try {
+      const courseId = 'ba3fd565-dc81-4e74-b253-ef0a4074f8cf'; // Solar System course ID
+      console.log('Testing CoursePostest by courseId:', courseId);
+      
+      // Test getting postest by course ID
+      const postestResponse = await coursePostestService.getCoursePostestsByCourseId(courseId);
+      
+      console.log('CoursePostest by course response:', postestResponse);
+      
+      if (postestResponse.success && postestResponse.data) {
+        alert(`✅ Found ${postestResponse.data.length} postest(s) for Solar System course!\n\nDetails:\n${JSON.stringify(postestResponse.data, null, 2)}`);
+      } else {
+        alert(`❌ No postests found for course: ${courseId}\n\nError: ${postestResponse.error || 'Unknown error'}`);
+      }
+      
+      // Refresh tests
+      await runTests();
+    } catch (error) {
+      console.error('Postest by course test failed:', error);
+      alert(`Postest by course test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     
     setLoading(false);
@@ -374,6 +458,24 @@ export default function ApiTestPage() {
             >
               <span>➕</span>
               Test Create Course
+            </button>
+
+            <button
+              onClick={testCreatePostest}
+              disabled={loading}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>📝</span>
+              Test Create Postest
+            </button>
+
+            <button
+              onClick={testPostestByCourse}
+              disabled={loading}
+              className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>🔍</span>
+              Test Postest by Course
             </button>
             
             <button
@@ -644,12 +746,23 @@ export default function ApiTestPage() {
               </div>
             </div>
             
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h3 className="font-medium text-purple-900 mb-2">CoursePostest Testing</h3>
+              <div className="text-xs text-purple-700 space-y-1">
+                <div>• GET /coursePostest (All postests)</div>
+                <div>• GET /coursePostest?courseId=xxx</div>
+                <div>• POST /coursePostest (Create)</div>
+                <div>• Test Solar System course ID</div>
+              </div>
+            </div>
+            
             <div className="bg-red-50 rounded-lg p-4">
               <h3 className="font-medium text-red-900 mb-2">Common Issues</h3>
               <div className="text-xs text-red-700 space-y-1">
                 <div>• findMany error: Database issue</div>
                 <div>• undefined properties: ORM error</div>
                 <div>• Network failed: Server down</div>
+                <div>• No postests: Check courseId match</div>
               </div>
             </div>
           </div>
@@ -742,6 +855,18 @@ export default function ApiTestPage() {
                 <li>• GET /courseQuiz</li>
                 <li>• POST /courseQuiz</li>
                 <li>• DELETE /courseQuiz/:id</li>
+              </ul>
+            </div>
+
+            <div className="bg-pink-50 rounded-lg p-4">
+              <h3 className="font-medium text-pink-900 mb-2">Course Postest APIs</h3>
+              <ul className="text-xs text-pink-700 space-y-1">
+                <li>• GET /coursePostest</li>
+                <li>• POST /coursePostest</li>
+                <li>• GET /coursePostest/:id</li>
+                <li>• PUT /coursePostest/:id</li>
+                <li>• DELETE /coursePostest/:id</li>
+                <li>• GET /coursePostest?courseId=xxx</li>
               </ul>
             </div>
             

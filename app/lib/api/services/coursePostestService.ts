@@ -7,7 +7,7 @@ import {
 } from '../types';
 
 export class CoursePostestService {
-  private endpoint = 'coursePostest';
+  private endpoint = '/coursePostest';
 
   /**
    * Create a new course postest
