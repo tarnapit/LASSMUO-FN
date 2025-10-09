@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getQuizById } from "../../data/quizzes";
+import { useCoursePostestData } from "../../lib/hooks/useCoursePostestData";
 import { learningModules } from "../../data/learning-modules";
 import { progressManager } from "../../lib/progress";
 import { 
@@ -32,6 +32,9 @@ export default function QuizDetailPage() {
   const router = useRouter();
   const quizId = params.id as string;
   
+  // Use the course postest hook
+  const { getQuizById, loading: quizLoading } = useCoursePostestData();
+  
   const [originalQuiz, setOriginalQuiz] = useState<Quiz | null>(null);
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -47,30 +50,33 @@ export default function QuizDetailPage() {
   const [isShuffled, setIsShuffled] = useState(false);
 
   useEffect(() => {
-    const foundQuiz = getQuizById(quizId);
-    if (foundQuiz) {
-      // ตรวจสอบการปลดล็อกก่อน
-      const isUnlocked = progressManager.isQuizUnlocked(quizId);
-      if (!isUnlocked) {
-        // ถ้ายังไม่ปลดล็อก ให้เปลี่ยนเส้นทางกลับไปหน้า quiz
-        router.push('/quiz');
-        return;
-      }
+    // Wait for quiz data to load, then find the quiz
+    if (!quizLoading && getQuizById) {
+      const foundQuiz = getQuizById(quizId);
+      if (foundQuiz) {
+        // ตรวจสอบการปลดล็อกก่อน
+        const isUnlocked = progressManager.isQuizUnlocked(quizId);
+        if (!isUnlocked) {
+          // ถ้ายังไม่ปลดล็อก ให้เปลี่ยนเส้นทางกลับไปหน้า quiz
+          router.push('/quiz');
+          return;
+        }
 
-      setOriginalQuiz(foundQuiz);
-      setQuiz(foundQuiz); // เริ่มต้นด้วย quiz เดิม
-      
-      if (foundQuiz.timeLimit) {
-        setTimeLeft(foundQuiz.timeLimit * 60); // แปลงเป็นวินาที
-      }
-      
-      // โหลดประวัติการทำ quiz จาก progressManager
-      const quizProgress = progressManager.getQuizProgress(quizId);
-      if (quizProgress) {
-        setPreviousAttempts(quizProgress.attempts || []);
+        setOriginalQuiz(foundQuiz);
+        setQuiz(foundQuiz); // เริ่มต้นด้วย quiz เดิม
+        
+        if (foundQuiz.timeLimit) {
+          setTimeLeft(foundQuiz.timeLimit * 60); // แปลงเป็นวินาที
+        }
+        
+        // โหลดประวัติการทำ quiz จาก progressManager
+        const quizProgress = progressManager.getQuizProgress(quizId);
+        if (quizProgress) {
+          setPreviousAttempts(quizProgress.attempts || []);
+        }
       }
     }
-  }, [quizId, router]);
+  }, [quizId, router, quizLoading, getQuizById]);
 
   // Timer
   useEffect(() => {
@@ -277,6 +283,18 @@ export default function QuizDetailPage() {
   };
 
   if (!originalQuiz) {
+    // Show loading while quiz data is being fetched
+    if (quizLoading) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
+          <div className="text-center text-white">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+            <h2 className="text-xl">กำลังโหลดแบบทดสอบ...</h2>
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex items-center justify-center">
         <div className="text-center text-white">

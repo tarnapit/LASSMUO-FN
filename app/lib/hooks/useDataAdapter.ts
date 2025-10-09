@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { stageService } from '../api/services';
 import { useLearningModuleData } from './useLearningData';
+import { useCoursePostestData } from './useCoursePostestData';
 
 // Data adapter that uses real API data with fallback to mock data
 export function useStageData() {
@@ -99,36 +100,8 @@ export function useLearningData() {
 }
 
 export function useQuizData() {
-  const [quizzes, setQuizzes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        // For now, use mock data (quiz API integration can be added later)
-        const { quizzes } = require('@/app/data/quizzes');
-        setQuizzes(Object.values(quizzes));
-        
-      } catch (err) {
-        console.error('Error fetching quizzes:', err);
-        setError('Failed to fetch quizzes');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  return {
-    quizzes,
-    loading,
-    error,
-  };
+  // Use the new Course Postest API hook instead of mock data
+  return useCoursePostestData();
 }
 
 export function useMiniGameData() {
