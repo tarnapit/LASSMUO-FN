@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getLearningModuleById } from "../../lib/hooks/useLearningData";
 import { LearningModule, Chapter } from "../../types/learning";
-import { courseQuizService, courseService, coursePostestService } from "../../lib/api/services";
+import { courseQuizService, coursePostestService } from "../../lib/api/services";
 import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import ProgressBar from "../../components/ui/ProgressBar";
@@ -45,6 +45,21 @@ export default function LearningTopicPage() {
   const [canProceed, setCanProceed] = useState(true);
   // เพิ่ม state เพื่อติดตามกิจกรรมที่กำลังทำอยู่
   const [currentActivityId, setCurrentActivityId] = useState<string | null>(null);
+
+  // ฟังก์ชันหาลำดับ module ในหลักสูตร
+  const getModuleOrder = (moduleId: string): number => {
+    // กำหนดลำดับ module ตาม API หรือการออกแบบหลักสูตร
+    const moduleOrder: Record<string, number> = {
+      'ba3fd565-dc81-4e74-b253-ef0a4074f8cf': 1, // Solar System
+      '4db710de-f734-4c7e-bf5f-a5645847b5bc': 2, // Earth Structure
+      // เพิ่ม module อื่นๆ ตามลำดับที่ออกแบบไว้
+      // 'stellar-evolution': 3,
+      // 'galaxies-universe': 4,
+    };
+    
+    console.log(`📊 Module order for ${moduleId}: ${moduleOrder[moduleId] || 1}`);
+    return moduleOrder[moduleId] || 1; // default เป็น 1 ถ้าไม่เจอ
+  };
 
   // ตรวจสอบว่าสามารถไปหน้าต่อไปได้หรือไม่
   const checkCanProceed = useCallback(() => {
@@ -106,15 +121,8 @@ export default function LearningTopicPage() {
                 console.log('No PostTest found for course:', foundModule.id);
                 
                 // Fallback: ลองดึงจาก course response หากมี coursePostest
-                const courseResponse = await courseService.getCourseById(foundModule.id);
-                
-                if (courseResponse.success && courseResponse.data && courseResponse.data.coursePostest) {
-                  const coursePostests = courseResponse.data.coursePostest;
-                  if (Array.isArray(coursePostests) && coursePostests.length > 0) {
-                    foundQuiz = coursePostests[0];
-                    console.log('Found PostTest from course response:', foundQuiz.title || foundQuiz.id);
-                  }
-                }
+                // TODO: เพิ่ม courseService หรือใช้ API อื่นที่มีอยู่แล้ว
+                console.log('CourseService not available, skipping course response check');
               }
             }
             
@@ -137,6 +145,13 @@ export default function LearningTopicPage() {
             setModule(foundModule);
             setQuiz(foundQuiz);
             
+            console.log(`📚 Module loaded:`, {
+              id: foundModule.id,
+              title: foundModule.title,
+              moduleOrder: getModuleOrder(foundModule.id),
+              chaptersCount: foundModule.chapters.length
+            });
+            
             // รีเซ็ต states เมื่อเปลี่ยน module
             setCompletedActivities(new Set());
             setActivityScores({});
@@ -146,13 +161,36 @@ export default function LearningTopicPage() {
             // เริ่มการเรียน module
             progressManager.startLearningModule(params.topic as string);
 
-            // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยัง
-            const moduleProgress = progressManager.getModuleProgress(
-              params.topic as string
-            );
-            setModuleCompleted(moduleProgress?.isCompleted || false);
+            // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยังจาก API จริง
+            const checkModuleCompletion = async () => {
+              try {
+                // ใช้ฟังก์ชันเดียวกับหน้า Learning page
+                const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(foundModule.id);
+                const isModuleCompleted = completionPercentage >= 100;
+                
+                console.log(`📊 Module completion check for ${foundModule.title}:`, {
+                  completionPercentage,
+                  isModuleCompleted,
+                  moduleId: foundModule.id
+                });
+                
+                setModuleCompleted(isModuleCompleted);
+                
+                // ถ้า module เสร็จแล้ว ให้ complete ใน local storage ด้วย
+                if (isModuleCompleted) {
+                  await progressManager.completeModule(foundModule.id, foundModule.chapters.length);
+                }
+              } catch (error) {
+                console.error('Error checking module completion:', error);
+                // Fallback ใช้ local progress
+                const moduleProgress = progressManager.getModuleProgress(params.topic as string);
+                setModuleCompleted(moduleProgress?.isCompleted || false);
+              }
+            };
+            
+            await checkModuleCompletion();
 
-            // โหลด progress ของแต่ละ chapter
+            // โหลด progress ของแต่ละ chapter จาก API ถ้าเป็นไปได้
             const progresses: Record<string, any> = {};
             foundModule.chapters.forEach((chapter) => {
               const chapterProg = progressManager.getChapterProgress(
@@ -174,6 +212,62 @@ export default function LearningTopicPage() {
 
     fetchModule();
   }, [params.topic, router]);
+
+  // Listen for progress updates และรีเฟรช module completion
+  useEffect(() => {
+    const handleProgressUpdate = async () => {
+      if (module) {
+        console.log('📡 Progress update received, checking module completion...');
+        try {
+          const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+          const isModuleCompleted = completionPercentage >= 100;
+          
+          console.log(`📊 Updated module completion for ${module.title}:`, {
+            completionPercentage,
+            isModuleCompleted
+          });
+          
+          setModuleCompleted(isModuleCompleted);
+        } catch (error) {
+          console.error('Error updating module completion:', error);
+        }
+      }
+    };
+
+    window.addEventListener('progressUpdated', handleProgressUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('progressUpdated', handleProgressUpdate as EventListener);
+    };
+  }, [module]);
+
+  // เช็ค module completion เมื่อหน้าเว็บ visible อีกครั้ง
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && module) {
+        console.log('👁️ Page visible again, checking module completion...');
+        try {
+          const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+          const isModuleCompleted = completionPercentage >= 100;
+          
+          console.log(`👁️ Visibility check module completion for ${module.title}:`, {
+            completionPercentage,
+            isModuleCompleted
+          });
+          
+          setModuleCompleted(isModuleCompleted);
+        } catch (error) {
+          console.error('Error checking module completion on visibility change:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [module]);
 
   // บันทึกเวลาเมื่อเปลี่ยน chapter หรือ content
   useEffect(() => {
@@ -199,6 +293,14 @@ export default function LearningTopicPage() {
       </div>
     );
   }
+
+  // Debug log การแสดงผล
+  console.log('🎯 Learning page render:', {
+    moduleId: module.id,
+    moduleTitle: module.title,
+    moduleCompleted: moduleCompleted,
+    hasQuiz: !!quiz
+  });
 
   const currentChapter = module.chapters[currentChapterIndex];
   const currentContent = currentChapter?.content[currentContentIndex];
@@ -567,12 +669,12 @@ export default function LearningTopicPage() {
                 <div className="flex items-center">
                   <BookOpen size={16} className="mr-1" />
                   <span>
-                    บทที่ {currentChapterIndex + 1}: {currentChapter.title}
+                    บทที่ {getModuleOrder(module.id)}: {module.title}
                   </span>
                 </div>
                 <div className="flex items-center">
                   <Clock size={16} className="mr-1" />
-                  <span>{currentChapter.estimatedTime}</span>
+                  <span>{module.estimatedTime}</span>
                 </div>
               </div>
             </div>
@@ -805,7 +907,7 @@ export default function LearningTopicPage() {
 
                 <div className="text-center">
                   <div className="text-sm text-gray-400 mb-1">
-                    บทที่ {currentChapterIndex + 1} จาก {module.chapters.length}
+                    ส่วนที่ {currentChapterIndex + 1} จาก {module.chapters.length}
                   </div>
                   <div className="text-lg font-semibold text-white">
                     {currentChapter.title}
