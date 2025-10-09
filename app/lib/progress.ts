@@ -61,6 +61,8 @@ class ProgressManager {
         console.log('✅ User progress loaded from API (direct array format):', progressData);
       }
       
+      console.log('📊 Final progressData to process:', progressData);
+      
       if (progressData) {
         
         // ล้าง localStorage เพื่อใช้ค่า default ใหม่ (แก้ปัญหา totalStars = 20)
@@ -138,19 +140,87 @@ class ProgressManager {
         // บันทึก merged progress
         this.saveProgress(localProgress);
         
-        // อัพเดทคะแนนจาก learning progress
-        this.updateScoresFromLearning();
+        // อัพเดทคะแนนจาก API data โดยตรง
+        this.updateScoresFromAPI(progressData);
         
         console.log('✅ Progress merged and saved locally');
       } else {
-        console.log('No API progress found for user');
+        console.log('No API progress found for user, using local calculation');
+        // ใช้การคำนวณแบบเดิมเมื่อไม่มี API data
+        this.updateScoresFromLearning();
       }
     } catch (error) {
       console.error('Error loading progress from API:', error);
     }
   }
 
-  // อัพเดท คะแนนจาก learning progress (ไม่ใช่ stars และ stages)
+  // อัพเดท คะแนนจาก API data โดยตรง
+  private updateScoresFromAPI(progressData: any[]): void {
+    const progress = this.getProgress();
+    
+    if (!progressData || progressData.length === 0) return;
+    
+    let totalScoreFromAPI = 0;
+    let completedModulesCount = 0;
+    
+    // คำนวณคะแนนจาก API data โดยตรง
+    progressData.forEach((apiProgress: any) => {
+      if (apiProgress.totalScore) {
+        totalScoreFromAPI += apiProgress.totalScore;
+        console.log(`📊 Added ${apiProgress.totalScore} points from course ${apiProgress.courseId}`);
+      }
+      
+      if (apiProgress.progressPercent === 100 || apiProgress.completed) {
+        completedModulesCount++;
+      }
+    });
+    
+    // อัพเดทคะแนนจาก API (รวมคะแนนเดิมจาก stages และ mini-games)
+    const existingNonLearningScore = this.getNonLearningScore(progress);
+    progress.totalPoints = existingNonLearningScore + totalScoreFromAPI;
+    
+    console.log('📊 Updated scores from API:', {
+      apiProgressData: progressData.map(p => ({ courseId: p.courseId, totalScore: p.totalScore, progressPercent: p.progressPercent })),
+      completedModules: completedModulesCount,
+      totalScoreFromAPI: totalScoreFromAPI,
+      existingNonLearningScore: existingNonLearningScore,
+      finalTotalPoints: progress.totalPoints,
+      // ดาวและด่านยังคงเดิม (จาก stage system)
+      totalStars: progress.totalStars,
+      completedStages: progress.completedStages.length
+    });
+    
+    this.saveProgress(progress);
+  }
+
+  // ดึงคะแนนที่ไม่ใช่จาก learning (stages, mini-games, etc.)
+  private getNonLearningScore(progress: PlayerProgress): number {
+    let nonLearningScore = 0;
+    
+    // คะแนนจาก stages
+    if (progress.stages) {
+      Object.values(progress.stages).forEach((stage: any) => {
+        if (stage.bestScore) {
+          nonLearningScore += stage.bestScore;
+        }
+      });
+    }
+    
+    // คะแนนจาก mini-games
+    if (progress.miniGameStats && progress.miniGameStats.totalScore) {
+      nonLearningScore += progress.miniGameStats.totalScore;
+    }
+    
+    console.log('📊 Non-learning score calculated:', {
+      stageScore: progress.stages ? Object.values(progress.stages).reduce((sum: number, stage: any) => sum + (stage.bestScore || 0), 0) : 0,
+      miniGameScore: progress.miniGameStats?.totalScore || 0,
+      total: nonLearningScore
+    });
+    
+    return nonLearningScore;
+  }
+
+  // อัพเดท คะแนนจาก learning progress (เก็บไว้สำหรับ backward compatibility)
   private updateScoresFromLearning(): void {
     const progress = this.getProgress();
     
@@ -159,7 +229,7 @@ class ProgressManager {
     let totalLearningScore = 0;
     let completedModulesCount = 0;
     
-    // คำนวณคะแนนจาก learning modules
+    // คำนวณคะแนนจาก learning modules (fallback สำหรับเมื่อไม่มี API)
     Object.values(progress.learningProgress.modules).forEach((moduleProgress: any) => {
       if (moduleProgress.isCompleted) {
         totalLearningScore += 100; // 100 คะแนนต่อ module ที่เสร็จ
@@ -171,12 +241,14 @@ class ProgressManager {
       }
     });
     
-    // อัพเดทเฉพาะคะแนนจาก learning (ไม่แตะ stars และ stages)
-    progress.totalPoints = Math.max(progress.totalPoints, totalLearningScore);
+    // รวมคะแนนเดิมจาก stages และ mini-games
+    const existingNonLearningScore = this.getNonLearningScore(progress);
+    progress.totalPoints = existingNonLearningScore + totalLearningScore;
     
-    console.log('📚 Updated learning scores:', {
+    console.log('📚 Updated learning scores (fallback):', {
       completedModules: completedModulesCount,
       totalLearningScore: totalLearningScore,
+      existingNonLearningScore: existingNonLearningScore,
       totalPoints: progress.totalPoints,
       // ดาวและด่านยังคงเดิม (จาก stage system)
       totalStars: progress.totalStars,
@@ -1492,8 +1564,8 @@ class ProgressManager {
     return moduleProgress?.chapters[chapterId] || null;
   }
 
-  // ดึงสถิติการเรียนรู้รวม
-  getLearningStats() {
+  // ดึงสถิติการเรียนรู้รวม (รวมข้อมูลจาก API)
+  async getLearningStats() {
     const progress = this.getProgress();
     
     if (!progress.learningProgress) {
@@ -1505,6 +1577,52 @@ class ProgressManager {
       };
     }
 
+    // ตรวจสอบข้อมูลจาก API ก่อน (ถ้า login อยู่)
+    const user = authManager.getCurrentUser();
+    let apiCompletedCount = 0;
+    let apiStartedCount = 0;
+    
+    if (user && user.id) {
+      try {
+        const userProgress = await userCourseProgressService.getUserCourseProgressByUserId(user.id);
+        let progressData = null;
+        
+        if (userProgress && userProgress.success && userProgress.data) {
+          progressData = userProgress.data;
+        } else if (Array.isArray(userProgress)) {
+          progressData = userProgress;
+        }
+        
+        if (progressData && progressData.length > 0) {
+          // นับจาก API data
+          apiStartedCount = progressData.length;
+          apiCompletedCount = progressData.filter((p: any) => 
+            p.progressPercent === 100 || p.completed
+          ).length;
+          
+          console.log('📊 Learning stats from API:', {
+            started: apiStartedCount,
+            completed: apiCompletedCount,
+            progressData: progressData.map((p: any) => ({
+              courseId: p.courseId,
+              progressPercent: p.progressPercent,
+              completed: p.completed
+            }))
+          });
+          
+          return {
+            totalModulesStarted: apiStartedCount,
+            totalModulesCompleted: apiCompletedCount,
+            totalLearningTime: progress.learningProgress.totalLearningTime,
+            averageModuleProgress: apiStartedCount > 0 ? Math.round((apiCompletedCount / apiStartedCount) * 100) : 0
+          };
+        }
+      } catch (error) {
+        console.log('🔄 API not available, using local data:', error);
+      }
+    }
+
+    // Fallback ใช้ข้อมูล local
     const modules = Object.values(progress.learningProgress.modules);
     const startedModules = modules.filter(m => m.isStarted);
     const completedModules = modules.filter(m => m.isCompleted);
@@ -1517,6 +1635,11 @@ class ProgressManager {
           return sum + completion;
         }, 0) / modules.length
       : 0;
+
+    console.log('📊 Learning stats from local:', {
+      started: startedModules.length,
+      completed: completedModules.length
+    });
 
     return {
       totalModulesStarted: startedModules.length,

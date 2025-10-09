@@ -32,13 +32,15 @@ export default function HomePage() {
       setProgress(currentProgress);
       
       // โหลดสถิติการเรียนรู้
-      const stats = progressManager.getLearningStats();
+      const stats = await progressManager.getLearningStats();
       setLearningStats(stats);
       
       console.log('🏠 Home: Progress updated', {
         totalStars: currentProgress.totalStars,
         completedStages: currentProgress.completedStages.length,
-        totalPoints: currentProgress.totalPoints
+        totalPoints: currentProgress.totalPoints,
+        learningStats: stats,
+        user: authManager.getCurrentUser()?.email
       });
     };
     
@@ -57,13 +59,15 @@ export default function HomePage() {
       setProgress(newProgress);
       
       // รีโหลดสถิติการเรียนรู้
-      const newStats = progressManager.getLearningStats();
+      const newStats = await progressManager.getLearningStats();
       setLearningStats(newStats);
       
       console.log('🏠 Home: Auth change - Progress updated', {
         totalStars: newProgress.totalStars,
         completedStages: newProgress.completedStages.length,
-        totalPoints: newProgress.totalPoints
+        totalPoints: newProgress.totalPoints,
+        learningStats: newStats,
+        user: authManager.getCurrentUser()?.email
       });
     });
 
@@ -175,9 +179,12 @@ export default function HomePage() {
                     </div>
                   </div>
                   <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.totalPoints}</span>
-                  <p className="text-blue-300 text-xs sm:text-sm font-medium mt-1">คะแนนจากการเรียน</p>
+                  <p className="text-blue-300 text-xs sm:text-sm font-medium mt-1">คะแนนรวม</p>
                   {learningStats && learningStats.totalModulesStarted > 0 && (
-                    <p className="text-blue-200 text-xs mt-1">เรียนแล้ว {learningStats.totalModulesCompleted || 0}/{learningStats.totalModulesStarted} โมดูล</p>
+                    <p className="text-blue-200 text-xs mt-1">
+                      เรียนจบ {learningStats.totalModulesCompleted || 0}/{learningStats.totalModulesStarted} โมดูล
+                      {learningStats.totalModulesCompleted >= 2 && " 🎉"}
+                    </p>
                   )}
                 </div>
               )}
