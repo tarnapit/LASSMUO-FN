@@ -36,13 +36,66 @@ export default function QuizPage() {
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
     
-    // โหลด progress ของทุก quiz จาก progressManager
-    const progresses = progressManager.getAllQuizProgress();
-    setQuizProgresses(progresses);
+    const loadQuizData = async () => {
+      // โหลดจาก API ก่อนถ้าล็อกอินอยู่
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('🧠 Quiz: Progress loaded from API');
+      }
+      
+      // โหลด progress ของทุก quiz จาก progressManager
+      const progresses = progressManager.getAllQuizProgress();
+      setQuizProgresses(progresses);
 
-    // โหลดสถานะการปลดล็อกของแบบฝึกหัด
-    const unlockStatus = progressManager.getAllQuizUnlockStatus();
-    setQuizUnlockStatus(unlockStatus);
+      // โหลดสถานะการปลดล็อกของแบบฝึกหัด
+      const unlockStatus = progressManager.getAllQuizUnlockStatus();
+      setQuizUnlockStatus(unlockStatus);
+      
+      console.log('🧠 Quiz: Quiz data updated', {
+        progressCount: Object.keys(progresses).length,
+        unlockedCount: Object.values(unlockStatus).filter(Boolean).length,
+        lockedCount: Object.values(unlockStatus).filter(status => !status).length
+      });
+    };
+    
+    loadQuizData();
+  }, [learningModules]); // เพิ่ม dependency เพื่อ reload เมื่อ learning modules เปลี่ยน
+
+  // ฟัง progress updates จาก learning modules
+  useEffect(() => {
+    const handleProgressUpdate = async (event: CustomEvent) => {
+      console.log("🧠 Quiz: Progress updated from learning:", event.detail);
+      
+      // รอ delay เล็กน้อยแล้วรีโหลด quiz unlock status
+      setTimeout(async () => {
+        const user = authManager.getCurrentUser();
+        if (user) {
+          await progressManager.loadProgressFromAPI();
+        }
+        
+        // อัพเดท quiz unlock status
+        const unlockStatus = progressManager.getAllQuizUnlockStatus();
+        setQuizUnlockStatus(unlockStatus);
+        
+        console.log('🧠 Quiz: Unlock status updated', {
+          unlockedCount: Object.values(unlockStatus).filter(Boolean).length,
+          lockedCount: Object.values(unlockStatus).filter(status => !status).length
+        });
+      }, 500);
+    };
+
+    window.addEventListener(
+      "progressUpdated",
+      handleProgressUpdate as any
+    );
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(
+        "progressUpdated",
+        handleProgressUpdate as any
+      );
+    };
   }, []);
 
   const getModuleTitle = (moduleId: string) => {

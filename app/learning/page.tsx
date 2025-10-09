@@ -55,24 +55,31 @@ export default function LearningPage() {
             await progressManager.checkAndCompleteModule(module.id);
 
             const moduleProgress = progressManager.getModuleProgress(module.id);
-            const completionPercentage =
-              progressManager.getModuleCompletionPercentage(module.id);
+            const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
             
             console.log(`📊 Progress for ${module.title} (${module.id}):`, {
               moduleProgress,
               completionPercentage,
               isCompleted: moduleProgress?.isCompleted,
-              completedChapters: moduleProgress?.completedChapters?.length || 0
+              completedChapters: moduleProgress?.completedChapters?.length || 0,
+              rawModuleProgress: moduleProgress
             });
             
             progresses[module.id] = {
               ...moduleProgress,
               completionPercentage,
             };
+            
+            console.log(`🔧 Set progress for ${module.id}:`, {
+              completionPercentage,
+              fullProgress: progresses[module.id]
+            });
           }));
         }
         
         console.log('📊 All module progresses loaded:', progresses);
+        console.log('📊 Final moduleProgresses keys:', Object.keys(progresses));
+        console.log('📊 Final moduleProgresses values:', Object.values(progresses));
         setModuleProgresses(progresses);
       };
 
@@ -93,8 +100,7 @@ export default function LearningPage() {
           await Promise.all(learningModules.map(async (module: any) => {
             await progressManager.checkAndCompleteModule(module.id);
             const moduleProgress = progressManager.getModuleProgress(module.id);
-            const completionPercentage =
-              progressManager.getModuleCompletionPercentage(module.id);
+            const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
             
             console.log(`🔄 Refreshed progress for ${module.title} (${module.id}):`, {
               moduleProgress,
@@ -107,6 +113,11 @@ export default function LearningPage() {
               ...moduleProgress,
               completionPercentage,
             };
+            
+            console.log(`🔧 Refresh set progress for ${module.id}:`, {
+              completionPercentage,
+              fullProgress: progresses[module.id]
+            });
           }));
         }
         
@@ -128,8 +139,7 @@ export default function LearningPage() {
             await Promise.all(learningModules.map(async (module: any) => {
               await progressManager.checkAndCompleteModule(module.id);
               const moduleProgress = progressManager.getModuleProgress(module.id);
-              const completionPercentage =
-                progressManager.getModuleCompletionPercentage(module.id);
+              const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
               
               console.log(`👁️ Visibility refresh for ${module.title} (${module.id}):`, {
                 moduleProgress,
@@ -142,6 +152,11 @@ export default function LearningPage() {
                 ...moduleProgress,
                 completionPercentage,
               };
+              
+              console.log(`🔧 Visibility set progress for ${module.id}:`, {
+                completionPercentage,
+                fullProgress: progresses[module.id]
+              });
             }));
           }
           setModuleProgresses(progresses);
@@ -544,7 +559,8 @@ export default function LearningPage() {
                                 : "text-blue-400"
                             }
                           >
-                            {moduleProgresses[module.id].completionPercentage}%
+                            {console.log(`🎨 Rendering progress for ${module.id}:`, moduleProgresses[module.id]?.completionPercentage)}
+                            {moduleProgresses[module.id]?.completionPercentage || 0}%
                           </span>
                         </div>
                         <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">

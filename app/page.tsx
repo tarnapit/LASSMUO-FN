@@ -20,22 +20,51 @@ export default function HomePage() {
     progressManager.migrateOldQuizData();
     
     // โหลด progress และสถานะ auth
-    const currentProgress = progressManager.getProgress();
-    setProgress(currentProgress);
+    const loadInitialProgress = async () => {
+      // โหลดจาก API ก่อนถ้าล็อกอินอยู่
+      const user = authManager.getCurrentUser();
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('🏠 Home: Progress loaded from API');
+      }
+      
+      const currentProgress = progressManager.getProgress();
+      setProgress(currentProgress);
+      
+      // โหลดสถิติการเรียนรู้
+      const stats = progressManager.getLearningStats();
+      setLearningStats(stats);
+      
+      console.log('🏠 Home: Progress updated', {
+        totalStars: currentProgress.totalStars,
+        completedStages: currentProgress.completedStages.length,
+        totalPoints: currentProgress.totalPoints
+      });
+    };
     
-    // โหลดสถิติการเรียนรู้
-    const stats = progressManager.getLearningStats();
-    setLearningStats(stats);
+    loadInitialProgress();
 
     // Listen for progress changes
-    const unsubscribe = authManager.onAuthStateChange(() => {
+    const unsubscribe = authManager.onAuthStateChange(async () => {
       // รีโหลด progress เมื่อ auth state เปลี่ยน
+      const user = authManager.getCurrentUser();
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('🏠 Home: Auth change - Progress loaded from API');
+      }
+      
       const newProgress = progressManager.getProgress();
       setProgress(newProgress);
       
       // รีโหลดสถิติการเรียนรู้
       const newStats = progressManager.getLearningStats();
       setLearningStats(newStats);
+      
+      console.log('🏠 Home: Auth change - Progress updated', {
+        totalStars: newProgress.totalStars,
+        completedStages: newProgress.completedStages.length,
+        totalPoints: newProgress.totalPoints
+      });
     });
 
     return unsubscribe;
@@ -124,7 +153,7 @@ export default function HomePage() {
 
         {/* Progress Display */}
         {progress && (progress.totalStars > 0 || progress.completedStages.length > 0 || 
-                     (learningStats && learningStats.totalModulesStarted > 0)) && (
+                     progress.totalPoints > 0 || (learningStats && learningStats.totalModulesStarted > 0)) && (
           <div className="mt-8 sm:mt-12 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-700/50 shadow-2xl max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row items-center justify-center mb-4 sm:mb-6">
               <div className="p-2 sm:p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-0 sm:mr-3 mb-2 sm:mb-0">
@@ -135,37 +164,49 @@ export default function HomePage() {
               </h3>
             </div>
             
-            {/* Stage Progress Cards */}
+            {/* Progress Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-4 sm:p-6 text-center">
-                <div className="flex items-center justify-center mb-2 sm:mb-3">
-                  <div className="p-1.5 sm:p-2 bg-yellow-400/20 rounded-full">
-                    <Star className="text-yellow-400 w-6 h-6 sm:w-8 sm:h-8" />
+              {/* Learning Score Card - แสดงเสมอเมื่อมีคะแนน */}
+              {progress.totalPoints > 0 && (
+                <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-4 sm:p-6 text-center">
+                  <div className="flex items-center justify-center mb-2 sm:mb-3">
+                    <div className="p-1.5 sm:p-2 bg-blue-400/20 rounded-full">
+                      <GraduationCap className="text-blue-400 w-6 h-6 sm:w-8 sm:h-8" />
+                    </div>
                   </div>
+                  <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.totalPoints}</span>
+                  <p className="text-blue-300 text-xs sm:text-sm font-medium mt-1">คะแนนจากการเรียน</p>
+                  {learningStats && learningStats.totalModulesStarted > 0 && (
+                    <p className="text-blue-200 text-xs mt-1">เรียนแล้ว {learningStats.totalModulesCompleted || 0}/{learningStats.totalModulesStarted} โมดูล</p>
+                  )}
                 </div>
-                <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.totalStars}</span>
-                <p className="text-yellow-300 text-xs sm:text-sm font-medium mt-1">ดาวที่เก็บได้</p>
-              </div>
+              )}
 
-              <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-4 sm:p-6 text-center">
-                <div className="flex items-center justify-center mb-2 sm:mb-3">
-                  <div className="p-1.5 sm:p-2 bg-green-400/20 rounded-full">
-                    <Trophy className="text-green-400 w-6 h-6 sm:w-8 sm:h-8" />
+              {/* Stage Stars Card - แสดงเฉพาะเมื่อมี stage stars จริงๆ */}
+              {progress.totalStars > 0 && (
+                <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-4 sm:p-6 text-center">
+                  <div className="flex items-center justify-center mb-2 sm:mb-3">
+                    <div className="p-1.5 sm:p-2 bg-yellow-400/20 rounded-full">
+                      <Star className="text-yellow-400 w-6 h-6 sm:w-8 sm:h-8" />
+                    </div>
                   </div>
+                  <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.totalStars}</span>
+                  <p className="text-yellow-300 text-xs sm:text-sm font-medium mt-1">ดาวจากด่าน</p>
                 </div>
-                <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.completedStages.length}</span>
-                <p className="text-green-300 text-xs sm:text-sm font-medium mt-1">ด่านที่ผ่าน</p>
-              </div>
+              )}
 
-              <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-4 sm:p-6 text-center">
-                <div className="flex items-center justify-center mb-2 sm:mb-3">
-                  <div className="p-1.5 sm:p-2 bg-blue-400/20 rounded-full">
-                    <Target className="text-blue-400 w-6 h-6 sm:w-8 sm:h-8" />
+              {/* Completed Stages Card - แสดงเฉพาะเมื่อผ่านด่านจริงๆ */}
+              {progress.completedStages.length > 0 && (
+                <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-4 sm:p-6 text-center">
+                  <div className="flex items-center justify-center mb-2 sm:mb-3">
+                    <div className="p-1.5 sm:p-2 bg-green-400/20 rounded-full">
+                      <Trophy className="text-green-400 w-6 h-6 sm:w-8 sm:h-8" />
+                    </div>
                   </div>
+                  <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.completedStages.length}</span>
+                  <p className="text-green-300 text-xs sm:text-sm font-medium mt-1">ด่านที่ผ่าน</p>
                 </div>
-                <span className="text-2xl sm:text-3xl font-bold text-white block">{progress.totalPoints}</span>
-                <p className="text-blue-300 text-xs sm:text-sm font-medium mt-1">คะแนนรวม</p>
-              </div>
+              )}
             </div>
           </div>
         )}
