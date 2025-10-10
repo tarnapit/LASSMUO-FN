@@ -1,26 +1,33 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Star, Play, Clock, Award, Trophy } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import { progressManager } from "../lib/progress";
 import { PlayerProgress } from "../types/stage";
 import { authManager } from "../lib/auth";
-import { useStageData, useUserProgress } from "@/app/lib/hooks/useDataAdapter";
+import { useStageData } from "@/app/lib/hooks/useStageData";
+import { useStageProgressManager } from "@/app/lib/hooks/useStageProgressManager";
 
 export default function StagePage() {
   const router = useRouter();
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
-  const [playerProgress, setPlayerProgress] = useState<PlayerProgress | null>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Use data adapter hooks
+  // Use real API hooks
   const { stages, loading: stagesLoading, error: stagesError } = useStageData();
-  const { progress: userProgress, loading: progressLoading } = useUserProgress(currentUser?.id);
+  const { 
+    progress: stageProgress, 
+    loading: progressLoading,
+    refreshProgress: refreshStageProgress,
+    updateStageProgress,
+    completeStage,
+    recordAttempt
+  } = useStageProgressManager(currentUser?.id);
   
   // ดึงข้อมูลด่านจาก API และผสมกับความคืบหน้าของผู้เล่น
   const processedStages = stages?.map((stage: any) => {
-    const progress = playerProgress?.stages[stage.id];
+    const progress = stageProgress[stage.id];
     const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
 
     return {
@@ -46,7 +53,7 @@ export default function StagePage() {
   useEffect(() => {
     // โหลดข้อมูล user
     const user = authManager.getCurrentUser() || {
-      id: 1,
+      id: "1", // Use string ID to match API
       name: "ผู้เรียน",
       level: 1,
       experience: 150,
@@ -55,106 +62,30 @@ export default function StagePage() {
     setCurrentUser(user);
   }, []);
 
-  useEffect(() => {
-    // Load progress from localStorage if no API progress available
-    if (!progressLoading && !userProgress) {
-      const progress = progressManager.getProgress();
-      setPlayerProgress(progress);
-      console.log("Initial progress loaded:", progress);
-    } else if (userProgress && Array.isArray(userProgress)) {
-      // Convert API progress to local format
-      const progress: PlayerProgress = {
-        stages: userProgress.reduce((acc: any, p: any) => {
-          acc[p.stageId] = {
-            stageId: p.stageId,
-            isUnlocked: p.isUnlocked,
-            isCompleted: p.isCompleted || false,
-            stars: p.totalStars || 0,
-            bestScore: p.bestScore || 0,
-            attempts: p.attempts || 0,
-            lastAttempt: p.lastAttempt ? new Date(p.lastAttempt) : undefined,
-            xpEarned: p.xpEarned || 0,
-            perfectRuns: p.perfectRuns || 0,
-            averageTime: p.averageTime || 0,
-            mistakeCount: p.mistakeCount || 0,
-            hintsUsed: p.hintsUsed || 0,
-            achievements: p.achievements || [],
-          };
-          return acc;
-        }, {}),
-        totalStars: 0,
-        totalPoints: 0,
-        totalXp: 0,
-        gems: 0,
-        currentStreak: 0,
-        longestStreak: 0,
-        hearts: 5,
-        maxHearts: 5,
-        completedStages: [],
-        currentStage: 1,
-        achievements: [],
-        badges: [],
-        dailyGoal: {
-          xpTarget: 100,
-          currentXp: 0,
-          isCompleted: false,
-          streak: 0,
-        },
-        weeklyProgress: {
-          mondayXp: 0,
-          tuesdayXp: 0,
-          wednesdayXp: 0,
-          thursdayXp: 0,
-          fridayXp: 0,
-          saturdayXp: 0,
-          sundayXp: 0,
-        },
-        league: {
-          currentLeague: "bronze",
-          position: 1,
-          xpThisWeek: 0,
-        },
-      };
-      setPlayerProgress(progress);
-      console.log("API progress loaded:", progress);
-    }
-
-    // เพิ่ม listener สำหรับการกลับมาหน้านี้
-    const handleRouterEvents = () => {
-      setTimeout(() => {
-        const updatedProgress = progressManager.getProgress();
-        setPlayerProgress(updatedProgress);
-        console.log(
-          "Progress auto-refreshed on route change:",
-          updatedProgress
-        );
-      }, 500);
-    };
-
-    // Listen for browser back/forward
-    window.addEventListener("popstate", handleRouterEvents);
-
-    return () => {
-      window.removeEventListener("popstate", handleRouterEvents);
-    };
-  }, [userProgress, progressLoading]);
-
   // Function to refresh progress (เรียกใช้เมื่อต้องการอัพเดท)
-  const refreshProgress = () => {
-    const progress = progressManager.getProgress();
-    setPlayerProgress(progress);
-    console.log("Stage page progress refreshed:", progress);
-  };
+  const refreshProgress = useCallback(() => {
+    refreshStageProgress();
+    // console.log("Stage page progress refreshed"); // Reduce logging
+  }, [refreshStageProgress]);
 
-  // Listen for focus event เพื่ออัพเดท progress เมื่อกลับมาจากหน้าเล่นเกม
+  // Listen for focus event เพื่ออัพเดท progress เมื่อกลับมาจากหน้าเล่นเกม (ลด frequency)
   useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout;
+    
     const handleFocus = () => {
-      refreshProgress();
+      // Debounce refresh calls
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        refreshProgress();
+      }, 500);
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshProgress();
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+          refreshProgress();
+        }, 500);
       }
     };
 
@@ -164,52 +95,32 @@ export default function StagePage() {
     return () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearTimeout(refreshTimeout);
     };
-  }, []);
+  }, [refreshProgress]);
 
   // Listen for storage changes เพื่ออัพเดท progress เมื่อมีการเปลี่ยนแปลง
   useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout;
+    
     const handleStorageChange = () => {
-      refreshProgress();
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        refreshProgress();
+      }, 500);
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  // Listen for route changes เพื่อ refresh progress
-  useEffect(() => {
-    const handleRouteChange = () => {
-      // รอสักครู่แล้วค่อย refresh เพื่อให้ข้อมูลใหม่อัพเดท
-      setTimeout(() => {
-        refreshProgress();
-      }, 100);
-    };
-
-    // Listen for when component becomes visible again
-    const handlePageShow = () => {
-      refreshProgress();
-    };
-
-    // เพิ่ม interval เพื่อ check progress ทุก 1 วินาที (เฉพาะเมื่อ tab active)
-    const progressInterval = setInterval(() => {
-      if (!document.hidden) {
-        refreshProgress();
-      }
-    }, 1000);
-
-    window.addEventListener("pageshow", handlePageShow);
-
     return () => {
-      window.removeEventListener("pageshow", handlePageShow);
-      clearInterval(progressInterval);
+      window.removeEventListener("storage", handleStorageChange);
+      clearTimeout(refreshTimeout);
     };
-  }, []);
+  }, [refreshProgress]);
 
-  // Debug: แสดงข้อมูล progress ในคอนโซล
+  // Debug: แสดงข้อมูล progress ในคอนโซล (ลดความถี่)
   useEffect(() => {
-    if (playerProgress) {
-      console.log("Current player progress:", playerProgress);
+    if (stageProgress && Object.keys(stageProgress).length > 0) {
+      console.log("Current stage progress:", stageProgress);
       console.log(
         "Stages data with stars:",
         finalStages.map((s: any) => ({
@@ -217,11 +128,11 @@ export default function StagePage() {
           stars: s.stars,
           isCompleted: s.isCompleted,
           totalStars: s.totalStars,
-          stageProgress: playerProgress.stages[s.id as number],
+          stageProgressData: stageProgress[s.id as number],
         }))
       );
     }
-  }, [playerProgress, finalStages]);
+  }, [Object.keys(stageProgress).length, finalStages.length]); // Only when actual data changes
 
   // Function to close popup when clicking outside
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -273,16 +184,16 @@ export default function StagePage() {
           <div className="flex justify-center items-center space-x-6 mt-6 text-white">
             <div className="flex items-center space-x-2">
               <Trophy className="text-yellow-400" size={20} />
-              <span>{playerProgress?.totalStars || 0} ดาว</span>
+              <span>{Object.values(stageProgress).reduce((total, progress) => total + (progress.stars || 0), 0)} ดาว</span>
             </div>
             <div className="flex items-center space-x-2">
               <Award className="text-blue-400" size={20} />
-              <span>{playerProgress?.totalPoints || 0} คะแนน</span>
+              <span>{Object.values(stageProgress).reduce((total, progress) => total + (progress.bestScore || 0), 0)} คะแนน</span>
             </div>
             <div className="flex items-center space-x-2">
               <Star className="text-green-400" size={20} />
               <span>
-                {playerProgress?.completedStages.length || 0} ด่านสำเร็จ
+                {Object.values(stageProgress).filter(progress => progress.isCompleted).length} ด่านสำเร็จ
               </span>
             </div>
           </div>
@@ -318,6 +229,21 @@ export default function StagePage() {
                     }
                   }}
                 >
+                  {/* Play Button สำหรับไปเล่นด่าน */}
+                  {stage.isUnlocked && (
+                    <button
+                      className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-lg z-50 transition-all duration-300 hover:scale-110"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log(`Navigating to stage ${stage.id}`);
+                        router.push(`/stage/${stage.id}`);
+                      }}
+                      title={`เล่นด่าน ${stage.title}`}
+                      aria-label={`เล่นด่าน ${stage.title}`}
+                    >
+                      <Play size={20} />
+                    </button>
+                  )}
                   {/* Glow Effect */}
                   {stage.isUnlocked && (
                     <div
@@ -453,16 +379,16 @@ export default function StagePage() {
                       </h3>
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          stage.difficulty === "easy"
+                          stage.difficulty === "Easy"
                             ? "bg-green-100 text-green-800"
-                            : stage.difficulty === "medium"
+                            : stage.difficulty === "Medium"
                             ? "bg-yellow-100 text-yellow-800"
                             : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {stage.difficulty === "easy"
+                        {stage.difficulty === "Easy"
                           ? "ง่าย"
-                          : stage.difficulty === "medium"
+                          : stage.difficulty === "Medium"
                           ? "ปานกลาง"
                           : "ยาก"}
                       </span>
@@ -485,14 +411,25 @@ export default function StagePage() {
                       </span>
                     </div>
 
-                    {stage.prerequisites.length > 0 && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">ต้องผ่านด่าน:</span>
-                        <span className="text-white font-medium">
-                          {stage.prerequisites.join(", ")}
-                        </span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400 flex items-center">
+                        <Trophy size={16} className="mr-2" />
+                        ดาวที่ได้รับ:
+                      </span>
+                      <div className="flex space-x-1">
+                        {[1, 2, 3].map((star) => (
+                          <Star
+                            key={star}
+                            size={16}
+                            className={
+                              star <= stage.stars
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-600"
+                            }
+                          />
+                        ))}
                       </div>
-                    )}
+                    </div>
 
                     {stage.attempts > 0 && (
                       <div className="flex items-center justify-between text-sm">
@@ -513,6 +450,13 @@ export default function StagePage() {
                         </span>
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">รางวัล XP:</span>
+                      <span className="text-white font-medium">
+                        {stage.xpReward || 0} XP
+                      </span>
+                    </div>
                   </div>
 
                   {/* Stars */}
@@ -606,16 +550,27 @@ export default function StagePage() {
                     </div>
                   )}
 
-                  {/* Play Button */}
-                  <button
-                    onClick={() => router.push(`/stage/${stage.id}`)}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-3 px-4 rounded-lg hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
-                  >
-                    <Play size={18} />
-                    <span>
-                      {stage.isCompleted ? "เล่นอีกครั้ง" : "เริ่มเล่น"}
-                    </span>
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setSelectedStage(null)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      ปิด
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedStage(null);
+                        router.push(`/stage/${stage.id}`);
+                      }}
+                      className="flex-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
+                    >
+                      <Play size={18} />
+                      <span>
+                        {stage.isCompleted ? "เล่นอีกครั้ง" : "เริ่มเล่น"}
+                      </span>
+                    </button>
+                  </div>
                 </>
               );
             })()}
