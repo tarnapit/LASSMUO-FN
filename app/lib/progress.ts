@@ -4,6 +4,7 @@ import { QuizProgress, QuizAttempt } from '../types/quiz';
 import { MiniGameAttempt, GameStats } from '../types/mini-game';
 import { authManager } from './auth';
 import { userCourseProgressService } from './api/services';
+import { userStageProgressService } from './api/services/userStageProgressService';
 
 class ProgressManager {
   private tempProgressKey = 'astronomy_temp_progress';
@@ -44,113 +45,224 @@ class ProgressManager {
 
       console.log(`Loading progress from API for user ${user.id}`);
 
-      // ดึงข้อมูล progress ทั้งหมดของผู้ใช้
+      // ดึงข้อมูล course progress
       const userProgress = await userCourseProgressService.getUserCourseProgressByUserId(user.id);
       
-      console.log('🔍 Raw API response:', userProgress);
-      console.log('🔍 Response type:', typeof userProgress);
-      console.log('🔍 Is Array:', Array.isArray(userProgress));
+      // ดึงข้อมูล stage progress จาก API
+      const stageProgressResponse = await userStageProgressService.getUserProgress(user.id);
       
-      // Handle different response formats
-      let progressData = null;
-      if (userProgress && userProgress.success && userProgress.data && userProgress.data.length > 0) {
-        progressData = userProgress.data;
-        console.log('✅ User progress loaded from API (wrapped format):', progressData);
-      } else if (Array.isArray(userProgress) && userProgress.length > 0) {
-        progressData = userProgress;
-        console.log('✅ User progress loaded from API (direct array format):', progressData);
+      console.log('🔍 Raw API responses:', {
+        courseProgress: userProgress,
+        stageProgress: stageProgressResponse
+      });
+      
+      // ล้าง localStorage เพื่อใช้ค่า default ใหม่
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('player-progress');
+        console.log('🗑️ Cleared old progress data to use fresh defaults');
       }
       
-      console.log('📊 Final progressData to process:', progressData);
+      // เริ่มต้นด้วย default progress ใหม่
+      const localProgress = this.getDefaultProgress();
       
-      if (progressData) {
-        
-        // ล้าง localStorage เพื่อใช้ค่า default ใหม่ (แก้ปัญหา totalStars = 20)
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('player-progress');
-          console.log('🗑️ Cleared old progress data to use fresh defaults');
-        }
-        
-        // เริ่มต้นด้วย default progress ใหม่แทนการใช้ getProgress() ที่อาจมีค่าเก่า
-        const localProgress = this.getDefaultProgress();
-        
-        progressData.forEach((apiProgress: any) => {
-          const moduleId = apiProgress.courseId;
-          
-          // สร้าง learning progress structure ถ้ายังไม่มี
-          if (!localProgress.learningProgress) {
-            localProgress.learningProgress = {
-              completedModules: [],
-              totalLearningTime: 0,
-              modules: {}
-            };
-          }
-
-          // อัพเดท module progress จาก API
-          if (!localProgress.learningProgress.modules[moduleId]) {
-            localProgress.learningProgress.modules[moduleId] = {
-              moduleId,
-              isStarted: true,
-              isCompleted: apiProgress.completed || false,
-              completedChapters: [],
-              totalTimeSpent: 0,
-              chapters: {}
-            };
-          } else {
-            // Merge กับข้อมูลที่มีอยู่
-            localProgress.learningProgress.modules[moduleId].isCompleted = 
-              localProgress.learningProgress.modules[moduleId].isCompleted || apiProgress.completed;
-          }
-
-          // ถ้ามี progressPercent จาก API ให้คำนวณ completedChapters
-          if (apiProgress.progressPercent && apiProgress.progressPercent > 0) {
-            console.log(`📊 API Progress for ${moduleId}: ${apiProgress.progressPercent}%`);
-            
-            // คำนวณจำนวน chapters ที่เสร็จจาก progressPercent
-            const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
-            const completedChapterCount = Math.floor((apiProgress.progressPercent / 100) * expectedChapters.length);
-            
-            // สร้าง completed chapters array ตาม progressPercent
-            for (let i = 0; i < completedChapterCount; i++) {
-              const chapterId = expectedChapters[i];
-              if (chapterId && !localProgress.learningProgress.modules[moduleId].completedChapters.includes(chapterId)) {
-                localProgress.learningProgress.modules[moduleId].completedChapters.push(chapterId);
-                
-                // สร้าง chapter data ด้วย
-                localProgress.learningProgress.modules[moduleId].chapters[chapterId] = {
-                  moduleId,
-                  chapterId,
-                  completed: true,
-                  readProgress: 100,
-                  timeSpent: 5, // 5 minutes
-                  completedAt: new Date()
-                };
-              }
-            }
-            
-            console.log(`📊 Generated ${completedChapterCount} completed chapters from ${apiProgress.progressPercent}%`);
-          }
-
-          // เพิ่มใน completed modules ถ้าเสร็จแล้ว
-          if (apiProgress.completed && !localProgress.learningProgress.completedModules.includes(moduleId)) {
-            localProgress.learningProgress.completedModules.push(moduleId);
-          }
-        });
-
-        // บันทึก merged progress
-        this.saveProgress(localProgress);
-        
-        // อัพเดทคะแนนจาก API data โดยตรง
-        this.updateScoresFromAPI(progressData);
-        
-        console.log('✅ Progress merged and saved locally');
-      } else {
-        console.log('No API progress found for user, using local calculation');
-        // ใช้การคำนวณแบบเดิมเมื่อไม่มี API data
-        this.updateScoresFromLearning();
-      }
+      // ประมวลผล course progress
+      await this.processCourseProgress(localProgress, userProgress);
+      
+      // ประมวลผล stage progress จาก API
+      await this.processStageProgress(localProgress, stageProgressResponse);
+      
+      // บันทึก merged progress
+      this.saveProgress(localProgress);
+      
+      console.log('✅ Progress merged and saved locally');
     } catch (error) {
       console.error('Error loading progress from API:', error);
+    }
+  }
+
+  // ประมวลผล course progress จาก API
+  private async processCourseProgress(localProgress: PlayerProgress, userProgress: any): Promise<void> {
+    // Handle different response formats
+    let progressData = null;
+    if (userProgress && userProgress.success && userProgress.data && userProgress.data.length > 0) {
+      progressData = userProgress.data;
+      console.log('✅ User course progress loaded from API (wrapped format):', progressData);
+    } else if (Array.isArray(userProgress) && userProgress.length > 0) {
+      progressData = userProgress;
+      console.log('✅ User course progress loaded from API (direct array format):', progressData);
+    }
+    
+    if (progressData) {
+      // สร้าง learning progress structure ถ้ายังไม่มี
+      if (!localProgress.learningProgress) {
+        localProgress.learningProgress = {
+          completedModules: [],
+          totalLearningTime: 0,
+          modules: {}
+        };
+      }
+
+      progressData.forEach((apiProgress: any) => {
+        const moduleId = apiProgress.courseId;
+        
+        // อัพเดท module progress จาก API
+        if (!localProgress.learningProgress!.modules[moduleId]) {
+          localProgress.learningProgress!.modules[moduleId] = {
+            moduleId,
+            isStarted: true,
+            isCompleted: apiProgress.completed || false,
+            completedChapters: [],
+            totalTimeSpent: 0,
+            chapters: {}
+          };
+        } else {
+          // Merge กับข้อมูลที่มีอยู่
+          localProgress.learningProgress!.modules[moduleId].isCompleted = 
+            localProgress.learningProgress!.modules[moduleId].isCompleted || apiProgress.completed;
+        }
+
+        // ถ้ามี progressPercent จาก API ให้คำนวณ completedChapters
+        if (apiProgress.progressPercent && apiProgress.progressPercent > 0) {
+          const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+          const completedChapterCount = Math.floor((apiProgress.progressPercent / 100) * expectedChapters.length);
+          
+          for (let i = 0; i < completedChapterCount; i++) {
+            const chapterId = expectedChapters[i];
+            if (chapterId && !localProgress.learningProgress!.modules[moduleId].completedChapters.includes(chapterId)) {
+              localProgress.learningProgress!.modules[moduleId].completedChapters.push(chapterId);
+              
+              localProgress.learningProgress!.modules[moduleId].chapters[chapterId] = {
+                moduleId,
+                chapterId,
+                completed: true,
+                readProgress: 100,
+                timeSpent: 5,
+                completedAt: new Date()
+              };
+            }
+          }
+        }
+
+        // เพิ่มใน completed modules ถ้าเสร็จแล้ว
+        if (apiProgress.completed && !localProgress.learningProgress!.completedModules.includes(moduleId)) {
+          localProgress.learningProgress!.completedModules.push(moduleId);
+        }
+      });
+
+      // อัพเดทคะแนนจาก course API data
+      this.updateScoresFromAPI(progressData);
+    }
+  }
+
+  // ประมวลผล stage progress จาก API
+  private async processStageProgress(localProgress: PlayerProgress, stageProgressResponse: any): Promise<void> {
+    let stageProgressData = null;
+    
+    // Handle different response formats
+    if (stageProgressResponse && stageProgressResponse.success && stageProgressResponse.data) {
+      stageProgressData = stageProgressResponse.data;
+      console.log('✅ User stage progress loaded from API (wrapped format):', stageProgressData);
+    } else if (Array.isArray(stageProgressResponse)) {
+      stageProgressData = stageProgressResponse;
+      console.log('✅ User stage progress loaded from API (direct array format):', stageProgressData);
+    }
+    
+    if (stageProgressData && Array.isArray(stageProgressData) && stageProgressData.length > 0) {
+      console.log('📊 Processing stage progress from API...');
+      
+      // ประมวลผลข้อมูล stage แต่ละด่าน
+      stageProgressData.forEach((apiStageProgress: any) => {
+        const stageId = apiStageProgress.stageId;
+        
+        // อัพเดท stage progress จาก API
+        if (!localProgress.stages[stageId]) {
+          localProgress.stages[stageId] = {
+            stageId,
+            isUnlocked: true,
+            isCompleted: false,
+            stars: 0,
+            bestScore: 0,
+            attempts: 0,
+            xpEarned: 0,
+            perfectRuns: 0,
+            averageTime: 0,
+            mistakeCount: 0,
+            hintsUsed: 0,
+            achievements: []
+          };
+        }
+        
+        // อัพเดทข้อมูลจาก API
+        const stageProgress = localProgress.stages[stageId];
+        stageProgress.isCompleted = apiStageProgress.isCompleted || false;
+        stageProgress.bestScore = Math.max(stageProgress.bestScore, apiStageProgress.bestScore || 0);
+        stageProgress.stars = Math.max(stageProgress.stars, apiStageProgress.starsEarned || 0);
+        stageProgress.attempts = Math.max(stageProgress.attempts, apiStageProgress.attempts || 0);
+        
+        if (apiStageProgress.lastAttemptAt) {
+          stageProgress.lastAttempt = new Date(apiStageProgress.lastAttemptAt);
+        }
+        
+        // อัพเดท completed stages list
+        if (apiStageProgress.isCompleted && !localProgress.completedStages.includes(stageId)) {
+          localProgress.completedStages.push(stageId);
+        }
+        
+        // ปลดล็อก stage ถัดไป
+        if (apiStageProgress.isCompleted) {
+          const nextStageId = stageId + 1;
+          if (nextStageId <= 5) {
+            if (!localProgress.stages[nextStageId]) {
+              localProgress.stages[nextStageId] = {
+                stageId: nextStageId,
+                isUnlocked: true,
+                isCompleted: false,
+                stars: 0,
+                bestScore: 0,
+                attempts: 0,
+                xpEarned: 0,
+                perfectRuns: 0,
+                averageTime: 0,
+                mistakeCount: 0,
+                hintsUsed: 0,
+                achievements: []
+              };
+            } else {
+              localProgress.stages[nextStageId].isUnlocked = true;
+            }
+          }
+        }
+        
+        console.log(`📊 Stage ${stageId} updated from API:`, {
+          completed: apiStageProgress.isCompleted,
+          bestScore: apiStageProgress.bestScore,
+          stars: apiStageProgress.starsEarned,
+          attempts: apiStageProgress.attempts
+        });
+      });
+      
+      // คำนวณ totalStars จาก stage progress
+      localProgress.totalStars = Object.values(localProgress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0);
+      
+      // อัพเดท currentStage เป็น stage ที่สูงที่สุดที่ปลดล็อกแล้ว
+      const maxUnlockedStage = Math.max(...Object.values(localProgress.stages)
+        .filter(stage => stage.isUnlocked)
+        .map(stage => stage.stageId));
+      localProgress.currentStage = maxUnlockedStage;
+      
+      // อัพเดท totalPoints จาก stage scores
+      const stageScore = Object.values(localProgress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0);
+      localProgress.totalPoints = (localProgress.totalPoints || 0) + stageScore;
+      
+      console.log('📊 Stage progress summary:', {
+        totalStagesLoaded: stageProgressData.length,
+        totalStars: localProgress.totalStars,
+        completedStages: localProgress.completedStages.length,
+        currentStage: localProgress.currentStage,
+        totalPoints: localProgress.totalPoints
+      });
+    } else {
+      console.log('ℹ️ No stage progress found in API');
     }
   }
 
@@ -548,6 +660,93 @@ class ProgressManager {
         xpThisWeek: 0
       }
     };
+  }
+
+  // ฟังก์ชันช่วยสำหรับ debug - แสดงสถานะ progress ปัจจุบัน
+  debugProgress(): void {
+    const progress = this.getProgress();
+    console.log('🔍 Current Progress Debug:', {
+      totalStars: progress.totalStars,
+      totalPoints: progress.totalPoints,
+      completedStages: progress.completedStages,
+      currentStage: progress.currentStage,
+      stageDetails: Object.entries(progress.stages).map(([id, stage]) => ({
+        stageId: id,
+        isUnlocked: stage.isUnlocked,
+        isCompleted: stage.isCompleted,
+        stars: stage.stars,
+        bestScore: stage.bestScore,
+        attempts: stage.attempts
+      })),
+      calculatedTotalStars: Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0),
+      learningProgress: progress.learningProgress ? {
+        completedModules: progress.learningProgress.completedModules.length,
+        modulesStarted: Object.keys(progress.learningProgress.modules).length
+      } : null
+    });
+  }
+
+  // แก้ไขการคำนวณ totalStars เพื่อให้แน่ใจว่าถูกต้อง (รวมข้อมูลจาก API)
+  async recalculateTotalStars(): Promise<void> {
+    const progress = this.getProgress();
+    const calculatedStars = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0);
+    const calculatedPoints = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0);
+    
+    let hasChanges = false;
+    
+    if (progress.totalStars !== calculatedStars) {
+      console.log('⚠️ Total stars mismatch detected! Fixing...', {
+        currentTotalStars: progress.totalStars,
+        calculatedStars: calculatedStars,
+        stages: Object.entries(progress.stages).map(([id, s]) => ({ id, stars: s.stars }))
+      });
+      
+      progress.totalStars = calculatedStars;
+      hasChanges = true;
+      
+      console.log('✅ Total stars fixed to:', calculatedStars);
+    }
+
+    if (progress.totalPoints !== calculatedPoints) {
+      console.log('⚠️ Total points mismatch detected! Fixing...', {
+        currentTotalPoints: progress.totalPoints,
+        calculatedPoints: calculatedPoints,
+        stages: Object.entries(progress.stages).map(([id, s]) => ({ id, bestScore: s.bestScore }))
+      });
+      
+      progress.totalPoints = calculatedPoints;
+      hasChanges = true;
+      
+      console.log('✅ Total points fixed to:', calculatedPoints);
+    }
+
+    if (hasChanges) {
+      this.saveProgress(progress);
+    }
+
+    // ตรวจสอบข้อมูลจาก API ด้วย (ถ้าล็อกอินอยู่)
+    const user = authManager.getCurrentUser();
+    if (user && user.id) {
+      try {
+        const stageProgressResponse = await userStageProgressService.getUserProgress(user.id);
+        
+        if (stageProgressResponse && stageProgressResponse.success && stageProgressResponse.data) {
+          const apiStars = stageProgressResponse.data.reduce((sum: number, stageProgress: any) => sum + (stageProgress.starsEarned || 0), 0);
+          
+          if (apiStars > calculatedStars) {
+            console.log('🌟 API has more recent star data, updating...', {
+              localStars: calculatedStars,
+              apiStars: apiStars
+            });
+            
+            // อัพเดทจาก API
+            await this.loadProgressFromAPI();
+          }
+        }
+      } catch (error) {
+        console.log('⚠️ Could not check API stars:', error);
+      }
+    }
   }
 
   // ====== Quiz Progress Methods ======
@@ -1005,7 +1204,7 @@ class ProgressManager {
   // ====== Stage Progress Methods ======
 
   // อัพเดท progress เมื่อจบด่าน
-  completeStage(stageId: number, stars: number, score: number): PlayerProgress {
+  async completeStage(stageId: number, stars: number, score: number): Promise<PlayerProgress> {
     const progress = this.getProgress();
     
     // อัพเดท stage ปัจจุบัน
@@ -1077,13 +1276,97 @@ class ProgressManager {
       }
     }
 
-    // อัพเดท total stars โดยนับจากทุก stage
-    progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + stage.stars, 0);
+    // ✅ อัพเดท total stars โดยนับจากทุก stage (แก้ไขเพื่อให้แน่ใจว่าคำนวณถูกต้อง)
+    progress.totalStars = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0);
+    
+    console.log('⭐ Stage completion update:', {
+      stageId,
+      starsEarned: stars,
+      scoreEarned: score,
+      previousStars: previousStars,
+      newStageStars: stageProgress.stars,
+      totalStarsCalculated: progress.totalStars,
+      allStages: Object.entries(progress.stages).map(([id, s]) => ({ id, stars: s.stars, completed: s.isCompleted }))
+    });
 
-    // บันทึก progress
+    // บันทึก progress ใน local storage
     this.saveProgress(progress);
     
+    // บันทึก progress ใน API (ถ้าล็อกอินอยู่)
+    await this.saveStageProgressToAPI(stageId, score, stars, stageProgress.isCompleted, stageProgress.attempts);
+    
     return progress;
+  }
+
+  // บันทึก stage progress ผ่าน API
+  async saveStageProgressToAPI(
+    stageId: number,
+    currentScore: number,
+    starsEarned: number,
+    isCompleted: boolean,
+    attempts: number
+  ): Promise<void> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        console.log('User not logged in, stage progress saved locally only');
+        return;
+      }
+
+      console.log(`Saving stage progress to API for stage: ${stageId}`);
+
+      const progressData = {
+        isCompleted,
+        currentScore,
+        bestScore: currentScore, // ในกรณีนี้ current score คือ best score
+        starsEarned,
+        attempts,
+        lastAttemptAt: new Date().toISOString(),
+        completedAt: isCompleted ? new Date().toISOString() : undefined
+      };
+
+      const response = await userStageProgressService.upsertProgress(user.id, stageId, progressData);
+      
+      if (response && response.success) {
+        console.log('✅ Stage progress saved to API successfully:', response.data);
+      } else if (response && response.data) {
+        console.log('✅ Stage progress saved to API (fallback format)');
+      } else {
+        console.warn('⚠️ API stage progress save response unclear:', response);
+      }
+    } catch (error) {
+      console.warn('⚠️ API not available for stage progress, using local storage only:', error);
+    }
+  }
+
+  // ดึง stage progress จาก API
+  async getStageProgressFromAPI(stageId: number): Promise<any> {
+    try {
+      const user = authManager.getCurrentUser();
+      if (!user || !user.id) {
+        console.log('User not logged in, returning local stage progress');
+        return null;
+      }
+
+      console.log(`Fetching stage progress from API for user ${user.id}, stage ${stageId}`);
+      
+      const response = await userStageProgressService.getUserStageProgress(user.id, stageId);
+      
+      if (response && response.success && response.data) {
+        console.log('✅ Stage progress fetched from API:', response.data);
+        return response.data;
+      } else if (response && (response as any).id) {
+        // บางครั้ง API ส่งกลับข้อมูลโดยตรง
+        console.log('✅ Stage progress fetched from API (direct format):', response);
+        return response;
+      } else {
+        console.log('No stage progress found in API for stage:', stageId);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error fetching stage progress from API:', error);
+      return null;
+    }
   }
 
   // ====== Learning Progress Methods ======
@@ -1772,3 +2055,9 @@ class ProgressManager {
 }
 
 export const progressManager = new ProgressManager();
+
+// Export debug function for development
+export const debugProgressSystem = async () => {
+  progressManager.debugProgress();
+  await progressManager.recalculateTotalStars();
+};
