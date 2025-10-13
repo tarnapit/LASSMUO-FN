@@ -27,10 +27,20 @@ export default function EnhancedResultsComponent({
   const [displayStars, setDisplayStars] = useState(0);
 
   // Calculate results
-  const percentage = (score / totalQuestions) * 100;
-  const starsEarned = percentage >= 90 ? 3 : percentage >= 70 ? 2 : percentage >= 50 ? 1 : 0;
+  const percentage = Math.min((score / totalQuestions) * 100, 100); // Cap at 100%
+  
+  // Dynamic star calculation based on actual score performance
+  let starsEarned = 0;
+  if (score === totalQuestions) {
+    starsEarned = 3; // Perfect score = 3 stars
+  } else if (score >= Math.ceil(totalQuestions * 0.8)) {
+    starsEarned = 2; // 80%+ = 2 stars
+  } else if (score >= Math.ceil(totalQuestions * 0.5)) {
+    starsEarned = 1; // 50%+ = 1 star
+  }
+  
   const isPassed = score > 0;
-  const pointsEarned = Math.floor((percentage / 100) * stageInfo.rewards.points);
+  const pointsEarned = Math.floor((percentage / 100) * (stageInfo.stage.rewards?.points || 100));
 
   // Animation sequence
   useEffect(() => {
@@ -41,12 +51,13 @@ export default function EnhancedResultsComponent({
         // Animate score counting
         let currentScore = 0;
         const scoreInterval = setInterval(() => {
-          currentScore++;
-          setDisplayScore(currentScore);
-          if (currentScore >= score) {
+          if (currentScore < score) {
+            currentScore++;
+            setDisplayScore(currentScore);
+          } else {
             clearInterval(scoreInterval);
           }
-        }, 100);
+        }, Math.max(50, 500 / score)); // Adjust speed based on score
       },
       () => {
         // Animate stars
@@ -104,7 +115,7 @@ export default function EnhancedResultsComponent({
             transform transition-all duration-1000 
             ${animationPhase >= 1 ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}
           `}>
-            <div className="text-8xl mb-4 animate-bounce">{stageInfo.character.avatar}</div>
+            <div className="text-8xl mb-4 animate-bounce">{stageInfo.character?.avatar || "🚀"}</div>
             <h1 className={`text-4xl font-bold mb-4 ${performance.color}`}>
               {isPassed ? "ยอดเยี่ยม!" : "เกือบได้แล้ว!"}
             </h1>
@@ -114,7 +125,10 @@ export default function EnhancedResultsComponent({
             
             <div className="bg-slate-800/50 rounded-xl p-6 backdrop-blur-sm">
               <p className="text-white text-lg">
-                {isPassed ? stageInfo.character.completionMessage : "คุณต้องได้อย่างน้อย 1 คะแนนเพื่อผ่านด่าน ลองใหม่อีกครั้งนะ!"}
+                {isPassed 
+                  ? (stageInfo.character?.completionMessage || "ยอดเยี่ยม! คุณผ่านด่านนี้แล้ว!") 
+                  : "คุณต้องได้อย่างน้อย 1 คะแนนเพื่อผ่านด่าน ลองใหม่อีกครั้งนะ!"
+                }
               </p>
             </div>
           </div>
@@ -224,16 +238,16 @@ export default function EnhancedResultsComponent({
                   <span className="text-3xl">⭐</span>
                   <span className="text-lg">ดาว: +{starsEarned}</span>
                 </div>
-                {stageInfo.rewards.badges && stageInfo.rewards.badges.length > 0 && (
+                {stageInfo.stage.rewards?.badges && stageInfo.stage.rewards.badges.length > 0 && (
                   <div className="flex items-center space-x-3 justify-center md:justify-start">
                     <span className="text-3xl">🏅</span>
-                    <span className="text-lg">เหรียญ: {stageInfo.rewards.badges.join(', ')}</span>
+                    <span className="text-lg">เหรียญ: {stageInfo.stage.rewards.badges.join(', ')}</span>
                   </div>
                 )}
-                {stageInfo.rewards.unlocksStages && stageInfo.rewards.unlocksStages.length > 0 && (
+                {stageInfo.stage.rewards?.unlocksStages && stageInfo.stage.rewards.unlocksStages.length > 0 && (
                   <div className="flex items-center space-x-3 justify-center md:justify-start">
                     <span className="text-3xl">🔓</span>
-                    <span className="text-lg">ปลดล็อกด่าน: {stageInfo.rewards.unlocksStages.join(', ')}</span>
+                    <span className="text-lg">ปลดล็อกด่าน: {stageInfo.stage.rewards.unlocksStages.join(', ')}</span>
                   </div>
                 )}
               </div>

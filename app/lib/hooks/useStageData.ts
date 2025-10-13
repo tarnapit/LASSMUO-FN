@@ -107,13 +107,34 @@ export function useStageById(stageId: number) {
         setLoading(true);
         setError(null);
 
-        const response = await stageService.getStageById(stageId);
+        // Since backend doesn't have /stage/{id} endpoint, get all stages and filter
+        console.log('Fetching stage by ID from all stages...');
+        const response = await stageService.getAllStages();
         
-        if (!response.success || !response.data) {
-          throw new Error('Stage not found');
+        // Parse the response to get stages array
+        let stagesData;
+        const responseAny = response as any;
+        
+        if (responseAny.stages && Array.isArray(responseAny.stages)) {
+          stagesData = responseAny.stages;
+        } else if (responseAny.data && Array.isArray(responseAny.data)) {
+          stagesData = responseAny.data;
+        } else if (Array.isArray(responseAny)) {
+          stagesData = responseAny;
+        } else {
+          throw new Error('No stages data received from API');
         }
 
-        setStage(response.data);
+        // Find the specific stage by ID
+        const foundStage = stagesData.find((stage: any) => stage.id === stageId);
+        
+        if (foundStage) {
+          console.log('Stage found successfully:', foundStage);
+          setStage(foundStage);
+          setError(null);
+        } else {
+          throw new Error(`Stage with ID ${stageId} not found`);
+        }
         
       } catch (err) {
         console.error('Error fetching stage:', err);
@@ -124,8 +145,11 @@ export function useStageById(stageId: number) {
           const { stageData } = require('../../data/stages');
           const mockStage = stageData[stageId];
           if (mockStage) {
+            console.log('Using mock stage data for ID:', stageId);
             setStage(mockStage);
             setError(null);
+          } else {
+            console.error('Mock stage not found for ID:', stageId);
           }
         } catch (fallbackError) {
           console.error('Failed to load fallback stage data:', fallbackError);

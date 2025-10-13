@@ -168,13 +168,21 @@ export default function StageDetailPage() {
   // Load questions based on stage
   useEffect(() => {
     if (stage) {
-      // For now, load questions from data/stages as fallback
-      // Later this can be connected to questions API
+      // Check if stage has questions (from API)
+      const stageAny = stage as any;
+      if (stageAny.questions && Array.isArray(stageAny.questions)) {
+        setQuestions(stageAny.questions);
+        return;
+      }
+      
+      // Fallback: Load questions from mock data
       try {
         const { stageData } = require('../../data/stages');
         const stageInfo = stageData[stageId];
         if (stageInfo?.questions) {
           setQuestions(stageInfo.questions);
+        } else {
+          setQuestions([]);
         }
       } catch (error) {
         console.warn('Could not load questions from fallback data:', error);
@@ -229,16 +237,31 @@ export default function StageDetailPage() {
     setTimeout(() => setGameState('quiz'), 2000);
   };
 
-  const handleQuizComplete = async (results: any) => {
+  const handleQuizComplete = async (results: {
+    score: number;
+    totalQuestions: number;
+    time: string;
+    answers: boolean[];
+    percentage: number;
+  }) => {
     console.log('Quiz completed with results:', results);
     
     // Record attempt
     if (currentUser?.id) {
       await recordAttempt(stageId, results.score);
       
-      // Complete stage if passed
-      if (results.score >= 60) { // Assuming 60% pass rate
-        const stars = results.score >= 90 ? 3 : results.score >= 75 ? 2 : 1;
+      // Complete stage if passed (score > 0)
+      if (results.score > 0) {
+        // Calculate stars based on score percentage
+        let stars = 0;
+        if (results.score === results.totalQuestions) {
+          stars = 3; // Perfect score = 3 stars
+        } else if (results.score >= Math.ceil(results.totalQuestions * 0.8)) {
+          stars = 2; // 80%+ = 2 stars
+        } else if (results.score >= Math.ceil(results.totalQuestions * 0.5)) {
+          stars = 1; // 50%+ = 1 star
+        }
+        
         await completeStage(stageId, results.score, stars, stage.xpReward || 100);
       }
       
@@ -311,29 +334,50 @@ export default function StageDetailPage() {
 
     case 'results':
       if (quizResults) {
-        // Create a mock StageData for compatibility
+        // Create a proper StageData structure for compatibility
         const stageInfo = {
-          stage: stageId,
-          id: stage.id,
-          title: stage.title,
-          description: stage.description,
-          difficulty: stage.difficulty,
-          estimatedTime: stage.estimatedTime,
-          thumbnail: stage.thumbnail || "🌌",
-          rewards: stage.rewards || {
-            stars: 3,
-            points: stage.xpReward || 100,
-            badges: [],
-            unlocksStages: []
+          stage: {
+            id: stage.id,
+            title: stage.title,
+            description: stage.description,
+            difficulty: stage.difficulty,
+            estimatedTime: stage.estimatedTime,
+            thumbnail: stage.thumbnail || "🌌",
+            totalStars: stage.totalStars || 3,
+            xpReward: stage.xpReward || 100,
+            streakBonus: stage.streakBonus || false,
+            healthSystem: stage.healthSystem || false,
+            rewards: stage.rewards || {
+              stars: 3,
+              points: stage.xpReward || 100,
+              badges: [],
+              unlocksStages: []
+            },
+            maxStars: stage.maxStars || 3,
+            requiredStarsToUnlockNext: stage.requiredStarsToUnlockNext || 0,
+            createdAt: stage.createdAt || new Date().toISOString(),
+            updatedAt: stage.updatedAt || new Date().toISOString()
           },
           prerequisites: [],
           questions: questions,
-          character: character
+          character: character ? {
+            id: 1,
+            stageId: stage.id,
+            name: character.name,
+            avatar: character.avatar,
+            introduction: character.introduction,
+            learningContent: character.learningContent,
+            completionMessage: character.completionMessage,
+            encouragements: character.encouragements || [],
+            hints: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          } : undefined
         };
         
         return (
           <EnhancedResultsComponent
-            stageInfo={stageInfo as any}
+            stageInfo={stageInfo}
             score={quizResults.score}
             totalQuestions={quizResults.totalQuestions || questions.length}
             time={quizResults.time || "0:00"}
