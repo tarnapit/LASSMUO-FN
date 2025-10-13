@@ -75,7 +75,16 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
           const apiResponse = await userStageProgressService.getUserProgress(userId.toString());
           
           // Check if response has data
-          const progressData = apiResponse?.data || apiResponse;
+          let progressData = null;
+          if (apiResponse?.success && Array.isArray(apiResponse.data)) {
+            progressData = apiResponse.data;
+          } else if (Array.isArray(apiResponse)) {
+            // Sometimes the response is directly an array
+            progressData = apiResponse;
+          } else if (apiResponse?.data && Array.isArray(apiResponse.data)) {
+            progressData = apiResponse.data;
+          }
+          
           if (progressData && Array.isArray(progressData)) {
             console.log('API progress loaded:', progressData);
             
@@ -101,7 +110,7 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
               };
             });
           } else {
-            console.log('No API progress data found, using local data only');
+            console.log('No API progress data found or invalid format, using local data only');
           }
         } catch (apiError) {
           console.warn('Failed to load progress from API, using local data only:', apiError);
@@ -182,7 +191,7 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
       // Update API if user is logged in
       if (userId) {
         try {
-          const apiData = {
+          const apiData: any = {
             userId: userId.toString(),
             stageId,
             isCompleted: updatedProgress.isCompleted,
@@ -194,14 +203,23 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
             completedAt: updatedProgress.isCompleted ? new Date().toISOString() : undefined,
           };
 
+          // Remove undefined values
+          Object.keys(apiData).forEach(key => {
+            if (apiData[key] === undefined) {
+              delete apiData[key];
+            }
+          });
+
           const response = await userStageProgressService.upsertProgress(
             userId.toString(),
             stageId,
             apiData
           );
 
-          if (!response.success) {
-            console.warn('Failed to sync progress to API:', response.error);
+          if (!response?.success) {
+            console.warn('Failed to sync progress to API:', response?.error || 'Unknown error');
+          } else {
+            console.log('✅ Progress synced to API successfully');
           }
         } catch (apiError) {
           console.warn('API sync failed, progress saved locally only:', apiError);

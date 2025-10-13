@@ -49,10 +49,22 @@ export class UserStageProgressService {
   }
 
   /**
-   * Get all user stage progress records
+   * Get all user stage progress records (admin only)
+   * For regular users, use getUserProgress() instead
    */
   async getAllProgress(): Promise<ApiResponse<UserStageProgress[]>> {
-    return apiClient.get<ApiResponse<UserStageProgress[]>>(this.endpoint);
+    try {
+      // Try without userId first (admin endpoint)
+      return await apiClient.get<ApiResponse<UserStageProgress[]>>(this.endpoint);
+    } catch (error) {
+      // If fails, might need userId - return empty array for now
+      console.warn('getAllProgress failed, might require admin privileges:', error);
+      return {
+        success: false,
+        error: 'getAllProgress requires admin privileges or userId parameter',
+        data: []
+      } as ApiResponse<UserStageProgress[]>;
+    }
   }
 
   /**
@@ -99,28 +111,81 @@ export class UserStageProgressService {
 
   /**
    * Update or create user stage progress (upsert)
+   * First try to get existing progress, then update or create accordingly
    */
   async upsertProgress(userId: string, stageId: number, progressData: UpdateUserStageProgressRequest): Promise<ApiResponse<UserStageProgress>> {
-    return apiClient.post<ApiResponse<UserStageProgress>>(`${this.endpoint}/upsert`, {
-      userId,
-      stageId,
-      ...progressData
-    });
+    try {
+      console.log('🔄 Upsert: Checking existing progress for user:', userId, 'stage:', stageId);
+      
+      // First, try to find existing progress for this user and stage
+      const existingProgressResponse = await this.getUserStageProgress(userId, stageId);
+      
+      if (existingProgressResponse.success && existingProgressResponse.data) {
+        // If exists, update it
+        const existingProgress = existingProgressResponse.data;
+        console.log('✅ Found existing progress, updating:', existingProgress.id);
+        return await this.updateProgress(existingProgress.id, progressData);
+      } else {
+        // If doesn't exist, create new
+        console.log('➕ No existing progress found, creating new for user:', userId, 'stage:', stageId);
+        const createData: CreateUserStageProgressRequest = {
+          userId,
+          stageId,
+          isCompleted: false,
+          currentScore: 0,
+          bestScore: 0,
+          starsEarned: 0,
+          attempts: 0,
+          ...progressData
+        };
+        
+        try {
+          return await this.createProgress(createData);
+        } catch (createError) {
+          // If create fails due to unique constraint (race condition), try to get and update
+          if (createError instanceof Error && 
+              (createError.message.includes('Unique constraint') || 
+               createError.message.includes('P2002'))) {
+            
+            console.log('⚠️ Create failed due to unique constraint (race condition), retrying get and update...');
+            
+            // Wait a bit for the other operation to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Try to get existing progress again
+            const retryResponse = await this.getUserStageProgress(userId, stageId);
+            
+            if (retryResponse.success && retryResponse.data) {
+              console.log('✅ Found existing progress on retry, updating:', retryResponse.data.id);
+              return await this.updateProgress(retryResponse.data.id, progressData);
+            } else {
+              console.error('❌ Still no existing progress found after unique constraint error');
+              throw createError;
+            }
+          } else {
+            throw createError;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Upsert failed completely:', error);
+      throw error;
+    }
   }
 
   /**
    * Mark stage as completed
    */
   async completeStage(userId: string, stageId: number, finalScore: number, starsEarned: number): Promise<ApiResponse<UserStageProgress>> {
-    return apiClient.patch<ApiResponse<UserStageProgress>>(`${this.endpoint}/complete`, {
-      userId,
-      stageId,
+    const progressData: UpdateUserStageProgressRequest = {
       isCompleted: true,
       currentScore: finalScore,
       bestScore: finalScore,
       starsEarned,
       completedAt: new Date().toISOString()
-    });
+    };
+    
+    return this.upsertProgress(userId, stageId, progressData);
   }
 
   /**
@@ -129,24 +194,68 @@ export class UserStageProgressService {
   async recordAttempt(userId: string, stageId: number, score: number): Promise<ApiResponse<UserStageProgress>> {
     const currentTime = new Date().toISOString();
     
-    return apiClient.patch<ApiResponse<UserStageProgress>>(`${this.endpoint}/attempt`, {
-      userId,
-      stageId,
-      currentScore: score,
-      lastAttemptAt: currentTime,
-      $inc: { attempts: 1 } // Increment attempts counter
-    });
+    try {
+      // Get existing progress first
+      const existingResponse = await this.getUserStageProgress(userId, stageId);
+      
+      if (existingResponse.success && existingResponse.data) {
+        const existing = existingResponse.data;
+        const progressData: UpdateUserStageProgressRequest = {
+          currentScore: score,
+          bestScore: Math.max(existing.bestScore || 0, score),
+          attempts: (existing.attempts || 0) + 1,
+          lastAttemptAt: currentTime
+        };
+        
+        return this.updateProgress(existing.id, progressData);
+      } else {
+        // Create new if doesn't exist
+        const progressData: UpdateUserStageProgressRequest = {
+          currentScore: score,
+          bestScore: score,
+          attempts: 1,
+          lastAttemptAt: currentTime
+        };
+        
+        return this.upsertProgress(userId, stageId, progressData);
+      }
+    } catch (error) {
+      console.error('Record attempt failed:', error);
+      throw error;
+    }
   }
 
   /**
    * Update best score if current score is better
    */
   async updateBestScore(userId: string, stageId: number, newScore: number): Promise<ApiResponse<UserStageProgress>> {
-    return apiClient.patch<ApiResponse<UserStageProgress>>(`${this.endpoint}/best-score`, {
-      userId,
-      stageId,
-      newScore
-    });
+    try {
+      const existingResponse = await this.getUserStageProgress(userId, stageId);
+      
+      if (existingResponse.success && existingResponse.data) {
+        const existing = existingResponse.data;
+        if (newScore > (existing.bestScore || 0)) {
+          const progressData: UpdateUserStageProgressRequest = {
+            bestScore: newScore,
+            currentScore: newScore
+          };
+          
+          return this.updateProgress(existing.id, progressData);
+        }
+        
+        // Return existing as success response if no update needed
+        return { success: true, data: existing } as ApiResponse<UserStageProgress>;
+      } else {
+        // Create new if doesn't exist
+        return this.upsertProgress(userId, stageId, {
+          currentScore: newScore,
+          bestScore: newScore
+        });
+      }
+    } catch (error) {
+      console.error('Update best score failed:', error);
+      throw error;
+    }
   }
 
   /**
@@ -160,17 +269,17 @@ export class UserStageProgressService {
    * Reset user progress for a stage
    */
   async resetStageProgress(userId: string, stageId: number): Promise<ApiResponse<UserStageProgress>> {
-    return apiClient.patch<ApiResponse<UserStageProgress>>(`${this.endpoint}/reset`, {
-      userId,
-      stageId,
+    const progressData: UpdateUserStageProgressRequest = {
       isCompleted: false,
       currentScore: 0,
       bestScore: 0,
       starsEarned: 0,
       attempts: 0,
-      lastAttemptAt: null,
-      completedAt: null
-    });
+      lastAttemptAt: undefined,
+      completedAt: undefined
+    };
+    
+    return this.upsertProgress(userId, stageId, progressData);
   }
 
   /**

@@ -9,6 +9,7 @@ import {
   questionService,
   userService,
   userCourseProgressService,
+  userStageProgressService,
   authService 
 } from '../../lib/api/services';
 
@@ -137,6 +138,32 @@ export default function ApiTestPage() {
         results.userCourseProgress = { success: true, data: userProgress };
       } catch (error) {
         results.userCourseProgress = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test User Stage Progress APIs (New)
+      console.log('Testing User Stage Progress APIs...');
+      try {
+        // Try to get current user's progress instead of all progress
+        const currentUser = authService.getCurrentUser();
+        if (currentUser?.id) {
+          console.log('Testing with authenticated user:', currentUser.id);
+          const userStageProgress = await userStageProgressService.getUserProgress(currentUser.id);
+          results.userStageProgress = { 
+            success: true, 
+            data: userStageProgress,
+            note: `Progress for user: ${currentUser.email}`
+          };
+        } else {
+          console.log('No authenticated user, testing getAllProgress...');
+          const userStageProgress = await userStageProgressService.getAllProgress();
+          results.userStageProgress = { success: true, data: userStageProgress };
+        }
+      } catch (error) {
+        results.userStageProgress = { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          note: 'Try logging in first for user-specific progress'
+        };
       }
 
       // Test Authentication (without credentials to avoid errors)
@@ -407,6 +434,105 @@ export default function ApiTestPage() {
     }
   };
 
+  const testUserStageProgress = async () => {
+    setLoading(true);
+    
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser?.id) {
+        alert('❌ Please login first to test User Stage Progress APIs');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Testing User Stage Progress APIs with user:', currentUser.id);
+      
+      // Test 1: Get user progress
+      console.log('1. Testing getUserProgress...');
+      const userProgressResponse = await userStageProgressService.getUserProgress(currentUser.id);
+      console.log('User progress response:', userProgressResponse);
+      
+      // Test 2: Create new progress (for stage 1)
+      console.log('2. Testing createProgress...');
+      try {
+        const createResponse = await userStageProgressService.createProgress({
+          userId: currentUser.id,
+          stageId: 1,
+          isCompleted: false,
+          currentScore: 0,
+          bestScore: 0,
+          starsEarned: 0,
+          attempts: 1
+        });
+        console.log('Create progress response:', createResponse);
+      } catch (createError) {
+        console.log('Create progress error (might already exist):', createError);
+      }
+      
+      // Test 3: Test upsert progress
+      console.log('3. Testing upsertProgress...');
+      const upsertResponse = await userStageProgressService.upsertProgress(
+        currentUser.id,
+        1,
+        {
+          currentScore: 85,
+          bestScore: 85,
+          starsEarned: 3,
+          attempts: 2,
+          isCompleted: true,
+          completedAt: new Date().toISOString()
+        }
+      );
+      console.log('Upsert progress response:', upsertResponse);
+      
+      // Test 4: Test recordAttempt
+      console.log('4. Testing recordAttempt...');
+      const attemptResponse = await userStageProgressService.recordAttempt(
+        currentUser.id,
+        1,
+        90
+      );
+      console.log('Record attempt response:', attemptResponse);
+      
+      // Test 5: Test completeStage
+      console.log('5. Testing completeStage...');
+      const completeResponse = await userStageProgressService.completeStage(
+        currentUser.id,
+        1,
+        95,
+        3
+      );
+      console.log('Complete stage response:', completeResponse);
+      
+      // Final check - get updated progress
+      console.log('6. Getting final user progress...');
+      const finalProgressResponse = await userStageProgressService.getUserProgress(currentUser.id);
+      console.log('Final user progress:', finalProgressResponse);
+      
+      let resultMessage = '✅ User Stage Progress API Tests Completed!\n\n';
+      resultMessage += `🔍 Get User Progress: ${userProgressResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `🆕 Upsert Progress: ${upsertResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `📊 Record Attempt: ${attemptResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `🏆 Complete Stage: ${completeResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `📈 Final Progress: ${finalProgressResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      
+      if (finalProgressResponse?.data) {
+        resultMessage += `\n📋 Current Progress Count: ${Array.isArray(finalProgressResponse.data) ? finalProgressResponse.data.length : 'Unknown'}`;
+      }
+      
+      alert(resultMessage);
+      
+      // Refresh main test results
+      await runTests();
+      
+    } catch (error) {
+      console.error('User Stage Progress test failed:', error);
+      alert(`❌ User Stage Progress test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setLoading(false);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 py-8">
       <div className="max-w-7xl mx-auto px-4 space-y-6">
@@ -476,6 +602,15 @@ export default function ApiTestPage() {
             >
               <span>🔍</span>
               Test Postest by Course
+            </button>
+
+            <button
+              onClick={testUserStageProgress}
+              disabled={loading}
+              className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>📊</span>
+              Test Stage Progress
             </button>
             
             <button
