@@ -31,6 +31,7 @@ export interface UseStageProgressManagerReturn {
   resetStageProgress: (stageId: number) => Promise<boolean>;
   syncWithAPI: () => Promise<boolean>;
   refreshProgress: () => void;
+  forceUnlockNextStage: (completedStageId: number) => Promise<boolean>;
 }
 
 export function useStageProgressManager(userId?: string | number): UseStageProgressManagerReturn {
@@ -109,6 +110,29 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
                 achievements: existingProgress.achievements || [],
               };
             });
+            
+            // Process unlock logic for consecutive stages based on completion
+            const allStageIds = Object.keys(combinedProgress).map(id => parseInt(id)).sort((a, b) => a - b);
+            
+            // Ensure stages are unlocked in sequence based on previous completions
+            for (let i = 0; i < allStageIds.length; i++) {
+              const currentStageId = allStageIds[i];
+              const currentStage = combinedProgress[currentStageId];
+              
+              if (currentStageId === 1) {
+                // Stage 1 is always unlocked
+                currentStage.isUnlocked = true;
+              } else {
+                // Check if previous stage is completed
+                const previousStageId = currentStageId - 1;
+                const previousStage = combinedProgress[previousStageId];
+                
+                if (previousStage && (previousStage.isCompleted || (previousStage.stars && previousStage.stars >= 1))) {
+                  currentStage.isUnlocked = true;
+                  console.log(`🔓 Stage ${currentStageId} unlocked because stage ${previousStageId} is completed`);
+                }
+              }
+            }
           } else {
             console.log('No API progress data found or invalid format, using local data only');
           }
@@ -243,21 +267,29 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
     stars: number,
     xpEarned: number
   ): Promise<boolean> => {
-    const progressUpdate: Partial<StageProgressData> = {
-      isCompleted: true,
-      bestScore: Math.max(progress[stageId]?.bestScore || 0, score),
-      stars: Math.max(progress[stageId]?.stars || 0, stars),
-      xpEarned: (progress[stageId]?.xpEarned || 0) + xpEarned,
-      lastAttempt: new Date(),
-    };
+    try {
+      const currentProgress = progress[stageId] || {} as StageProgressData;
+      
+      const progressUpdate: Partial<StageProgressData> = {
+        isCompleted: true,
+        bestScore: Math.max(currentProgress.bestScore || 0, score),
+        stars: Math.max(currentProgress.stars || 0, stars),
+        xpEarned: (currentProgress.xpEarned || 0) + xpEarned,
+        lastAttempt: new Date(),
+        attempts: (currentProgress.attempts || 0) + 1,
+      };
 
-    // Unlock next stage
-    const nextStageId = stageId + 1;
-    if (stars >= 1) { // Need at least 1 star to unlock next stage
-      setProgress(prev => ({
-        ...prev,
-        [nextStageId]: {
-          ...prev[nextStageId],
+      // Update current stage progress first
+      const updateSuccess = await updateStageProgress(stageId, progressUpdate);
+      
+      if (updateSuccess && stars >= 1) {
+        // Unlock next stage if earned at least 1 star
+        const nextStageId = stageId + 1;
+        
+        console.log(`🔓 Unlocking next stage ${nextStageId} after completing stage ${stageId} with ${stars} stars`);
+        
+        // Create or update next stage progress to be unlocked
+        const nextStageUpdate: Partial<StageProgressData> = {
           stageId: nextStageId,
           isUnlocked: true,
           isCompleted: false,
@@ -270,12 +302,62 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
           mistakeCount: 0,
           hintsUsed: 0,
           achievements: [],
-        }
-      }));
-    }
+        };
 
-    return updateStageProgress(stageId, progressUpdate);
-  }, [progress, updateStageProgress]);
+        // Update local state immediately for next stage
+        setProgress(prev => ({
+          ...prev,
+          [nextStageId]: {
+            ...prev[nextStageId],
+            ...nextStageUpdate
+          }
+        }));
+
+        // Also save to localStorage immediately
+        const localProgress = progressManager.getProgress();
+        if (!localProgress.stages) localProgress.stages = {};
+        localProgress.stages[nextStageId] = {
+          ...localProgress.stages[nextStageId],
+          ...nextStageUpdate
+        };
+        progressManager.saveProgress(localProgress);
+
+        // Try to sync with API
+        if (userId) {
+          try {
+            console.log(`🔄 Syncing unlock of stage ${nextStageId} to API...`);
+            
+            // Create minimal progress record to unlock the stage
+            const unlockApiData = {
+              userId: userId.toString(),
+              stageId: nextStageId,
+              isCompleted: false,
+              currentScore: 0,
+              bestScore: 0,
+              starsEarned: 0,
+              attempts: 0,
+            };
+
+            await userStageProgressService.upsertProgress(
+              userId.toString(),
+              nextStageId,
+              unlockApiData
+            );
+            
+            console.log(`✅ Stage ${nextStageId} unlock synced to API successfully`);
+          } catch (apiError) {
+            console.warn(`⚠️ Failed to sync stage ${nextStageId} unlock to API, but saved locally:`, apiError);
+          }
+        }
+      }
+
+      return updateSuccess;
+    } catch (err) {
+      console.error('Error completing stage:', err);
+      setError(err instanceof Error ? err.message : 'Failed to complete stage');
+      return false;
+    }
+  }, [progress, updateStageProgress, userId]);
 
   // Record attempt
   const recordAttempt = useCallback(async (
@@ -330,6 +412,35 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
     loadProgress();
   }, [loadProgress]);
 
+  // Force unlock next stage (utility function)
+  const forceUnlockNextStage = useCallback(async (completedStageId: number): Promise<boolean> => {
+    const nextStageId = completedStageId + 1;
+    
+    try {
+      console.log(`🔓 Force unlocking stage ${nextStageId} after completing stage ${completedStageId}`);
+      
+      const nextStageUpdate: Partial<StageProgressData> = {
+        stageId: nextStageId,
+        isUnlocked: true,
+        isCompleted: false,
+        stars: 0,
+        bestScore: 0,
+        attempts: 0,
+        xpEarned: 0,
+        perfectRuns: 0,
+        averageTime: 0,
+        mistakeCount: 0,
+        hintsUsed: 0,
+        achievements: [],
+      };
+
+      return await updateStageProgress(nextStageId, nextStageUpdate);
+    } catch (err) {
+      console.error('Error force unlocking next stage:', err);
+      return false;
+    }
+  }, [updateStageProgress]);
+
   return {
     progress,
     loading,
@@ -340,5 +451,6 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
     resetStageProgress,
     syncWithAPI,
     refreshProgress,
+    forceUnlockNextStage,
   };
 }

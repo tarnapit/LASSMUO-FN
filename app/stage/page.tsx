@@ -22,13 +22,36 @@ export default function StagePage() {
     refreshProgress: refreshStageProgress,
     updateStageProgress,
     completeStage,
-    recordAttempt
+    recordAttempt,
+    forceUnlockNextStage
   } = useStageProgressManager(currentUser?.id);
   
   // ดึงข้อมูลด่านจาก API และผสมกับความคืบหน้าของผู้เล่น
   const processedStages = stages?.map((stage: any) => {
     const progress = stageProgress[stage.id];
-    const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
+    
+    // ตรวจสอบการปลดล็อกด่าน
+    let isUnlocked = false;
+    if (stage.id === 1) {
+      // ด่าน 1 ปลดล็อกเสมอ
+      isUnlocked = true;
+    } else {
+      // ด่านอื่นๆ ปลดล็อกได้เมื่อ:
+      // 1. มีข้อมูล progress แล้วและถูกปลดล็อกแล้ว หรือ
+      // 2. ด่านก่อนหน้าผ่านแล้ว (มีอย่างน้อย 1 ดาว)
+      const previousStageProgress = stageProgress[stage.id - 1];
+      const isPreviousStageCompleted = previousStageProgress?.isCompleted || (previousStageProgress?.stars && previousStageProgress.stars >= 1);
+      
+      isUnlocked = progress?.isUnlocked || isPreviousStageCompleted || false;
+      
+      // Auto-unlock if previous stage is completed but current stage is not yet unlocked
+      if (isPreviousStageCompleted && !progress?.isUnlocked && currentUser?.id) {
+        console.log(`🔓 Auto-unlocking stage ${stage.id} because previous stage is completed`);
+        setTimeout(() => {
+          forceUnlockNextStage(stage.id - 1);
+        }, 100);
+      }
+    }
 
     return {
       ...stage,
@@ -67,6 +90,34 @@ export default function StagePage() {
     refreshStageProgress();
     // console.log("Stage page progress refreshed"); // Reduce logging
   }, [refreshStageProgress]);
+
+  // Function to check and unlock eligible stages
+  const checkAndUnlockStages = useCallback(async () => {
+    if (!currentUser?.id || !finalStages.length) return;
+    
+    let hasUpdates = false;
+    
+    for (let i = 1; i < finalStages.length; i++) {
+      const currentStage = finalStages[i];
+      const previousStage = finalStages[i - 1];
+      
+      // Check if previous stage is completed but current stage is not unlocked
+      const shouldBeUnlocked = previousStage.isCompleted || (previousStage.stars && previousStage.stars >= 1);
+      
+      if (shouldBeUnlocked && !currentStage.isUnlocked) {
+        console.log(`🔓 Unlocking stage ${currentStage.id} because stage ${previousStage.id} is completed`);
+        await forceUnlockNextStage(previousStage.id);
+        hasUpdates = true;
+      }
+    }
+    
+    if (hasUpdates) {
+      // Refresh after unlocking
+      setTimeout(() => {
+        refreshProgress();
+      }, 500);
+    }
+  }, [finalStages, currentUser?.id, forceUnlockNextStage, refreshProgress]);
 
   // Listen for focus event เพื่ออัพเดท progress เมื่อกลับมาจากหน้าเล่นเกม (ลด frequency)
   useEffect(() => {
@@ -116,6 +167,13 @@ export default function StagePage() {
       clearTimeout(refreshTimeout);
     };
   }, [refreshProgress]);
+
+  // Check and unlock stages when data is loaded
+  useEffect(() => {
+    if (!loading && finalStages.length > 0 && currentUser?.id) {
+      checkAndUnlockStages();
+    }
+  }, [loading, finalStages.length, currentUser?.id, checkAndUnlockStages]);
 
   // Debug: แสดงข้อมูล progress ในคอนโซล (ลดความถี่)
   useEffect(() => {
