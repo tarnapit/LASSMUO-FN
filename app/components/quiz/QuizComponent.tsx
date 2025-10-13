@@ -278,17 +278,53 @@ export default function EnhancedQuizComponent({
         break;
 
       case 'MATCHING':
+      case 'MATCH_PAIRS':  // Support both MATCHING and MATCH_PAIRS
         const matchQuestion = currentQuestion as any;
+        console.log('🔍 MATCH_PAIRS Question Debug:', {
+          question: matchQuestion.question,
+          payload: matchQuestion.payload,
+          pairs: matchQuestion.payload?.pairs,
+          fullQuestion: matchQuestion
+        });
+
+        let matchPairsData = null;
+
+        // Handle different payload formats for matching questions
         if (matchQuestion.payload?.pairs) {
+          // Standard format: payload has pairs array
+          matchPairsData = matchQuestion.payload.pairs;
+        } else if (Array.isArray(matchQuestion.payload) && matchQuestion.payload.length > 0) {
+          // API format: payload is array, take first element which should contain pairs
+          const payloadData = matchQuestion.payload[0];
+          console.log('🔍 Match Pairs API Payload Data:', payloadData);
+          
+          if (payloadData?.pairs) {
+            matchPairsData = payloadData.pairs;
+          } else if (Array.isArray(payloadData)) {
+            // Sometimes pairs might be directly in the array
+            matchPairsData = payloadData;
+          }
+        }
+
+        if (matchPairsData) {
+          console.log('✅ Using match pairs data:', matchPairsData);
           return (
             <EnhancedMatchPairsQuestion
-              pairs={matchQuestion.payload.pairs}
+              pairs={matchPairsData}
               onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
               question={matchQuestion.question}
             />
           );
+        } else {
+          console.error('🚨 MATCH_PAIRS payload validation failed:', {
+            hasPairs: !!matchQuestion.payload?.pairs,
+            isArray: Array.isArray(matchQuestion.payload),
+            arrayLength: Array.isArray(matchQuestion.payload) ? matchQuestion.payload.length : 0,
+            payloadKeys: Object.keys(matchQuestion.payload || {}),
+            payload: matchQuestion.payload
+          });
         }
         break;
 

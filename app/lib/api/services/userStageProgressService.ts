@@ -45,7 +45,41 @@ export class UserStageProgressService {
    * Create new user stage progress record
    */
   async createProgress(progressData: CreateUserStageProgressRequest): Promise<ApiResponse<UserStageProgress>> {
-    return apiClient.post<ApiResponse<UserStageProgress>>(this.endpoint, progressData);
+    try {
+      console.log('📤 Creating progress with data:', progressData);
+      const response = await apiClient.post<ApiResponse<UserStageProgress>>(this.endpoint, progressData);
+      console.log('📥 Create response:', response);
+      
+      // Handle different response formats
+      if (response && typeof response === 'object') {
+        // If response has success property, use it as is (ApiResponse format)
+        if (response.hasOwnProperty('success')) {
+          return response;
+        }
+        
+        // If response has message and data (Backend custom format)
+        if ((response as any).message && (response as any).data) {
+          console.log('🔄 Converting backend create format to ApiResponse');
+          return {
+            success: true,
+            data: (response as any).data
+          } as ApiResponse<UserStageProgress>;
+        }
+        
+        // If response is the data itself (direct from backend)
+        if (response.hasOwnProperty('id')) {
+          return {
+            success: true,
+            data: response as unknown as UserStageProgress
+          } as ApiResponse<UserStageProgress>;
+        }
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Create progress error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -126,7 +160,49 @@ export class UserStageProgressService {
    * Update user stage progress
    */
   async updateProgress(progressId: string, progressData: UpdateUserStageProgressRequest): Promise<ApiResponse<UserStageProgress>> {
-    return apiClient.put<ApiResponse<UserStageProgress>>(`${this.endpoint}/${progressId}`, progressData);
+    try {
+      console.log(`📤 Updating progress ${progressId} with data:`, progressData);
+      const response = await apiClient.put<ApiResponse<UserStageProgress>>(`${this.endpoint}/${progressId}`, progressData);
+      console.log('📥 Update response:', response);
+      
+      // Check if backend actually updated the data
+      const responseData: any = (response as any)?.data || response;
+      
+      console.log('🔍 UPDATE VERIFICATION:');
+      console.log('  📤 Sent data:', progressData);
+      console.log('  📥 Received data:', responseData);
+      console.log('  🔗 Full response structure:', JSON.stringify(response, null, 2));
+      
+      // Handle different response formats
+      if (response && typeof response === 'object') {
+        // If response has success property, use it as is (ApiResponse format)
+        if (response.hasOwnProperty('success')) {
+          return response;
+        }
+        
+        // If response has message and data (Backend custom format)
+        if ((response as any).message && (response as any).data) {
+          console.log('🔄 Converting backend update format to ApiResponse');
+          return {
+            success: true,
+            data: (response as any).data
+          } as ApiResponse<UserStageProgress>;
+        }
+        
+        // If response is the data itself (direct from backend)
+        if (response.hasOwnProperty('id')) {
+          return {
+            success: true,
+            data: response as unknown as UserStageProgress
+          } as ApiResponse<UserStageProgress>;
+        }
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('❌ Update progress error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -140,33 +216,53 @@ export class UserStageProgressService {
       // First, try to find existing progress for this user and stage
       const existingProgressResponse = await this.getUserStageProgress(userId, stageId);
       
-      // Handle null response or empty response
-      const hasExistingProgress = existingProgressResponse && 
-                                 existingProgressResponse.success && 
-                                 existingProgressResponse.data && 
-                                 existingProgressResponse.data !== null;
+      // Handle different response formats
+      let hasExistingProgress = false;
+      let existingProgress = null;
       
-      if (hasExistingProgress && existingProgressResponse.data) {
+      // Check if response has success property (ApiResponse format)
+      if (existingProgressResponse && existingProgressResponse.success && existingProgressResponse.data && existingProgressResponse.data !== null) {
+        hasExistingProgress = true;
+        existingProgress = existingProgressResponse.data;
+      }
+      // Check if response is direct data object (Backend direct format)
+      else if (existingProgressResponse && (existingProgressResponse as any).id && (existingProgressResponse as any).userId) {
+        hasExistingProgress = true;
+        existingProgress = existingProgressResponse as unknown as UserStageProgress;
+        console.log('📝 Found existing progress in direct format:', existingProgress);
+      }
+      
+      if (hasExistingProgress && existingProgress) {
         // If exists, update it
-        const existingProgress = existingProgressResponse.data;
         console.log('✅ Found existing progress, updating:', existingProgress.id);
-        return await this.updateProgress(existingProgress.id, progressData);
+        console.log('📥 Update data:', progressData);
+        
+        const updateResult = await this.updateProgress(existingProgress.id, progressData);
+        console.log('📤 Update result:', updateResult);
+        return updateResult;
       } else {
         // If doesn't exist, create new
         console.log('➕ No existing progress found, creating new for user:', userId, 'stage:', stageId);
+        console.log('📥 Progress data to create:', progressData);
+        
         const createData: CreateUserStageProgressRequest = {
           userId,
           stageId,
-          isCompleted: false,
-          currentScore: 0,
-          bestScore: 0,
-          starsEarned: 0,
-          attempts: 0,
-          ...progressData
+          isCompleted: progressData.isCompleted || false,
+          currentScore: progressData.currentScore || 0,
+          bestScore: progressData.bestScore || 0,
+          starsEarned: progressData.starsEarned || 0,
+          attempts: progressData.attempts || 0,
+          lastAttemptAt: progressData.lastAttemptAt,
+          completedAt: progressData.completedAt
         };
         
+        console.log('📤 Final create data:', createData);
+        
         try {
-          return await this.createProgress(createData);
+          const createResult = await this.createProgress(createData);
+          console.log('📤 Create result:', createResult);
+          return createResult;
         } catch (createError) {
           // If create fails due to unique constraint (race condition), try to get and update
           if (createError instanceof Error && 

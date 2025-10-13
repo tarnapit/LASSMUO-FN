@@ -216,8 +216,6 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
       if (userId) {
         try {
           const apiData: any = {
-            userId: userId.toString(),
-            stageId,
             isCompleted: updatedProgress.isCompleted,
             currentScore: updatedProgress.bestScore,
             bestScore: updatedProgress.bestScore,
@@ -234,16 +232,43 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
             }
           });
 
+          console.log(`🔄 Syncing progress to API for stage ${stageId}:`, {
+            userId: userId.toString(),
+            stageId,
+            data: apiData
+          });
+
           const response = await userStageProgressService.upsertProgress(
             userId.toString(),
             stageId,
             apiData
           );
 
-          if (!response?.success) {
-            console.warn('Failed to sync progress to API:', response?.error || 'Unknown error');
+          console.log('📥 API Response:', response);
+
+          // Check different success formats
+          let isSuccess = false;
+          
+          // Standard ApiResponse format
+          if (response?.success === true) {
+            isSuccess = true;
+          }
+          // Backend custom format: {message: "...", data: {...}, isUpdate: true}
+          else if (response && (response as any).message && (response as any).data) {
+            isSuccess = true;
+            console.log('✅ Backend custom format detected - treating as success');
+          }
+          // Direct data format: response has id property
+          else if (response && (response as any).id) {
+            isSuccess = true;
+            console.log('✅ Direct data format detected - treating as success');
+          }
+          
+          if (!isSuccess) {
+            console.warn('❌ Failed to sync progress to API:', response?.error || 'Unknown error');
+            console.warn('📋 Full response:', JSON.stringify(response, null, 2));
           } else {
-            console.log('✅ Progress synced to API successfully');
+            console.log('✅ Progress synced to API successfully:', (response as any)?.data || response);
           }
         } catch (apiError) {
           console.warn('API sync failed, progress saved locally only:', apiError);
@@ -329,14 +354,18 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
             
             // Create minimal progress record to unlock the stage
             const unlockApiData = {
-              userId: userId.toString(),
-              stageId: nextStageId,
               isCompleted: false,
               currentScore: 0,
               bestScore: 0,
               starsEarned: 0,
               attempts: 0,
             };
+
+            console.log(`📤 Unlocking stage ${nextStageId} with data:`, {
+              userId: userId.toString(),
+              stageId: nextStageId,
+              data: unlockApiData
+            });
 
             await userStageProgressService.upsertProgress(
               userId.toString(),
