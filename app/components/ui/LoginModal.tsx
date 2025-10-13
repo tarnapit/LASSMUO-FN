@@ -1,6 +1,6 @@
 "use client";
-import { useState } from 'react';
-import { X, User, Mail, LogIn, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, User, Mail, LogIn, UserPlus, Eye, EyeOff, Lock } from 'lucide-react';
 import { authManager, User as UserType } from '../../lib/auth';
 import { progressManager } from '../../lib/progress';
 
@@ -19,6 +19,44 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // ฟังก์ชันปิด modal พร้อม confirmation
+  const handleClose = () => {
+    const hasData = name.trim() || email.trim() || password.trim();
+    if (hasData && !isLoading) {
+      if (confirm('คุณต้องการปิดหน้าต่างนี้? ข้อมูลที่กรอกจะหายไป')) {
+        onClose();
+      }
+    } else {
+      onClose();
+    }
+  };
+
+  // เคลียร์ข้อมูลเมื่อเปิด modal ใหม่
+  useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setEmail('');
+      setPassword('');
+      setError('');
+      setShowPassword(false);
+      setIsLoading(false);
+    }
+  }, [isOpen]);
+
+  // Handle ESC key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        handleClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [isOpen, name, email, password, isLoading]);
 
   if (!isOpen) return null;
 
@@ -108,72 +146,81 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
     }
   };
 
-  const handleBackgroundClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
     <div
-      className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-      onClick={handleBackgroundClick}
+      className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
     >
       <div
-        className="bg-slate-800 rounded-xl p-6 w-full max-w-md border border-slate-700 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-gradient-to-br from-slate-800/95 to-slate-900/95 rounded-2xl p-8 w-full max-w-lg border border-slate-600/50 shadow-2xl backdrop-blur-sm ring-1 ring-white/5"
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-            {isSignUp ? <UserPlus size={24} /> : <LogIn size={24} />}
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+              {isSignUp ? <UserPlus size={24} className="text-white" /> : <LogIn size={24} className="text-white" />}
+            </div>
             {isSignUp ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
           </h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             title="ปิด"
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white hover:bg-slate-700/50 p-2 rounded-lg transition-all duration-200"
           >
             <X size={24} />
           </button>
         </div>
 
         {/* Info Message */}
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-          <p className="text-blue-200 text-sm">
-            💡 <strong>เก็บ Progress ของคุณ!</strong>
-            <br />
-            {isSignUp 
-              ? 'สมัครสมาชิกเพื่อเก็บความคืบหน้าการเรียนรู้ของคุณไว้ตลอดไป' 
-              : 'เข้าสู่ระบบเพื่อซิงค์ข้อมูลการเรียนรู้ของคุณ'
-            }
-          </p>
+        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-xl p-5 mb-6 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 backdrop-blur-sm"></div>
+          <div className="relative">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-blue-500/20 rounded-lg mt-0.5">
+                <span className="text-blue-300 text-lg">💡</span>
+              </div>
+              <div>
+                <h4 className="text-blue-200 font-semibold mb-1">เก็บ Progress ของคุณ!</h4>
+                <p className="text-blue-300/90 text-sm leading-relaxed">
+                  {isSignUp 
+                    ? 'สมัครสมาชิกเพื่อเก็บความคืบหน้าการเรียนรู้ของคุณไว้ตลอดไป' 
+                    : 'เข้าสู่ระบบเพื่อซิงค์ข้อมูลการเรียนรู้ของคุณ'
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
-            <p className="text-red-200 text-sm">
-              ⚠️ {error}
-            </p>
+          <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/30 rounded-xl p-4 mb-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-red-500/5 backdrop-blur-sm"></div>
+            <div className="relative flex items-start gap-3">
+              <div className="p-1.5 bg-red-500/20 rounded-lg mt-0.5">
+                <span className="text-red-300 text-base">⚠️</span>
+              </div>
+              <p className="text-red-200 text-sm font-medium">
+                {error}
+              </p>
+            </div>
           </div>
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {/* Name (only for sign up) */}
           {isSignUp && (
-            <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
+            <div className="group">
+              <label className="block text-gray-200 text-sm font-semibold mb-3">
                 ชื่อ-นามสกุล
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-400 transition-colors" size={20} />
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:bg-slate-700/70 transition-all duration-200"
                   placeholder="ใส่ชื่อ-นามสกุลของคุณ"
                   required={isSignUp}
                 />
@@ -182,17 +229,17 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
           )}
 
           {/* Email */}
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
+          <div className="group">
+            <label className="block text-gray-200 text-sm font-semibold mb-3">
               อีเมล
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-400 transition-colors" size={20} />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-10 pr-4 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:bg-slate-700/70 transition-all duration-200"
                 placeholder="ใส่อีเมลของคุณ"
                 required
               />
@@ -200,16 +247,17 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
           </div>
 
           {/* Password */}
-          <div>
-            <label className="block text-gray-300 text-sm font-medium mb-2">
-              รหัสผ่าน {isSignUp && <span className="text-gray-400 text-xs">(อย่างน้อย 6 ตัวอักษร)</span>}
+          <div className="group">
+            <label className="block text-gray-200 text-sm font-semibold mb-3">
+              รหัสผ่าน {isSignUp && <span className="text-gray-400 text-xs font-normal">(อย่างน้อย 6 ตัวอักษร)</span>}
             </label>
             <div className="relative">
+              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-blue-400 transition-colors" size={20} />
               <input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded-lg py-3 pl-4 pr-12 text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full bg-slate-700/50 border border-slate-600/50 rounded-xl py-4 pl-12 pr-12 text-white placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400/20 focus:bg-slate-700/70 transition-all duration-200"
                 placeholder={isSignUp ? "สร้างรหัสผ่าน (อย่างน้อย 6 ตัวอักษร)" : "ใส่รหัสผ่านของคุณ"}
                 required
                 minLength={isSignUp ? 6 : undefined}
@@ -217,41 +265,51 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-400 transition-colors p-1 rounded"
               >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
           </div>
 
           {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={isLoading || !email.trim() || !password.trim() || (isSignUp && !name.trim())}
-            className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-          >
-            {isLoading ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                กำลังดำเนินการ...
-              </>
-            ) : (
-              <>
-                {isSignUp ? <UserPlus size={18} /> : <LogIn size={18} />}
-                {isSignUp ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
-              </>
-            )}
-          </button>
+          <div className="pt-4">
+            <button
+              type="submit"
+              disabled={isLoading || !email.trim() || !password.trim() || (isSignUp && !name.trim())}
+              className="w-full bg-gradient-to-r from-blue-500 via-blue-600 to-purple-600 text-white font-semibold py-4 rounded-xl hover:from-blue-600 hover:via-blue-700 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3 shadow-lg hover:shadow-xl"
+            >
+              {isLoading ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  กำลังดำเนินการ...
+                </>
+              ) : (
+                <>
+                  {isSignUp ? <UserPlus size={20} /> : <LogIn size={20} />}
+                  {isSignUp ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ'}
+                </>
+              )}
+            </button>
+          </div>
         </form>
 
         {/* Toggle Sign Up / Sign In */}
-        <div className="mt-6 text-center">
-          <p className="text-gray-400 text-sm">
+        <div className="mt-8 text-center">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-600/50"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-slate-800/95 text-gray-400">หรือ</span>
+            </div>
+          </div>
+          <p className="text-gray-300 text-sm mt-4">
             {isSignUp ? 'มีบัญชีอยู่แล้ว?' : 'ยังไม่มีบัญชี?'}
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-blue-400 hover:text-blue-300 font-medium ml-1 transition-colors"
+              className="text-blue-400 hover:text-blue-300 font-semibold ml-2 hover:underline transition-all duration-200"
             >
               {isSignUp ? 'เข้าสู่ระบบ' : 'สมัครสมาชิก'}
             </button>
@@ -259,11 +317,11 @@ export default function LoginModal({ isOpen, onClose, onLogin, onShowToast }: Lo
         </div>
 
         {/* Continue Without Login */}
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center border-t border-slate-700/50 pt-6">
           <button
             type="button"
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-400 text-sm transition-colors"
+            onClick={handleClose}
+            className="text-gray-500 hover:text-gray-400 text-sm transition-colors hover:underline"
           >
             ดำเนินการต่อโดยไม่ล็อกอิน
           </button>
