@@ -31,8 +31,8 @@ export function useStageData() {
         
         // Fallback to mock data
         try {
-          const { stageData } = require('@/app/data/stages');
-          const allStages = Object.values(stageData);
+          const { stages } = require('@/app/data/stages');
+          const allStages = Object.values(stages);
           setStages(allStages);
           setError(null); // Clear error since we have fallback data
         } catch (fallbackError) {

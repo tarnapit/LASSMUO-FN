@@ -85,7 +85,27 @@ export class UserStageProgressService {
    * Get user progress for a specific stage
    */
   async getUserStageProgress(userId: string, stageId: number): Promise<ApiResponse<UserStageProgress | null>> {
-    return apiClient.get<ApiResponse<UserStageProgress | null>>(`${this.endpoint}?userId=${userId}&stageId=${stageId}`);
+    try {
+      const response = await apiClient.get<ApiResponse<UserStageProgress | null>>(`${this.endpoint}?userId=${userId}&stageId=${stageId}`);
+      
+      // Handle the case where API returns null (no data found)
+      if (response === null || response === undefined) {
+        return {
+          success: true,
+          data: null
+        } as ApiResponse<UserStageProgress | null>;
+      }
+      
+      return response;
+    } catch (error) {
+      console.warn('getUserStageProgress error:', error);
+      // Return null data instead of throwing error for not found cases
+      return {
+        success: false,
+        data: null,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   /**
@@ -120,7 +140,13 @@ export class UserStageProgressService {
       // First, try to find existing progress for this user and stage
       const existingProgressResponse = await this.getUserStageProgress(userId, stageId);
       
-      if (existingProgressResponse.success && existingProgressResponse.data) {
+      // Handle null response or empty response
+      const hasExistingProgress = existingProgressResponse && 
+                                 existingProgressResponse.success && 
+                                 existingProgressResponse.data && 
+                                 existingProgressResponse.data !== null;
+      
+      if (hasExistingProgress && existingProgressResponse.data) {
         // If exists, update it
         const existingProgress = existingProgressResponse.data;
         console.log('✅ Found existing progress, updating:', existingProgress.id);
@@ -155,7 +181,7 @@ export class UserStageProgressService {
             // Try to get existing progress again
             const retryResponse = await this.getUserStageProgress(userId, stageId);
             
-            if (retryResponse.success && retryResponse.data) {
+            if (retryResponse && retryResponse.success && retryResponse.data && retryResponse.data !== null) {
               console.log('✅ Found existing progress on retry, updating:', retryResponse.data.id);
               return await this.updateProgress(retryResponse.data.id, progressData);
             } else {
@@ -198,7 +224,7 @@ export class UserStageProgressService {
       // Get existing progress first
       const existingResponse = await this.getUserStageProgress(userId, stageId);
       
-      if (existingResponse.success && existingResponse.data) {
+      if (existingResponse && existingResponse.success && existingResponse.data && existingResponse.data !== null) {
         const existing = existingResponse.data;
         const progressData: UpdateUserStageProgressRequest = {
           currentScore: score,
@@ -232,7 +258,7 @@ export class UserStageProgressService {
     try {
       const existingResponse = await this.getUserStageProgress(userId, stageId);
       
-      if (existingResponse.success && existingResponse.data) {
+      if (existingResponse && existingResponse.success && existingResponse.data && existingResponse.data !== null) {
         const existing = existingResponse.data;
         if (newScore > (existing.bestScore || 0)) {
           const progressData: UpdateUserStageProgressRequest = {

@@ -50,8 +50,8 @@ export function useStageData() {
         // Fallback to mock data
         console.log('Falling back to mock data...');
         try {
-          const { stageData } = require('../../data/stages');
-          const mockStages = Object.values(stageData) as Stage[];
+          const { stages } = require('../../data/stages');
+          const mockStages = Object.values(stages) as Stage[];
           console.log('Mock stages loaded:', mockStages);
           setStages(mockStages);
           setError(null); // Clear error since we have fallback data
@@ -142,8 +142,8 @@ export function useStageById(stageId: number) {
         
         // Fallback to mock data
         try {
-          const { stageData } = require('../../data/stages');
-          const mockStage = stageData[stageId];
+          const { stages } = require('../../data/stages');
+          const mockStage = stages[stageId];
           if (mockStage) {
             console.log('Using mock stage data for ID:', stageId);
             setStage(mockStage);

@@ -203,17 +203,59 @@ export default function EnhancedQuizComponent({
 
       case 'DRAG_DROP':
         const ddQuestion = currentQuestion as any;
+        console.log('🔍 DRAG_DROP Question Debug:', {
+          question: ddQuestion.question,
+          payload: ddQuestion.payload,
+          dragItems: ddQuestion.payload?.dragItems,
+          dropZones: ddQuestion.payload?.dropZones,
+          fullQuestion: ddQuestion
+        });
+        
+        let dragDropData = null;
+        
+        // Handle different payload formats
         if (ddQuestion.payload?.dragItems && ddQuestion.payload?.dropZones) {
+          // Mock data format: payload is object with dragItems and dropZones
+          dragDropData = {
+            dragItems: ddQuestion.payload.dragItems,
+            dropZones: ddQuestion.payload.dropZones,
+            correctMatches: ddQuestion.payload.correctMatches
+          };
+        } else if (Array.isArray(ddQuestion.payload) && ddQuestion.payload.length > 0) {
+          // API format: payload is array, take first element which should contain the drag-drop data
+          const payloadData = ddQuestion.payload[0];
+          console.log('🔍 API Payload Data:', payloadData);
+          
+          if (payloadData?.dragItems && payloadData?.dropZones) {
+            dragDropData = {
+              dragItems: payloadData.dragItems,
+              dropZones: payloadData.dropZones,
+              correctMatches: payloadData.correctMatches
+            };
+          }
+        }
+        
+        if (dragDropData) {
+          console.log('✅ Using drag-drop data:', dragDropData);
           return (
             <EnhancedDragDropQuestion
-              dragItems={ddQuestion.payload.dragItems}
-              dropZones={ddQuestion.payload.dropZones}
+              dragItems={dragDropData.dragItems}
+              dropZones={dragDropData.dropZones}
               onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
               question={ddQuestion.question}
             />
           );
+        } else {
+          console.error('🚨 DRAG_DROP payload validation failed:', {
+            hasDragItems: !!ddQuestion.payload?.dragItems,
+            hasDropZones: !!ddQuestion.payload?.dropZones,
+            isArray: Array.isArray(ddQuestion.payload),
+            arrayLength: Array.isArray(ddQuestion.payload) ? ddQuestion.payload.length : 0,
+            payloadKeys: Object.keys(ddQuestion.payload || {}),
+            payload: ddQuestion.payload
+          });
         }
         break;
 

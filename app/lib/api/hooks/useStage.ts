@@ -46,8 +46,8 @@ export function useStage(stageId: string) {
     } catch (error) {
       console.error('🔥 useStage: Error fetching stage:', error);
       // Fallback to mock data
-      const { stageData } = await import('../../../data/stages');
-      const stage = Object.values(stageData).find((s: any) => s.id === parseInt(stageId));
+      const { stages } = await import('../../../data/stages');
+      const stage = Object.values(stages).find((s: any) => s.id === parseInt(stageId));
       if (stage) {
         return { success: true, data: stage };
       }

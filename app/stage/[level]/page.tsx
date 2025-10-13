@@ -168,20 +168,28 @@ export default function StageDetailPage() {
   // Load questions based on stage
   useEffect(() => {
     if (stage) {
+      console.log('🎯 Loading questions for stage:', stageId, stage);
+      
       // Check if stage has questions (from API)
       const stageAny = stage as any;
       if (stageAny.questions && Array.isArray(stageAny.questions)) {
+        console.log('📝 Using questions from API:', stageAny.questions);
         setQuestions(stageAny.questions);
         return;
       }
       
       // Fallback: Load questions from mock data
       try {
-        const { stageData } = require('../../data/stages');
-        const stageInfo = stageData[stageId];
+        const { stages } = require('../../data/stages');
+        const stageInfo = stages[stageId];
+        console.log('📋 Available stages in mock data:', Object.keys(stages));
+        console.log('📋 Stage info for', stageId, ':', stageInfo);
+        
         if (stageInfo?.questions) {
+          console.log('📝 Using questions from mock data:', stageInfo.questions);
           setQuestions(stageInfo.questions);
         } else {
+          console.warn('⚠️ No questions found for stage:', stageId);
           setQuestions([]);
         }
       } catch (error) {
