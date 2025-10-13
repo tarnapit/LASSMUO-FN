@@ -112,8 +112,10 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
               
               combinedProgress[stageId] = {
                 stageId,
-                isUnlocked: apiProgress.isCompleted || existingProgress.isUnlocked || stageId === 1,
-                isCompleted: apiProgress.isCompleted || existingProgress.isCompleted,
+                // Check both API and local isUnlocked, or if stage has stars (means it was completed)
+                isUnlocked: apiProgress.isCompleted || existingProgress.isUnlocked || (apiProgress.starsEarned > 0) || stageId === 1,
+                // Check both isCompleted and starsEarned to determine completion
+                isCompleted: apiProgress.isCompleted || existingProgress.isCompleted || (apiProgress.starsEarned > 0),
                 stars: Math.max(apiProgress.starsEarned || 0, existingProgress.stars || 0),
                 bestScore: Math.max(apiProgress.bestScore || 0, existingProgress.bestScore || 0),
                 attempts: Math.max(apiProgress.attempts || 0, existingProgress.attempts || 0),

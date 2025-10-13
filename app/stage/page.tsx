@@ -40,7 +40,8 @@ export default function StagePage() {
       // 1. มีข้อมูล progress แล้วและถูกปลดล็อกแล้ว หรือ
       // 2. ด่านก่อนหน้าผ่านแล้ว (มีอย่างน้อย 1 ดาว)
       const previousStageProgress = stageProgress[stage.id - 1];
-      const isPreviousStageCompleted = previousStageProgress?.isCompleted || (previousStageProgress?.stars && previousStageProgress.stars >= 1);
+      const isPreviousStageCompleted = previousStageProgress?.isCompleted || 
+                                      (previousStageProgress?.stars && previousStageProgress.stars >= 1);
       
       isUnlocked = progress?.isUnlocked || isPreviousStageCompleted || false;
       
@@ -56,7 +57,8 @@ export default function StagePage() {
     return {
       ...stage,
       isUnlocked,
-      isCompleted: progress?.isCompleted || false,
+      // Check both isCompleted and stars to determine completion status
+      isCompleted: progress?.isCompleted || (progress?.stars && progress.stars > 0) || false,
       stars: progress?.stars || 0,
       bestScore: progress?.bestScore || 0,
       attempts: progress?.attempts || 0,
