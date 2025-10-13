@@ -85,6 +85,39 @@ export default function StagePage() {
     setCurrentUser(user);
   }, []);
 
+  // Refresh progress when component mounts and when coming back to this page
+  useEffect(() => {
+    if (currentUser?.id) {
+      console.log('🔄 Stage page mounted/user changed - refreshing progress...');
+      refreshStageProgress();
+    }
+  }, [currentUser?.id, refreshStageProgress]);
+
+  // Additional refresh when page becomes visible (user comes back from other page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && currentUser?.id) {
+        console.log('🔄 Page became visible - refreshing progress...');
+        refreshStageProgress();
+      }
+    };
+
+    const handleFocus = () => {
+      if (currentUser?.id) {
+        console.log('🔄 Window focused - refreshing progress...');
+        refreshStageProgress();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [currentUser?.id, refreshStageProgress]);
+
   // Function to refresh progress (เรียกใช้เมื่อต้องการอัพเดท)
   const refreshProgress = useCallback(() => {
     refreshStageProgress();

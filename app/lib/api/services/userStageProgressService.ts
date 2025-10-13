@@ -112,7 +112,53 @@ export class UserStageProgressService {
    * Get all progress for a specific user
    */
   async getUserProgress(userId: string): Promise<ApiResponse<UserStageProgress[]>> {
-    return apiClient.get<ApiResponse<UserStageProgress[]>>(`${this.endpoint}?userId=${userId}`);
+    try {
+      console.log('🔍 getUserProgress: Fetching progress for user:', userId);
+      const response = await apiClient.get<ApiResponse<UserStageProgress[]>>(`${this.endpoint}?userId=${userId}`);
+      console.log('📥 getUserProgress raw response:', response);
+      
+      // Handle different response formats
+      if (response && typeof response === 'object') {
+        // If response has success property (ApiResponse format)
+        if (response.hasOwnProperty('success')) {
+          console.log('✅ getUserProgress: Standard ApiResponse format');
+          return response;
+        }
+        
+        // If response is directly an array (backend sends array directly)
+        if (Array.isArray(response)) {
+          console.log('✅ getUserProgress: Direct array format');
+          return {
+            success: true,
+            data: response
+          } as ApiResponse<UserStageProgress[]>;
+        }
+        
+        // If response has data property
+        if (response.hasOwnProperty('data')) {
+          console.log('✅ getUserProgress: Response with data property');
+          return {
+            success: true,
+            data: (response as any).data
+          } as ApiResponse<UserStageProgress[]>;
+        }
+      }
+      
+      // If response is null or empty
+      if (response === null || response === undefined) {
+        console.log('ℹ️ getUserProgress: No data found, returning empty array');
+        return {
+          success: true,
+          data: []
+        } as ApiResponse<UserStageProgress[]>;
+      }
+      
+      console.log('⚠️ getUserProgress: Unknown response format, returning as is');
+      return response;
+    } catch (error) {
+      console.error('❌ getUserProgress error:', error);
+      throw error;
+    }
   }
 
   /**
@@ -233,11 +279,53 @@ export class UserStageProgressService {
       }
       
       if (hasExistingProgress && existingProgress) {
-        // If exists, update it
-        console.log('✅ Found existing progress, updating:', existingProgress.id);
-        console.log('📥 Update data:', progressData);
+        // If exists, check if we should update at all
+        console.log('✅ Found existing progress, checking if update is needed:', existingProgress.id);
+        console.log('📋 Existing data:', existingProgress);
+        console.log(' New data:', progressData);
         
-        const updateResult = await this.updateProgress(existingProgress.id, progressData);
+        // Check if existing data is already better - if so, don't update
+        const existingIsBetter = (
+          (existingProgress.bestScore || 0) >= (progressData.bestScore || 0) &&
+          (existingProgress.starsEarned || 0) >= (progressData.starsEarned || 0) &&
+          (existingProgress.attempts || 0) >= (progressData.attempts || 0) &&
+          // Don't downgrade completed status
+          (existingProgress.isCompleted === true && progressData.isCompleted === false)
+        );
+        
+        if (existingIsBetter) {
+          console.log('🚫 Existing data is already better or equal - skipping update');
+          return {
+            success: true,
+            data: existingProgress
+          } as ApiResponse<UserStageProgress>;
+        }
+        
+        // Merge data, preserving higher/better values
+        const mergedData = {
+          isCompleted: progressData.isCompleted !== undefined ? 
+            (progressData.isCompleted || existingProgress.isCompleted) : 
+            existingProgress.isCompleted,
+          currentScore: Math.max(progressData.currentScore || 0, existingProgress.currentScore || 0),
+          bestScore: Math.max(progressData.bestScore || 0, existingProgress.bestScore || 0),
+          starsEarned: Math.max(progressData.starsEarned || 0, existingProgress.starsEarned || 0),
+          attempts: Math.max(progressData.attempts || 0, existingProgress.attempts || 0),
+          lastAttemptAt: progressData.lastAttemptAt || existingProgress.lastAttemptAt,
+          completedAt: progressData.isCompleted ? 
+            (progressData.completedAt || new Date().toISOString()) : 
+            existingProgress.completedAt
+        };
+        
+        console.log('🔄 Merged data for update:', mergedData);
+        console.log('⚠️ CRITICAL: Before calling updateProgress - will this override existing completed data?');
+        console.log('  📋 Existing isCompleted:', existingProgress.isCompleted);
+        console.log('  📋 Existing bestScore:', existingProgress.bestScore);
+        console.log('  📋 Existing starsEarned:', existingProgress.starsEarned);
+        console.log('  📤 Sending isCompleted:', mergedData.isCompleted);
+        console.log('  📤 Sending bestScore:', mergedData.bestScore);
+        console.log('  📤 Sending starsEarned:', mergedData.starsEarned);
+        
+        const updateResult = await this.updateProgress(existingProgress.id, mergedData);
         console.log('📤 Update result:', updateResult);
         return updateResult;
       } else {

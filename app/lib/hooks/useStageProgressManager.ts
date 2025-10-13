@@ -74,25 +74,41 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
         try {
           console.log('Loading progress from API for user:', userId);
           const apiResponse = await userStageProgressService.getUserProgress(userId.toString());
+          console.log('🔍 API Response received:', apiResponse);
           
           // Check if response has data
-          let progressData = null;
+          let progressData: any[] | null = null;
           if (apiResponse?.success && Array.isArray(apiResponse.data)) {
             progressData = apiResponse.data;
+            console.log('✅ Using progress data from apiResponse.data (success format)');
           } else if (Array.isArray(apiResponse)) {
             // Sometimes the response is directly an array
             progressData = apiResponse;
+            console.log('✅ Using progress data from direct array format');
           } else if (apiResponse?.data && Array.isArray(apiResponse.data)) {
             progressData = apiResponse.data;
+            console.log('✅ Using progress data from apiResponse.data');
+          } else if (apiResponse === null) {
+            console.log('ℹ️ API returned null - no progress data available');
+            progressData = [];
           }
           
-          if (progressData && Array.isArray(progressData)) {
-            console.log('API progress loaded:', progressData);
+          console.log('📊 Progress data to process:', progressData);
+          
+          if (progressData && Array.isArray(progressData) && progressData.length > 0) {
+            console.log('API progress loaded:', progressData.length, 'records');
             
             // Merge API data with local data (API takes precedence for completed stages)
             progressData.forEach((apiProgress: any) => {
               const stageId = apiProgress.stageId;
               const existingProgress = combinedProgress[stageId] || {} as StageProgressData;
+              
+              console.log(`🔄 Processing stage ${stageId}:`, {
+                'API isCompleted': apiProgress.isCompleted,
+                'API starsEarned': apiProgress.starsEarned,
+                'API bestScore': apiProgress.bestScore,
+                'Local existing': existingProgress
+              });
               
               combinedProgress[stageId] = {
                 stageId,
@@ -109,6 +125,8 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
                 hintsUsed: existingProgress.hintsUsed || 0,
                 achievements: existingProgress.achievements || [],
               };
+              
+              console.log(`✅ Stage ${stageId} processed:`, combinedProgress[stageId]);
             });
             
             // Process unlock logic for consecutive stages based on completion
@@ -215,6 +233,7 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
       // Update API if user is logged in
       if (userId) {
         try {
+          // Prepare API data with only the fields that are actually changing
           const apiData: any = {
             isCompleted: updatedProgress.isCompleted,
             currentScore: updatedProgress.bestScore,
@@ -235,9 +254,11 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
           console.log(`🔄 Syncing progress to API for stage ${stageId}:`, {
             userId: userId.toString(),
             stageId,
-            data: apiData
+            data: apiData,
+            note: "upsertProgress will merge with existing data automatically"
           });
 
+          // Use upsertProgress which now handles smart merging
           const response = await userStageProgressService.upsertProgress(
             userId.toString(),
             stageId,
@@ -352,7 +373,32 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
           try {
             console.log(`🔄 Syncing unlock of stage ${nextStageId} to API...`);
             
-            // Create minimal progress record to unlock the stage
+            // First check if the stage already exists in API
+            const existingProgress = await userStageProgressService.getUserStageProgress(
+              userId.toString(), 
+              nextStageId
+            );
+            
+            if (existingProgress?.success && existingProgress.data) {
+              console.log(`📝 Stage ${nextStageId} already exists in API:`, existingProgress.data);
+              
+              // Stage already exists - check if it has any meaningful progress
+              const hasProgress = existingProgress.data.bestScore > 0 || 
+                                 existingProgress.data.starsEarned > 0 || 
+                                 existingProgress.data.attempts > 0 ||
+                                 existingProgress.data.isCompleted === true;
+              
+              if (hasProgress) {
+                console.log(`✅ Stage ${nextStageId} already has meaningful progress - preserving completely`);
+                console.log(`   bestScore: ${existingProgress.data.bestScore}, starsEarned: ${existingProgress.data.starsEarned}, attempts: ${existingProgress.data.attempts}`);
+                return true; // Return success without making changes
+              }
+            }
+            
+            // Only create/update if stage doesn't exist yet
+            console.log(`🔄 Syncing unlock of stage ${nextStageId} to API (new record only)...`);
+            
+            // Create minimal unlock record only for new stages
             const unlockApiData = {
               isCompleted: false,
               currentScore: 0,
@@ -361,11 +407,7 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
               attempts: 0,
             };
 
-            console.log(`📤 Unlocking stage ${nextStageId} with data:`, {
-              userId: userId.toString(),
-              stageId: nextStageId,
-              data: unlockApiData
-            });
+            console.log(`📤 Creating new unlock record for stage ${nextStageId}:`, unlockApiData);
 
             await userStageProgressService.upsertProgress(
               userId.toString(),
@@ -448,27 +490,36 @@ export function useStageProgressManager(userId?: string | number): UseStageProgr
     try {
       console.log(`🔓 Force unlocking stage ${nextStageId} after completing stage ${completedStageId}`);
       
+      // Check if stage already exists and preserve its data
+      const existingProgress = progress[nextStageId];
+      
       const nextStageUpdate: Partial<StageProgressData> = {
         stageId: nextStageId,
         isUnlocked: true,
-        isCompleted: false,
-        stars: 0,
-        bestScore: 0,
-        attempts: 0,
-        xpEarned: 0,
-        perfectRuns: 0,
-        averageTime: 0,
-        mistakeCount: 0,
-        hintsUsed: 0,
-        achievements: [],
+        // Preserve existing completed status if it exists
+        isCompleted: existingProgress?.isCompleted || false,
+        stars: existingProgress?.stars || 0,
+        bestScore: existingProgress?.bestScore || 0,
+        attempts: existingProgress?.attempts || 0,
+        xpEarned: existingProgress?.xpEarned || 0,
+        perfectRuns: existingProgress?.perfectRuns || 0,
+        averageTime: existingProgress?.averageTime || 0,
+        mistakeCount: existingProgress?.mistakeCount || 0,
+        hintsUsed: existingProgress?.hintsUsed || 0,
+        achievements: existingProgress?.achievements || [],
       };
+
+      console.log(`📝 Force unlock preserving existing data:`, {
+        existingProgress,
+        updateData: nextStageUpdate
+      });
 
       return await updateStageProgress(nextStageId, nextStageUpdate);
     } catch (err) {
       console.error('Error force unlocking next stage:', err);
       return false;
     }
-  }, [updateStageProgress]);
+  }, [updateStageProgress, progress]);
 
   return {
     progress,
