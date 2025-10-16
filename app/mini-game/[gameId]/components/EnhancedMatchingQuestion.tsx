@@ -28,7 +28,6 @@ export default function EnhancedMatchingQuestion({
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [connections, setConnections] = useState<Array<{from: string, to: string, isCorrect?: boolean}>>([]);
-  const [animatingPair, setAnimatingPair] = useState<{left: string, right: string} | null>(null);
   const [hoveredConnection, setHoveredConnection] = useState<string | null>(null);
   const leftRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rightRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -40,85 +39,73 @@ export default function EnhancedMatchingQuestion({
   );
   const leftItems = pairs.map(p => p.left);
 
-  // Initialize state
+  // Initialize matches from userAnswer
   useEffect(() => {
-    setSelectedLeft(null);
-    setSelectedRight(null);
-    setMatches({});
-    setConnections([]);
-    setAnimatingPair(null);
-    
     if (userAnswer) {
       setMatches(userAnswer);
-      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
-        const correctPair = pairs.find(p => p.left.id === leftId);
-        return {
-          from: leftId,
-          to: rightId,
-          isCorrect: correctPair?.right.id === rightId
-        };
-      });
-      setConnections(newConnections);
+      updateConnections(userAnswer);
     }
-  }, [pairs, userAnswer]);
+  }, [userAnswer, pairs]);
+
+  // Update connections based on current matches
+  const updateConnections = (currentMatches: Record<string, string>) => {
+    const newConnections = Object.entries(currentMatches).map(([leftId, rightId]) => {
+      const correctPair = pairs.find(p => p.left.id === leftId);
+      return {
+        from: leftId,
+        to: rightId,
+        isCorrect: correctPair?.right.id === rightId
+      };
+    });
+    setConnections(newConnections);
+  };
 
   const handleLeftClick = (leftId: string) => {
-    if (showResult || disabled || matches[leftId]) return;
+    if (showResult || disabled) return;
     
+    // ถ้ามีการจับคู่แล้ว ให้ลบออก
+    if (matches[leftId]) {
+      const newMatches = { ...matches };
+      delete newMatches[leftId];
+      setMatches(newMatches);
+      updateConnections(newMatches);
+      return;
+    }
+    
+    // เลือก/ยกเลิกการเลือก left item
     if (selectedLeft === leftId) {
       setSelectedLeft(null);
     } else {
       setSelectedLeft(leftId);
-      setSelectedRight(null);
+      setSelectedRight(null); // ยกเลิกการเลือก right
     }
   };
 
   const handleRightClick = (rightId: string) => {
     if (showResult || disabled) return;
     
+    // ตรวจสอบว่า right item นี้ถูกจับคู่แล้วหรือยัง
     const alreadyMatched = Object.values(matches).includes(rightId);
     if (alreadyMatched) return;
     
-    if (selectedRight === rightId) {
-      setSelectedRight(null);
-    } else {
-      setSelectedRight(rightId);
-      
-      if (selectedLeft) {
-        createMatch(selectedLeft, rightId);
-      }
-    }
-  };
-
-  const createMatch = (leftId: string, rightId: string) => {
-    const correctPair = pairs.find(p => p.left.id === leftId && p.right.id === rightId);
-    
-    setAnimatingPair({ left: leftId, right: rightId });
-    
-    setTimeout(() => {
-      const newMatches = { ...matches, [leftId]: rightId };
+    // ถ้ามี left item ที่เลือกอยู่ ให้ทำการจับคู่
+    if (selectedLeft) {
+      const newMatches = { ...matches, [selectedLeft]: rightId };
       setMatches(newMatches);
+      updateConnections(newMatches);
       
-      const newConnections = Object.entries(newMatches).map(([left, right]) => {
-        const correctPair = pairs.find(p => p.left.id === left && p.right.id === right);
-        return {
-          from: left,
-          to: right,
-          isCorrect: !!correctPair
-        };
-      });
-      setConnections(newConnections);
-      
+      // ล้างการเลือก
       setSelectedLeft(null);
       setSelectedRight(null);
-      setAnimatingPair(null);
-
+      
+      // ถ้าจับคู่ครบแล้ว ส่งผลลัพธ์
       if (Object.keys(newMatches).length === pairs.length) {
-        setTimeout(() => {
-          onAnswer(newMatches);
-        }, 500);
+        setTimeout(() => onAnswer(newMatches), 500);
       }
-    }, 300);
+    } else {
+      // ถ้าไม่มี left item ที่เลือก ให้เลือก right item นี้
+      setSelectedRight(rightId);
+    }
   };
 
   const handleRemoveMatch = (leftId: string) => {
@@ -127,16 +114,11 @@ export default function EnhancedMatchingQuestion({
     const newMatches = { ...matches };
     delete newMatches[leftId];
     setMatches(newMatches);
+    updateConnections(newMatches);
     
-    const newConnections = Object.entries(newMatches).map(([left, right]) => {
-      const correctPair = pairs.find(p => p.left.id === left && p.right.id === right);
-      return {
-        from: left,
-        to: right,
-        isCorrect: !!correctPair
-      };
-    });
-    setConnections(newConnections);
+    // ล้างการเลือก
+    setSelectedLeft(null);
+    setSelectedRight(null);
   };
 
   const handleReset = () => {
@@ -150,9 +132,6 @@ export default function EnhancedMatchingQuestion({
   const getItemStyle = (itemId: string, side: 'left' | 'right', isMatched: boolean) => {
     const isSelected = (side === 'left' && selectedLeft === itemId) || 
                      (side === 'right' && selectedRight === itemId);
-    const isAnimating = animatingPair && 
-                       ((side === 'left' && animatingPair.left === itemId) ||
-                        (side === 'right' && animatingPair.right === itemId));
     
     if (showResult && isMatched) {
       const connection = connections.find(c => 
@@ -179,7 +158,6 @@ export default function EnhancedMatchingQuestion({
           ? 'bg-yellow-400/20 text-yellow-300 border-yellow-400 shadow-lg shadow-yellow-400/25 scale-105 ring-2 ring-yellow-400/50' 
           : 'bg-white/10 text-white border-gray-300/30 hover:border-blue-400 hover:bg-blue-500/10 shadow-md hover:shadow-lg hover:scale-102'
       }
-      ${isAnimating ? 'animate-pulse scale-105' : ''}
     `;
   };
 

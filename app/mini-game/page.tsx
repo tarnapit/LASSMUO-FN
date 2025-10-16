@@ -63,20 +63,10 @@ export default function MiniGamePage() {
   }, [gamesLoading]);
 
   useEffect(() => {
-    // Update progress bar width
-    const progressBar = document.querySelector(
-      ".progress-animated"
-    ) as HTMLElement;
-    if (progressBar) {
-      progressBar.style.setProperty(
-        "--progress-width",
-        `${(totalCompletedGames / miniGames.length) * 100}%`
-      );
-      progressBar.style.width = `${
-        (totalCompletedGames / miniGames.length) * 100
-      }%`;
-    }
-  }, [totalCompletedGames]);
+    // Update progress bar width - ลบออกเพราะเราใช้ inline style แล้ว
+    // แต่เก็บไว้สำหรับ debug หรือการใช้งานในอนาคต
+    console.log(`Progress: ${totalCompletedGames}/${miniGames.length} games completed`);
+  }, [totalCompletedGames, miniGames.length]);
 
   const text = {
     title: "แบบทดสอบดาราศาสตร์",
@@ -304,12 +294,13 @@ export default function MiniGamePage() {
                 <CheckCircle className="text-green-400" size={20} />
               </div>
               <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
-                {totalCompletedGames}/3
+                {totalCompletedGames}/{miniGames.length}
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2 sm:h-3 mt-3 sm:mt-4">
                 <div
                   className={`bg-gradient-to-r from-green-500 to-blue-500 h-2 sm:h-3 rounded-full transition-all duration-500 progress-animated`}
-                  data-progress={(totalCompletedGames / 3) * 100}
+                  style={{ width: `${Math.min((totalCompletedGames / miniGames.length) * 100, 100)}%` }}
+                  data-progress={(totalCompletedGames / miniGames.length) * 100}
                 ></div>
               </div>
             </div>
