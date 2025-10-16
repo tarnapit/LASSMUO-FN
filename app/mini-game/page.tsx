@@ -3,6 +3,8 @@ import Link from "next/link";
 import Navbar from "../components/layout/Navbar";
 import { MiniGameProgressHelper } from "../lib/mini-game-progress";
 import { useMiniGameData } from "@/app/lib/hooks/useDataAdapter";
+import { progressManager } from "../lib/progress";
+import { authManager } from "../lib/auth";
 import {
   Gamepad2,
   Clock,
@@ -30,14 +32,12 @@ export default function MiniGamePage() {
   // Use data adapter for mini games
   const { games: miniGames, questions, loading: gamesLoading, error: gamesError } = useMiniGameData();
   
-  // ใช้ real data แทน mock data
+  // ใช้ state สำหรับข้อมูลที่ต้องอัปเดต
   const [gameStats, setGameStats] = useState(MiniGameProgressHelper.getGameStats());
   const [achievements, setAchievements] = useState(MiniGameProgressHelper.getAchievementData());
-  
-  // คำนวณข้อมูลจริงจาก progress
-  const totalCompletedGames = MiniGameProgressHelper.getCompletedGamesCount();
-  const totalPoints = MiniGameProgressHelper.getTotalScore();
-  const streakDays = MiniGameProgressHelper.getStreakDays();
+  const [totalCompletedGames, setTotalCompletedGames] = useState(0);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
 
   // Update progress data when component mounts and when progress changes
   useEffect(() => {
@@ -51,6 +51,9 @@ export default function MiniGamePage() {
     const updateProgressData = () => {
       setGameStats(MiniGameProgressHelper.getGameStats());
       setAchievements(MiniGameProgressHelper.getAchievementData());
+      setTotalCompletedGames(MiniGameProgressHelper.getCompletedGamesCount());
+      setTotalPoints(MiniGameProgressHelper.getTotalScore());
+      setStreakDays(MiniGameProgressHelper.getStreakDays());
     };
 
     updateProgressData();
@@ -61,6 +64,36 @@ export default function MiniGamePage() {
       return () => window.removeEventListener('progressUpdated', updateProgressData);
     }
   }, [gamesLoading]);
+
+  useEffect(() => {
+    // โหลด progress data เมื่อ component mount
+    const loadProgressData = async () => {
+      console.log('🎮 Mini-game: Loading progress data...');
+      
+      // โหลดข้อมูลจาก API ถ้ามี user login
+      const user = authManager.getCurrentUser();
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('🎮 Mini-game: Progress loaded from API');
+      }
+      
+      // อัปเดต state ด้วยข้อมูลล่าสุด
+      setGameStats(MiniGameProgressHelper.getGameStats());
+      setAchievements(MiniGameProgressHelper.getAchievementData());
+      setTotalCompletedGames(MiniGameProgressHelper.getCompletedGamesCount());
+      setTotalPoints(MiniGameProgressHelper.getTotalScore());
+      setStreakDays(MiniGameProgressHelper.getStreakDays());
+      
+      console.log('🎮 Mini-game: Progress data loaded', {
+        completedGames: MiniGameProgressHelper.getCompletedGamesCount(),
+        totalScore: MiniGameProgressHelper.getTotalScore(),
+        streakDays: MiniGameProgressHelper.getStreakDays(),
+        user: user?.email || 'No user'
+      });
+    };
+
+    loadProgressData();
+  }, []); // รันเฉพาะเมื่อ component mount
 
   useEffect(() => {
     // Update progress bar width - ลบออกเพราะเราใช้ inline style แล้ว
