@@ -330,7 +330,7 @@ export default function LearningTopicPage() {
           <div className="text-center">
             <div className="bg-gray-800 rounded-lg p-8 mb-4">
               <div className="text-gray-400 text-lg">
-                📷 {currentContent.content}
+                <img src={currentContent.imageUrl} alt={currentContent.content} className="mx-auto rounded-lg shadow-lg" />
               </div>
               <div className="text-sm text-gray-500 mt-2">
                 (รูปภาพจะแสดงที่นี่)
