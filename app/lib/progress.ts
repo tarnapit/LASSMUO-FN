@@ -45,6 +45,27 @@ class ProgressManager {
 
       console.log(`Loading progress from API for user ${user.id}`);
 
+      // เก็บข้อมูล mini-game progress ก่อนลบ localStorage
+      let existingMiniGameStats = null;
+      if (typeof window !== 'undefined') {
+        // หา mini-game stats จาก user key ที่ถูกต้อง
+        const userKey = `${this.userProgressKey}_${user.id}`;
+        const existingProgress = localStorage.getItem(userKey);
+        if (existingProgress) {
+          const parsedProgress = JSON.parse(existingProgress);
+          existingMiniGameStats = parsedProgress.miniGameStats;
+          console.log('🎮 Preserved mini-game stats:', existingMiniGameStats);
+        } else {
+          // ถ้าไม่มี user key ลองหาจาก player-progress (กรณีที่ยังไม่เคยโหลดจาก API)
+          const tempProgress = localStorage.getItem('player-progress');
+          if (tempProgress) {
+            const parsedTempProgress = JSON.parse(tempProgress);
+            existingMiniGameStats = parsedTempProgress.miniGameStats;
+            console.log('🎮 Preserved mini-game stats from temp storage:', existingMiniGameStats);
+          }
+        }
+      }
+
       // ดึงข้อมูล course progress
       const userProgress = await userCourseProgressService.getUserCourseProgressByUserId(user.id);
       
@@ -58,12 +79,27 @@ class ProgressManager {
       
       // ล้าง localStorage เพื่อใช้ค่า default ใหม่
       if (typeof window !== 'undefined') {
+        // ลบทั้ง player-progress และ user progress
         localStorage.removeItem('player-progress');
+        const userKey = `${this.userProgressKey}_${user.id}`;
+        localStorage.removeItem(userKey);
         console.log('🗑️ Cleared old progress data to use fresh defaults');
       }
       
       // เริ่มต้นด้วย default progress ใหม่
       const localProgress = this.getDefaultProgress();
+      
+      // คืนข้อมูล mini-game progress ที่เก็บไว้
+      if (existingMiniGameStats) {
+        localProgress.miniGameStats = existingMiniGameStats;
+        console.log('🎮 Restored mini-game stats to new progress:', {
+          attempts: existingMiniGameStats.attempts?.length || 0,
+          totalScore: existingMiniGameStats.totalScore || 0,
+          completedGames: existingMiniGameStats.attempts ? new Set(existingMiniGameStats.attempts.map((a: any) => a.gameId)).size : 0
+        });
+      } else {
+        console.log('🎮 No existing mini-game stats found - starting fresh');
+      }
       
       // ประมวลผล course progress
       await this.processCourseProgress(localProgress, userProgress);
@@ -74,7 +110,7 @@ class ProgressManager {
       // บันทึก merged progress
       this.saveProgress(localProgress);
       
-      console.log('✅ Progress merged and saved locally');
+      console.log('✅ Progress merged and saved locally with mini-game stats preserved');
     } catch (error) {
       console.error('Error loading progress from API:', error);
     }

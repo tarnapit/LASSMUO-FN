@@ -7,6 +7,7 @@ import { MiniGameQuestion, GameSession, type GameResult } from "../../types/mini
 import { MiniGameProgressHelper } from "../../lib/mini-game-progress";
 import Navbar from "../../components/layout/Navbar";
 import QuestionRenderer from "./components/QuestionRenderer";
+import GameResultComponent from "./components/GameResult";
 import { checkAnswer, getCategoryName, getDifficultyName } from "./utils/gameUtils";
 import { 
   ArrowLeft, 
@@ -1260,7 +1261,7 @@ export default function MiniGamePlayPage() {
   // Show game result
   if (gameState === 'finished' && gameResult) {
     return (
-      <GameResult 
+      <GameResultComponent 
         result={gameResult} 
         gameId={gameId}
         onRestart={handleRestart}

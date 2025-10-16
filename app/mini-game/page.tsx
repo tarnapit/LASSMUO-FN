@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/layout/Navbar";
 import { MiniGameProgressHelper } from "../lib/mini-game-progress";
 import { useMiniGameData } from "@/app/lib/hooks/useDataAdapter";
@@ -26,6 +27,7 @@ import { useState, useEffect } from "react";
 import "../styles/mini-game-animations.css";
 
 export default function MiniGamePage() {
+  const router = useRouter();
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -49,11 +51,27 @@ export default function MiniGamePage() {
     }
     
     const updateProgressData = () => {
-      setGameStats(MiniGameProgressHelper.getGameStats());
-      setAchievements(MiniGameProgressHelper.getAchievementData());
-      setTotalCompletedGames(MiniGameProgressHelper.getCompletedGamesCount());
-      setTotalPoints(MiniGameProgressHelper.getTotalScore());
-      setStreakDays(MiniGameProgressHelper.getStreakDays());
+      const gameStats = MiniGameProgressHelper.getGameStats();
+      const achievements = MiniGameProgressHelper.getAchievementData();
+      const completedGamesCount = MiniGameProgressHelper.getCompletedGamesCount();
+      const totalScore = MiniGameProgressHelper.getTotalScore();
+      const streakDays = MiniGameProgressHelper.getStreakDays();
+      
+      console.log('🎮 Mini-game: Progress data updated:', {
+        gameStats: gameStats ? {
+          attempts: gameStats.attempts?.length || 0,
+          totalScore: gameStats.totalScore || 0
+        } : null,
+        completedGamesCount,
+        totalScore,
+        achievementsCount: achievements?.length || 0
+      });
+      
+      setGameStats(gameStats);
+      setAchievements(achievements);
+      setTotalCompletedGames(completedGamesCount);
+      setTotalPoints(totalScore);
+      setStreakDays(streakDays);
     };
 
     updateProgressData();
@@ -61,9 +79,59 @@ export default function MiniGamePage() {
     // Listen for progress updates
     if (typeof window !== 'undefined') {
       window.addEventListener('progressUpdated', updateProgressData);
-      return () => window.removeEventListener('progressUpdated', updateProgressData);
+      
+      // Listen for page visibility changes (when user comes back from game)
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          console.log('🎮 Mini-game: Page visible - updating progress');
+          updateProgressData();
+        }
+      };
+      
+      // Listen for window focus (when user comes back from game)
+      const handleFocus = () => {
+        console.log('🎮 Mini-game: Window focused - updating progress');
+        updateProgressData();
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleFocus);
+      
+      return () => {
+        window.removeEventListener('progressUpdated', updateProgressData);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleFocus);
+      };
     }
   }, [gamesLoading]);
+
+  // Router-based progress refresh
+  useEffect(() => {
+    const updateProgressData = () => {
+      setGameStats(MiniGameProgressHelper.getGameStats());
+      setAchievements(MiniGameProgressHelper.getAchievementData());
+      setTotalCompletedGames(MiniGameProgressHelper.getCompletedGamesCount());
+      setTotalPoints(MiniGameProgressHelper.getTotalScore());
+      setStreakDays(MiniGameProgressHelper.getStreakDays());
+    };
+
+    const handleRouteChange = () => {
+      console.log('🎮 Mini-game: Route changed - updating progress');
+      // Delay update to allow localStorage to be updated
+      setTimeout(updateProgressData, 100);
+    };
+
+    // Update on component mount (when navigating to this page)
+    updateProgressData();
+
+    // Store route change handler for potential future use
+    const pathName = window.location.pathname;
+    if (pathName === '/mini-game') {
+      console.log('🎮 Mini-game: Page loaded - refreshing progress');
+      updateProgressData();
+    }
+
+  }, [router]);
 
   useEffect(() => {
     // โหลด progress data เมื่อ component mount
@@ -93,6 +161,17 @@ export default function MiniGamePage() {
     };
 
     loadProgressData();
+
+    // เพิ่มการ listen focus event เพื่อ refresh เมื่อกลับมาจากเกม
+    const handleFocus = () => {
+      console.log('🎮 Mini-game: Window focused - refreshing progress');
+      loadProgressData();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+      return () => window.removeEventListener('focus', handleFocus);
+    }
   }, []); // รันเฉพาะเมื่อ component mount
 
   useEffect(() => {
