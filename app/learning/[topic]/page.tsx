@@ -523,8 +523,8 @@ export default function LearningTopicPage() {
     switch (currentContent.type) {
       case "text":
         return (
-          <div className="prose prose-lg prose-invert max-w-none">
-            <p className="text-gray-200 leading-relaxed text-lg">
+          <div className="prose prose-sm sm:prose-base lg:prose-lg prose-invert max-w-none">
+            <p className="text-gray-200 leading-relaxed text-sm sm:text-base lg:text-lg">
               {currentContent.content}
             </p>
           </div>
@@ -532,10 +532,10 @@ export default function LearningTopicPage() {
 
       case "video":
         return (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div className="text-center">
               {currentContent.imageUrl ? (
-                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                <div className="bg-white/5 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
                   {/* ตรวจสอบว่าเป็น YouTube URL หรือไม่ */}
                   {currentContent.imageUrl.includes('youtube.com') || currentContent.imageUrl.includes('youtu.be') ? (
                     <div className="relative w-full aspect-video">
@@ -550,7 +550,7 @@ export default function LearningTopicPage() {
                     <video
                       src={currentContent.imageUrl}
                       controls
-                      className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                      className="max-w-full max-h-64 sm:max-h-96 mx-auto rounded-lg shadow-lg"
                       onError={(e) => {
                         const target = e.target as HTMLVideoElement;
                         target.style.display = 'none';
@@ -560,19 +560,19 @@ export default function LearningTopicPage() {
                       ไม่สามารถเล่นวิดีโอได้
                     </video>
                   )}
-                  <div className="hidden text-gray-400 text-lg py-8">
+                  <div className="hidden text-gray-400 text-base sm:text-lg py-6 sm:py-8">
                     🎥 {currentContent.content}
-                    <div className="text-sm text-gray-500 mt-2">
+                    <div className="text-xs sm:text-sm text-gray-500 mt-2">
                       (ไม่สามารถโหลดวิดีโอได้)
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-800 rounded-lg p-8 mb-4">
-                  <div className="text-gray-400 text-lg">
+                <div className="bg-gray-800 rounded-lg p-6 sm:p-8 mb-3 sm:mb-4">
+                  <div className="text-gray-400 text-base sm:text-lg">
                     🎥 {currentContent.content}
                   </div>
-                  <div className="text-sm text-gray-500 mt-2">
+                  <div className="text-xs sm:text-sm text-gray-500 mt-2">
                     (ไม่มีวิดีโอ)
                   </div>
                 </div>
@@ -581,8 +581,8 @@ export default function LearningTopicPage() {
             
             {/* แสดงคำบรรยายวิดีโอ */}
             {currentContent.content && (
-              <div className="prose prose-lg prose-invert max-w-none">
-                <p className="text-gray-200 leading-relaxed text-center">
+              <div className="prose prose-sm sm:prose-base lg:prose-lg prose-invert max-w-none">
+                <p className="text-gray-200 leading-relaxed text-center text-sm sm:text-base">
                   {currentContent.content}
                 </p>
               </div>
@@ -592,14 +592,14 @@ export default function LearningTopicPage() {
 
       case "image":
         return (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div className="text-center">
               {currentContent.imageUrl ? (
-                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                <div className="bg-white/5 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
                   <img
                     src={currentContent.imageUrl}
                     alt={currentContent.content}
-                    className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg object-contain"
+                    className="max-w-full max-h-64 sm:max-h-80 lg:max-h-96 mx-auto rounded-lg shadow-lg object-contain"
                     onError={(e) => {
                       // ถ้าโหลดรูปไม่ได้ให้แสดง placeholder
                       const target = e.target as HTMLImageElement;
@@ -607,19 +607,19 @@ export default function LearningTopicPage() {
                       target.nextElementSibling?.classList.remove('hidden');
                     }}
                   />
-                  <div className="hidden text-gray-400 text-lg py-8">
+                  <div className="hidden text-gray-400 text-base sm:text-lg py-6 sm:py-8">
                     📷 {currentContent.content}
-                    <div className="text-sm text-gray-500 mt-2">
+                    <div className="text-xs sm:text-sm text-gray-500 mt-2">
                       (ไม่สามารถโหลดรูปภาพได้)
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gray-800 rounded-lg p-8 mb-4">
-                  <div className="text-gray-400 text-lg">
+                <div className="bg-gray-800 rounded-lg p-6 sm:p-8 mb-3 sm:mb-4">
+                  <div className="text-gray-400 text-base sm:text-lg">
                     📷 {currentContent.content}
                   </div>
-                  <div className="text-sm text-gray-500 mt-2">
+                  <div className="text-xs sm:text-sm text-gray-500 mt-2">
                     (ไม่มีรูปภาพ)
                   </div>
                 </div>
@@ -628,8 +628,8 @@ export default function LearningTopicPage() {
             
             {/* แสดงคำบรรยายรูปภาพ */}
             {currentContent.content && currentContent.content !== 'รูปภาพประกอบการเรียน' && (
-              <div className="prose prose-lg prose-invert max-w-none">
-                <p className="text-gray-200 leading-relaxed text-center">
+              <div className="prose prose-sm sm:prose-base lg:prose-lg prose-invert max-w-none">
+                <p className="text-gray-200 leading-relaxed text-center text-sm sm:text-base">
                   {currentContent.content}
                 </p>
               </div>
@@ -660,15 +660,15 @@ export default function LearningTopicPage() {
 
       case "interactive":
         return currentContent.activity ? (
-          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl p-8 border border-blue-500/30">
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold text-blue-400 mb-2">
+          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl p-4 sm:p-6 lg:p-8 border border-blue-500/30">
+            <div className="text-center mb-4 sm:mb-6">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400 mb-2">
                 💡 กิจกรรมปฏิสัมพันธ์
               </h3>
-              <p className="text-white text-lg mb-2">
+              <p className="text-white text-base sm:text-lg mb-2 px-2">
                 {currentContent.activity.title}
               </p>
-              <p className="text-gray-300 text-sm">
+              <p className="text-gray-300 text-xs sm:text-sm px-4">
                 ทดสอบความเข้าใจจากเนื้อหาที่เพิ่งศึกษา
               </p>
             </div>
@@ -688,7 +688,7 @@ export default function LearningTopicPage() {
             />
           </div>
         ) : (
-          <div className="text-red-400">ข้อมูลกิจกรรมไม่ถูกต้อง</div>
+          <div className="text-red-400 text-sm sm:text-base text-center">ข้อมูลกิจกรรมไม่ถูกต้อง</div>
         );
 
       default:
@@ -700,53 +700,54 @@ export default function LearningTopicPage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
       <Navbar />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <Link
             href="/learning"
-            className="inline-flex items-center text-yellow-400 hover:text-yellow-300 mb-4"
+            className="inline-flex items-center text-yellow-400 hover:text-yellow-300 mb-4 text-sm sm:text-base"
           >
-            <ArrowLeft size={20} className="mr-2" />
+            <ArrowLeft size={16} className="mr-2 sm:mr-2" />
             กลับไปหน้าบทเรียน
           </Link>
 
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 leading-tight">
                 {module.title}
               </h1>
-              <div className="flex items-center space-x-4 text-gray-400">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-gray-400 space-y-2 sm:space-y-0">
                 <div className="flex items-center">
-                  <BookOpen size={16} className="mr-1" />
-                  <span>
+                  <BookOpen size={14} className="mr-1 sm:mr-1 flex-shrink-0" />
+                  <span className="text-sm">
                     บทที่ {getModuleOrder(module.id)}: {module.title}
                   </span>
                 </div>
                 <div className="flex items-center">
-                  <Clock size={16} className="mr-1" />
-                  <span>{module.estimatedTime}</span>
+                  <Clock size={14} className="mr-1 sm:mr-1 flex-shrink-0" />
+                  <span className="text-sm">{module.estimatedTime}</span>
                 </div>
               </div>
             </div>
 
             {/* Score Display */}
             {totalScore > 0 && (
-              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-xl p-4 border border-yellow-500/30">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Star className="text-yellow-400" size={24} />
+              <div className="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-xl p-3 sm:p-4 border border-yellow-500/30 w-full lg:w-auto">
+                <div className="flex items-center justify-between lg:justify-start lg:space-x-4">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <Star className="text-yellow-400 flex-shrink-0" size={20} />
                     <div>
-                      <div className="text-yellow-400 font-bold text-lg">
+                      <div className="text-yellow-400 font-bold text-base sm:text-lg">
                         {totalScore} แต้ม
                       </div>
-                      <div className="text-yellow-300 text-sm">คะแนนรวม</div>
+                      <div className="text-yellow-300 text-xs sm:text-sm">คะแนนรวม</div>
                     </div>
-                    <Zap className="text-orange-400" size={20} />
+                    <Zap className="text-orange-400 flex-shrink-0" size={16} />
                   </div>
 
-                  <div className="text-sm text-gray-300">
-                    กิจกรรมที่ผ่าน: {completedActivities.size}
+                  <div className="text-xs sm:text-sm text-gray-300 text-right lg:text-left">
+                    <div>กิจกรรมที่ผ่าน:</div>
+                    <div className="font-bold">{completedActivities.size}</div>
                   </div>
                 </div>
               </div>
@@ -755,10 +756,10 @@ export default function LearningTopicPage() {
         </div>
 
         {/* Progress Bar */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-gray-400">ความคืบหน้า</span>
-            <span className="text-sm text-gray-400">
+            <span className="text-xs sm:text-sm text-gray-400">ความคืบหน้า</span>
+            <span className="text-xs sm:text-sm text-gray-400">
               {currentContentIndex + 1} / {currentChapter.content.length}
             </span>
           </div>
@@ -769,8 +770,8 @@ export default function LearningTopicPage() {
         </div>
 
         {/* Chapter Navigation */}
-        <div className="mb-8">
-          <div className="flex space-x-2 overflow-x-auto pb-2">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex space-x-1 sm:space-x-2 overflow-x-auto pb-2 scrollbar-hide">
             {module.chapters.map((chapter, index) => {
               const isCompleted =
                 chapterProgress[chapter.id]?.completed || false;
@@ -783,16 +784,17 @@ export default function LearningTopicPage() {
                     setCurrentChapterIndex(index);
                     setCurrentContentIndex(0);
                   }}
-                  className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all flex items-center space-x-2 ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg whitespace-nowrap transition-all flex items-center space-x-1 sm:space-x-2 text-sm flex-shrink-0 ${
                     isCurrent
-                      ? "bg-yellow-500 text-black"
+                      ? "bg-yellow-500 text-black font-bold"
                       : isCompleted
                       ? "bg-green-500/20 text-green-400 border border-green-500"
                       : "bg-white/10 text-gray-300 hover:bg-white/20"
                   }`}
                 >
-                  {isCompleted && <CheckCircle size={16} />}
-                  <span>ส่วนที่ {index + 1}</span>
+                  {isCompleted && <CheckCircle size={14} className="flex-shrink-0" />}
+                  <span className="hidden sm:inline">ส่วนที่ {index + 1}</span>
+                  <span className="sm:hidden">{index + 1}</span>
                 </button>
               );
             })}
@@ -803,18 +805,18 @@ export default function LearningTopicPage() {
         <div className="max-w-4xl mx-auto">
           {/* แจ้งเตือนเมื่อต้องทำกิจกรรมก่อน */}
           {!canProceed && currentContent?.required && (
-            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/40 rounded-xl p-6 mb-6">
-              <div className="flex items-center mb-3">
-                <Brain className="text-blue-400 mr-3" size={24} />
-                <h3 className="text-xl font-bold text-blue-300">
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/40 rounded-xl p-4 sm:p-6 mb-4 sm:mb-6">
+              <div className="flex items-start sm:items-center mb-3">
+                <Brain className="text-blue-400 mr-2 sm:mr-3 flex-shrink-0 mt-1 sm:mt-0" size={20} />
+                <h3 className="text-lg sm:text-xl font-bold text-blue-300">
                   🎯 มาลองทำกิจกรรมกันเถอะ!
                 </h3>
               </div>
-              <p className="text-blue-200 mb-4">
+              <p className="text-blue-200 mb-4 text-sm sm:text-base leading-relaxed">
                 ทำกิจกรรมในหน้านี้ให้เสร็จก่อน แล้วเราจะไปเรียนรู้เรื่องใหม่ๆ ต่อกันนะ! 🚀
               </p>
-              <div className="bg-blue-600/20 rounded-lg p-4 border border-blue-600/30">
-                <p className="text-blue-300 text-sm">
+              <div className="bg-blue-600/20 rounded-lg p-3 sm:p-4 border border-blue-600/30">
+                <p className="text-blue-300 text-xs sm:text-sm leading-relaxed">
                   ✨ <strong>เคล็ดลับ:</strong>{" "}
                   อ่านเนื้อหาให้เข้าใจก่อนทำกิจกรรม 
                   หากตอบผิดก็ไม่เป็นไร ลองดูคำใบ้แล้วลองใหม่นะ! 😊
@@ -825,47 +827,47 @@ export default function LearningTopicPage() {
 
           {shouldDisplayCompletionScreen() ? (
             // Module Completed Screen
-            <div className="bg-gradient-to-br from-green-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-green-500/30 text-center">
-              <div className="mb-6">
-                <Trophy className="mx-auto text-yellow-400 mb-4" size={80} />
-                <h2 className="text-4xl font-bold text-white mb-4">
+            <div className="bg-gradient-to-br from-green-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-green-500/30 text-center">
+              <div className="mb-4 sm:mb-6">
+                <Trophy className="mx-auto text-yellow-400 mb-3 sm:mb-4" size={60} />
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-3 sm:mb-4">
                   ยินดีด้วย!
                 </h2>
-                <p className="text-xl text-gray-300 mb-2">คุณเรียนจบ</p>
-                <h3 className="text-3xl font-bold text-yellow-400 mb-6">
+                <p className="text-lg sm:text-xl text-gray-300 mb-2">คุณเรียนจบ</p>
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-bold text-yellow-400 mb-4 sm:mb-6 px-4">
                   {module.title}
                 </h3>
-                <p className="text-gray-300">แล้วเสร็จเรียบร้อย</p>
+                <p className="text-gray-300 text-sm sm:text-base">แล้วเสร็จเรียบร้อย</p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-white/10 rounded-lg p-6">
-                  <BookOpen className="mx-auto text-blue-400 mb-2" size={32} />
-                  <div className="text-2xl font-bold text-white">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
+                <div className="bg-white/10 rounded-lg p-4 sm:p-6">
+                  <BookOpen className="mx-auto text-blue-400 mb-2" size={28} />
+                  <div className="text-xl sm:text-2xl font-bold text-white">
                     {module.chapters.length}
                   </div>
-                  <div className="text-gray-400">บทเรียนที่เรียนจบ</div>
+                  <div className="text-gray-400 text-sm sm:text-base">บทเรียนที่เรียนจบ</div>
                 </div>
-                <div className="bg-white/10 rounded-lg p-6">
-                  <Clock className="mx-auto text-purple-400 mb-2" size={32} />
-                  <div className="text-2xl font-bold text-white">
+                <div className="bg-white/10 rounded-lg p-4 sm:p-6">
+                  <Clock className="mx-auto text-purple-400 mb-2" size={28} />
+                  <div className="text-xl sm:text-2xl font-bold text-white">
                     {module.estimatedTime}
                   </div>
-                  <div className="text-gray-400">เวลาโดยประมาณ</div>
+                  <div className="text-gray-400 text-sm sm:text-base">เวลาโดยประมาณ</div>
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 {quiz ? (
-                  <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl p-8 border-2 border-orange-500/40">
-                    <div className="text-center mb-6">
-                      <h4 className="text-2xl font-bold text-orange-400 mb-2">
+                  <div className="bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-xl p-4 sm:p-6 lg:p-8 border-2 border-orange-500/40">
+                    <div className="text-center mb-4 sm:mb-6">
+                      <h4 className="text-xl sm:text-2xl font-bold text-orange-400 mb-2">
                         แบบฝึกหัด
                       </h4>
-                      <p className="text-white text-lg mb-1">
+                      <p className="text-white text-base sm:text-lg mb-1 px-2">
                         แบบฝึกหัด: {quiz.title}
                       </p>
-                      <p className="text-gray-300 text-sm">
+                      <p className="text-gray-300 text-xs sm:text-sm px-4">
                         ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้
                       </p>
                     </div>
@@ -873,78 +875,70 @@ export default function LearningTopicPage() {
                     <div className="text-center">
                       <Link
                         href={`/quiz/${quiz.id}`}
-                        className="px-8 py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-lg inline-flex items-center shadow-lg"
+                        className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-base sm:text-lg inline-flex items-center shadow-lg"
                       >
-                        <Brain size={24} className="mr-3" />
-                        ไปทำแบบทดสอบ
+                        <Brain size={20} className="mr-2 sm:mr-3 flex-shrink-0" />
+                        <span>ไปทำแบบทดสอบ</span>
                       </Link>
                     </div>
 
-                    <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
-                      <div className="flex items-center">
-                        <Brain size={16} className="mr-1 text-orange-400" />
+                    <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-center sm:space-x-6 space-y-2 sm:space-y-0 text-xs sm:text-sm text-gray-300">
+                      <div className="flex items-center justify-center">
+                        <Brain size={14} className="mr-1 text-orange-400 flex-shrink-0" />
                         {quiz.question?.questions?.length || 0} ข้อ
                       </div>
-                      <div className="flex items-center">
-                        <Clock size={16} className="mr-1 text-orange-400" />
+                      <div className="flex items-center justify-center">
+                        <Clock size={14} className="mr-1 text-orange-400 flex-shrink-0" />
                         {quiz.timeLimit ? `${quiz.timeLimit} นาที` : "ไม่จำกัด"}
                       </div>
-                      <div className="flex items-center">
-                        <Trophy size={16} className="mr-1 text-orange-400" />
+                      <div className="flex items-center justify-center">
+                        <Trophy size={14} className="mr-1 text-orange-400 flex-shrink-0" />
                         ผ่าน {quiz.passingScore}%
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-gray-500/20 rounded-lg p-6 border border-gray-500/30">
+                  <div className="bg-gray-500/20 rounded-lg p-4 sm:p-6 border border-gray-500/30">
                     <div className="text-center">
-                      <Brain className="mx-auto text-gray-400 mb-3" size={48} />
-                      <h4 className="text-lg font-semibold text-gray-400 mb-2">
+                      <Brain className="mx-auto text-gray-400 mb-3" size={40} />
+                      <h4 className="text-base sm:text-lg font-semibold text-gray-400 mb-2">
                         ยังไม่มีแบบทดสอบ
                       </h4>
-                      <p className="text-gray-500">
+                      <p className="text-gray-500 text-sm">
                         แบบทดสอบสำหรับบทเรียนนี้จะมาเร็วๆ นี้
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex justify-center space-x-4">
+                <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
                   <button
                     onClick={() => {
                       setShouldShowCompletion(false);
                       setCurrentChapterIndex(0);
                       setCurrentContentIndex(0);
                     }}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                    className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center justify-center text-sm sm:text-base"
                   >
-                    <BookOpen size={20} className="mr-2" />
-                    ดูเนื้อหาการเรียน
+                    <BookOpen size={18} className="mr-2 flex-shrink-0" />
+                    <span>ดูเนื้อหาการเรียน</span>
                   </button>
-                  
-                  {/* {quiz && (
-                    <Link
-                      href={`/quiz/${quiz.id}`}
-                      className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
-                    >
-                      <Brain size={20} className="mr-2" />
-                      ไปทำแบบทดสอบ
-                    </Link>
-                  )} */}
                   
                   <Link
                     href="/learning"
-                    className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                    className="px-4 sm:px-6 py-2 sm:py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center justify-center text-sm sm:text-base"
                   >
-                    <ArrowLeft size={20} className="mr-2" />
-                    กลับไปหน้าบทเรียน
+                    <ArrowLeft size={18} className="mr-2 flex-shrink-0" />
+                    <span>กลับไปหน้าบทเรียน</span>
                   </Link>
+                  
                   <Link
                     href="/quiz"
-                    className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                    className="px-4 sm:px-6 py-2 sm:py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center justify-center text-sm sm:text-base"
                   >
-                    <Brain size={20} className="mr-2" />
-                    ดูแบบทดสอบทั้งหมด
+                    <Brain size={18} className="mr-2 flex-shrink-0" />
+                    <span className="hidden sm:inline">ดูแบบทดสอบทั้งหมด</span>
+                    <span className="sm:hidden">แบบทดสอบ</span>
                   </Link>
                 </div>
               </div>
@@ -952,30 +946,30 @@ export default function LearningTopicPage() {
           ) : (
             // Regular Learning Content
             <>
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-white/10">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 border border-white/10">
                 {renderContent()}
               </div>
 
               {/* Navigation Buttons */}
-              <div className="flex justify-between items-center">
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
                 <button
                   onClick={prevContent}
                   disabled={isFirstChapter && isFirstContent}
-                  className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`flex items-center justify-center px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all text-sm sm:text-base ${
                     isFirstChapter && isFirstContent
                       ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                       : "bg-gray-700 text-white hover:bg-gray-600"
                   }`}
                 >
-                  <ChevronLeft size={20} className="mr-2" />
-                  ย้อนกลับ
+                  <ChevronLeft size={18} className="mr-2 flex-shrink-0" />
+                  <span>ย้อนกลับ</span>
                 </button>
 
-                <div className="text-center">
-                  <div className="text-sm text-gray-400 mb-1">
+                <div className="text-center px-4 order-first sm:order-none">
+                  <div className="text-xs sm:text-sm text-gray-400 mb-1">
                     ส่วนที่ {currentChapterIndex + 1} จาก {module.chapters.length}
                   </div>
-                  <div className="text-lg font-semibold text-white">
+                  <div className="text-base sm:text-lg font-semibold text-white line-clamp-2">
                     {currentChapter.title}
                   </div>
                 </div>
@@ -985,7 +979,7 @@ export default function LearningTopicPage() {
                   disabled={
                     !canProceed || (isLastChapter && isLastContent && !quiz)
                   }
-                  className={`flex items-center px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`flex items-center justify-center px-4 sm:px-6 py-3 rounded-lg font-semibold transition-all text-sm sm:text-base ${
                     !canProceed
                       ? "bg-gray-700 text-gray-500 cursor-not-allowed"
                       : isLastChapter && isLastContent && !quiz
@@ -997,18 +991,20 @@ export default function LearningTopicPage() {
                 >
                   {!canProceed ? (
                     <>
-                      <Brain size={20} className="mr-2" />
-                      ทำกิจกรรมก่อนนะ! 🎮
+                      <Brain size={18} className="mr-2 flex-shrink-0" />
+                      <span className="hidden sm:inline">ทำกิจกรรมก่อนนะ! 🎮</span>
+                      <span className="sm:hidden">ทำกิจกรรมก่อน</span>
                     </>
                   ) : isLastChapter && isLastContent && quiz ? (
                     <>
-                      <Trophy size={20} className="mr-2" />
-                      เสร็จแล้ว - ไปทำแบบทดสอบ
+                      <Trophy size={18} className="mr-2 flex-shrink-0" />
+                      <span className="hidden sm:inline">เสร็จแล้ว - ไปทำแบบทดสอบ</span>
+                      <span className="sm:hidden">เสร็จ - ทดสอบ</span>
                     </>
                   ) : (
                     <>
-                      ถัดไป
-                      <ChevronRight size={20} className="ml-2" />
+                      <span>ถัดไป</span>
+                      <ChevronRight size={18} className="ml-2 flex-shrink-0" />
                     </>
                   )}
                 </button>

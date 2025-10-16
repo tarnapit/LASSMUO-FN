@@ -128,40 +128,44 @@ export default function InteractiveActivityComponent({
   };
 
   return (
-    <div className={`bg-gradient-to-br rounded-2xl p-8 border transition-all ${
+    <div className={`bg-gradient-to-br rounded-2xl p-4 sm:p-6 lg:p-8 border transition-all ${
       required 
         ? 'from-purple-600/30 to-pink-600/30 border-purple-500/50 shadow-lg shadow-purple-500/20' 
         : 'from-purple-500/20 to-blue-500/20 border-purple-500/30'
     }`}>
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-2xl font-bold text-white flex items-center">
-            <Star className="text-yellow-400 mr-2" size={24} />
-            {activity.title}
-            {required && (
-              <span className="ml-3 px-2 py-1 bg-red-500/20 border border-red-500/40 rounded text-red-300 text-sm font-normal">
-                บังคับ
-              </span>
-            )}
-            {activity.difficulty && (
-              <span className={`ml-2 px-2 py-1 rounded text-sm font-normal ${
-                activity.difficulty.toLowerCase() === 'easy' ? 'bg-green-500/20 border border-green-500/40 text-green-300' :
-                activity.difficulty.toLowerCase() === 'medium' ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' :
-                'bg-red-500/20 border border-red-500/40 text-red-300'
-              }`}>
-                {activity.difficulty.toLowerCase() === 'easy' ? 'ง่าย' : 
-                 activity.difficulty.toLowerCase() === 'medium' ? 'ปานกลาง' : 'ยาก'}
-              </span>
-            )}
-          </h3>
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white flex items-center">
+              <Star className="text-yellow-400 mr-2 flex-shrink-0" size={20} />
+              <span className="line-clamp-2">{activity.title}</span>
+            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              {required && (
+                <span className="px-2 py-1 bg-red-500/20 border border-red-500/40 rounded text-red-300 text-xs font-normal">
+                  บังคับ
+                </span>
+              )}
+              {activity.difficulty && (
+                <span className={`px-2 py-1 rounded text-xs font-normal ${
+                  activity.difficulty.toLowerCase() === 'easy' ? 'bg-green-500/20 border border-green-500/40 text-green-300' :
+                  activity.difficulty.toLowerCase() === 'medium' ? 'bg-yellow-500/20 border border-yellow-500/40 text-yellow-300' :
+                  'bg-red-500/20 border border-red-500/40 text-red-300'
+                }`}>
+                  {activity.difficulty.toLowerCase() === 'easy' ? 'ง่าย' : 
+                   activity.difficulty.toLowerCase() === 'medium' ? 'ปานกลาง' : 'ยาก'}
+                </span>
+              )}
+            </div>
+          </div>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {activity.timeLimite && (
-              <div className={`flex items-center px-3 py-1 rounded-lg ${
+              <div className={`flex items-center px-2 sm:px-3 py-1 rounded-lg text-sm ${
                 timeRemaining <= 10 ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
               }`}>
-                <Clock size={16} className="mr-1" />
+                <Clock size={14} className="mr-1 flex-shrink-0" />
                 <span className="font-mono font-bold">
                   {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
                 </span>
@@ -169,8 +173,8 @@ export default function InteractiveActivityComponent({
             )}
             
             {activity.maxAttempts && (
-              <div className="flex items-center px-3 py-1 rounded-lg bg-orange-500/20 text-orange-400">
-                <span className="text-sm">
+              <div className="flex items-center px-2 sm:px-3 py-1 rounded-lg bg-orange-500/20 text-orange-400">
+                <span className="text-xs sm:text-sm">
                   ลองได้: {attempts}/{activity.maxAttempts}
                 </span>
               </div>
@@ -178,19 +182,19 @@ export default function InteractiveActivityComponent({
           </div>
         </div>
         
-        <p className="text-gray-300">{activity.instruction}</p>
+        <p className="text-gray-300 text-sm sm:text-base leading-relaxed">{activity.instruction}</p>
         
-        <div className="flex items-center mt-3 space-x-4">
+        <div className="flex flex-col sm:flex-row sm:items-center mt-3 gap-2 sm:gap-4">
           {activity.point && (
-            <div className="flex items-center text-yellow-400 text-sm">
-              <Trophy size={16} className="mr-1" />
+            <div className="flex items-center text-yellow-400 text-xs sm:text-sm">
+              <Trophy size={14} className="mr-1 flex-shrink-0" />
               คะแนนเต็ม: {activity.point} แต้ม
             </div>
           )}
           
           {(activity.passingScore || minimumScore > 0) && (
-            <div className="flex items-center text-green-400 text-sm">
-              <CheckCircle size={16} className="mr-1" />
+            <div className="flex items-center text-green-400 text-xs sm:text-sm">
+              <CheckCircle size={14} className="mr-1 flex-shrink-0" />
               ผ่าน: {activity.passingScore || minimumScore} แต้ม
             </div>
           )}
@@ -198,59 +202,61 @@ export default function InteractiveActivityComponent({
       </div>
 
       {/* Activity Content */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         {renderActivity()}
       </div>
 
       {/* Feedback */}
       {showFeedback && (
-        <div className={`p-4 rounded-lg border mb-4 ${
+        <div className={`p-3 sm:p-4 rounded-lg border mb-4 ${
           passed 
             ? 'bg-green-500/20 border-green-500/40 text-green-300' 
             : 'bg-red-500/20 border-red-500/40 text-red-300'
         }`}>
           <div className="flex items-center mb-2">
             {passed ? (
-              <CheckCircle size={20} className="mr-2 text-green-400" />
+              <CheckCircle size={18} className="mr-2 text-green-400 flex-shrink-0" />
             ) : (
-              <XCircle size={20} className="mr-2 text-red-400" />
+              <XCircle size={18} className="mr-2 text-red-400 flex-shrink-0" />
             )}
-            <span className="font-semibold">
+            <span className="font-semibold text-sm sm:text-base">
               {passed ? 'ผ่าน!' : (isCorrect ? 'ถูกต้อง แต่คะแนนไม่พอ' : 'ไม่ถูกต้อง')}
             </span>
             {score > 0 && (
-              <span className="ml-2 text-yellow-400 font-bold">+{score} แต้ม</span>
+              <span className="ml-2 text-yellow-400 font-bold text-sm sm:text-base">+{score} แต้ม</span>
             )}
           </div>
           
-          <p className="text-sm mb-2">
+          <p className="text-xs sm:text-sm mb-2 leading-relaxed">
             {passed ? activity.feedback?.correct : activity.feedback?.incorrect}
           </p>
           
           {showHint && activity.feedback?.hint && (
-            <div className="mt-3 p-3 bg-blue-500/20 border border-blue-500/40 rounded text-blue-300">
+            <div className="mt-3 p-2 sm:p-3 bg-blue-500/20 border border-blue-500/40 rounded text-blue-300">
               <div className="flex items-center mb-1">
-                <span className="text-sm font-semibold">💡 คำใบ้:</span>
+                <span className="text-xs sm:text-sm font-semibold">💡 คำใบ้:</span>
               </div>
-              <p className="text-sm">{activity.feedback.hint}</p>
+              <p className="text-xs sm:text-sm leading-relaxed">{activity.feedback.hint}</p>
             </div>
           )}
           
           {!passed && !isCompleted && (
             <button
               onClick={resetActivity}
-              className="mt-3 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm flex items-center"
+              className="mt-3 px-3 sm:px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-xs sm:text-sm flex items-center"
             >
-              <RotateCcw size={16} className="mr-2" />
+              <RotateCcw size={14} className="mr-2 flex-shrink-0" />
               ลองใหม่
             </button>
           )}
           
           {required && !passed && isCompleted && (
-            <div className="mt-3 p-3 bg-red-600/20 border border-red-600/40 rounded text-red-300">
-              <div className="flex items-center">
-                <XCircle size={16} className="mr-2" />
-                <span className="text-sm font-semibold">ต้องผ่านกิจกรรมนี้ก่อนถึงจะไปต่อได้</span>
+            <div className="mt-3 p-2 sm:p-3 bg-red-600/20 border border-red-600/40 rounded text-red-300">
+              <div className="flex items-start sm:items-center">
+                <XCircle size={14} className="mr-2 flex-shrink-0 mt-0.5 sm:mt-0" />
+                <span className="text-xs sm:text-sm font-semibold leading-relaxed">
+                  ต้องผ่านกิจกรรมนี้ก่อนถึงจะไปต่อได้
+                </span>
               </div>
             </div>
           )}
@@ -349,29 +355,29 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
     <div className="space-y-6">
       {/* Feedback overlay */}
       {showingFeedback && feedback && (
-        <div className="feedback-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+        <div className="feedback-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className={`
-            feedback-modal max-w-md mx-4 p-6 rounded-xl border-2 text-center transform transition-all duration-300 scale-100
+            feedback-modal max-w-sm sm:max-w-md mx-4 p-4 sm:p-6 rounded-xl border-2 text-center transform transition-all duration-300 scale-100
             ${feedback.type === 'correct' 
               ? 'bg-green-500/90 border-green-400 text-white shadow-green-500/50' 
               : 'bg-red-500/90 border-red-400 text-white shadow-red-500/50'
             } shadow-2xl
           `}>
-            <div className="text-4xl mb-2">
+            <div className="text-3xl sm:text-4xl mb-2">
               {feedback.type === 'correct' ? '🎉' : '💭'}
             </div>
-            <p className="text-lg font-semibold">{feedback.message}</p>
+            <p className="text-base sm:text-lg font-semibold leading-relaxed">{feedback.message}</p>
             {feedback.type === 'correct' && (
-              <div className="mt-2 text-sm opacity-90">+{Math.floor((activity.point || 10) / activity.data.pairs.length)} แต้ม</div>
+              <div className="mt-2 text-xs sm:text-sm opacity-90">+{Math.floor((activity.point || 10) / activity.data.pairs.length)} แต้ม</div>
             )}
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* ฝั่งซ้าย */}
-        <div className="space-y-3">
-          <h4 className="text-lg font-semibold text-white mb-3">จับคู่รายการ</h4>
+        <div className="space-y-2 sm:space-y-3">
+          <h4 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-3">จับคู่รายการ</h4>
           {activity.data.pairs.map((pair: any, index: number) => {
             const matchInfo = matches.find(m => m.left === index);
             return (
@@ -380,7 +386,7 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
                 onClick={() => handleLeftClick(index)}
                 disabled={disabled || isMatched('left', index) || showingFeedback}
                 className={`
-                  matching-item w-full p-3 rounded-lg border-2 transition-all text-left
+                  matching-item w-full p-2 sm:p-3 rounded-lg border-2 transition-all text-left text-sm sm:text-base
                   ${matchInfo
                     ? matchInfo.isCorrect
                       ? 'matching-item-correct bg-green-500/30 border-green-500 text-green-300 shadow-lg'
@@ -407,8 +413,8 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
         </div>
 
         {/* ฝั่งขวา */}
-        <div className="space-y-3">
-          <h4 className="text-lg font-semibold text-white mb-3">เลือกคำตอบ</h4>
+        <div className="space-y-2 sm:space-y-3">
+          <h4 className="text-base sm:text-lg font-semibold text-white mb-2 sm:mb-3">เลือกคำตอบ</h4>
           {shuffledRight.map((item, index) => {
             const isMatched = matches.some(m => m.right === index);
             return (
@@ -417,7 +423,7 @@ function MatchingGame({ activity, onAnswer, disabled }: any) {
                 onClick={() => handleRightClick(index)}
                 disabled={disabled || isMatched || showingFeedback}
                 className={`
-                  matching-item w-full p-3 rounded-lg border-2 transition-all text-left
+                  matching-item w-full p-2 sm:p-3 rounded-lg border-2 transition-all text-left text-sm sm:text-base
                   ${isMatched
                     ? 'matching-item-correct bg-green-500/30 border-green-500 text-green-300 shadow-lg'
                     : selectedRight === index
@@ -501,13 +507,13 @@ function FillBlanksGame({ activity, onAnswer, disabled }: any) {
         {renderSentence()}
       </div>
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         {data.options.map((option: string, index: number) => (
           <button
             key={index}
             onClick={() => handleOptionClick(option, index)}
             disabled={disabled || usedOptions.includes(index)}
-            className={`p-3 rounded-lg border-2 transition-all ${
+            className={`p-2 sm:p-3 rounded-lg border-2 transition-all text-sm sm:text-base ${
               usedOptions.includes(index)
                 ? 'bg-gray-500/20 border-gray-500/40 text-gray-500'
                 : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
@@ -558,16 +564,16 @@ function MultipleChoiceGame({ activity, onAnswer, disabled }: any) {
       
       <h4 className="text-lg font-semibold text-white">{data.question}</h4>
       
-      <div className="grid gap-3">
+      <div className="grid gap-2 sm:gap-3">
         {data.options.map((option: string, index: number) => (
           <button
             key={index}
             onClick={() => handleChoiceClick(index)}
             disabled={disabled}
-            className="p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all text-left"
+            className="p-3 sm:p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all text-left text-sm sm:text-base"
           >
-            <span className="font-semibold mr-3">{String.fromCharCode(65 + index)}.</span>
-            {option}
+            <span className="font-semibold mr-2 sm:mr-3">{String.fromCharCode(65 + index)}.</span>
+            <span>{option}</span>
           </button>
         ))}
       </div>
@@ -598,13 +604,13 @@ function ImageIdentificationGame({ activity, onAnswer, disabled }: any) {
       
       <h4 className="text-lg font-semibold text-white text-center">{data.question}</h4>
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         {data.options.map((option: string, index: number) => (
           <button
             key={index}
             onClick={() => handleChoiceClick(index)}
             disabled={disabled}
-            className="p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all"
+            className="p-3 sm:p-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all text-sm sm:text-base"
           >
             {option}
           </button>
@@ -641,18 +647,18 @@ function TrueFalseGame({ activity, onAnswer, disabled }: any) {
         <h4 className="text-xl font-semibold text-white">{data.statement}</h4>
       </div>
       
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
         <button
           onClick={() => handleAnswer(true)}
           disabled={disabled}
-          className="p-6 bg-green-500/20 hover:bg-green-500/30 border-2 border-green-500/40 rounded-lg text-green-300 font-bold text-xl transition-all"
+          className="p-4 sm:p-6 bg-green-500/20 hover:bg-green-500/30 border-2 border-green-500/40 rounded-lg text-green-300 font-bold text-lg sm:text-xl transition-all"
         >
           ✓ ถูก
         </button>
         <button
           onClick={() => handleAnswer(false)}
           disabled={disabled}
-          className="p-6 bg-red-500/20 hover:bg-red-500/30 border-2 border-red-500/40 rounded-lg text-red-300 font-bold text-xl transition-all"
+          className="p-4 sm:p-6 bg-red-500/20 hover:bg-red-500/30 border-2 border-red-500/40 rounded-lg text-red-300 font-bold text-lg sm:text-xl transition-all"
         >
           ✗ ผิด
         </button>
