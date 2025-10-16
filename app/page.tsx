@@ -238,19 +238,6 @@ export default function HomePage() {
                 const coursePoints = learningStats && learningStats.totalModulesCompleted ? learningStats.totalModulesCompleted * 100 : 0;
                 const displayPoints = coursePoints + stagePoints;
                 
-                console.log('🎓 Points Debug:', {
-                  totalPointsFromProgress: progress.totalPoints,
-                  stagePointsCalculated: stagePoints,
-                  coursePointsCalculated: coursePoints,
-                  displayPoints: displayPoints,
-                  learningStats: learningStats,
-                  individualStageScores: progress.stages ? Object.entries(progress.stages).map(([id, stage]) => ({
-                    stageId: id,
-                    bestScore: stage.bestScore,
-                    isCompleted: stage.isCompleted
-                  })) : 'No stages'
-                });
-                
                 return (displayPoints > 0 || stagePoints > 0) && (
                   <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-4 sm:p-6 text-center">
                     <div className="flex items-center justify-center mb-2 sm:mb-3">
@@ -266,11 +253,6 @@ export default function HomePage() {
                         {learningStats.totalModulesCompleted >= 2 && " 🎉"}
                       </p>
                     )}
-                    {process.env.NODE_ENV === 'development' && (
-                      <p className="text-blue-100 text-xs mt-1">
-                        {/* Debug: Course={coursePoints}, Stage={stagePoints}, Total={displayPoints} */}
-                      </p>
-                    )}
                   </div>
                 );
               })()}
@@ -280,17 +262,6 @@ export default function HomePage() {
                 // คำนวณดาวจาก stage progress
                 const stageStars = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0) : 0;
                 const displayStars = Math.max(progress.totalStars, stageStars);
-                
-                console.log('⭐ Stars Debug:', {
-                  totalStarsFromProgress: progress.totalStars,
-                  stageStarsCalculated: stageStars,
-                  displayStars: displayStars,
-                  individualStageStars: progress.stages ? Object.entries(progress.stages).map(([id, stage]) => ({
-                    stageId: id,
-                    stars: stage.stars,
-                    isCompleted: stage.isCompleted
-                  })) : 'No stages'
-                });
                 
                 return (displayStars > 0 || stageStars > 0) && (
                   <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-4 sm:p-6 text-center">
@@ -306,11 +277,6 @@ export default function HomePage() {
                         จาก {Object.values(progress.stages).filter(s => s.isCompleted || s.stars > 0).length} ด่านที่ผ่าน
                       </p>
                     )}
-                    {process.env.NODE_ENV === 'development' && (
-                      <p className="text-yellow-100 text-xs mt-1">
-                        {/* Debug: Total={progress.totalStars}, Calc={stageStars} */}
-                      </p>
-                    )}
                   </div>
                 );
               })()}
@@ -321,22 +287,6 @@ export default function HomePage() {
                 const completedFromStages = progress.stages ? Object.values(progress.stages).filter(stage => stage.isCompleted || stage.stars > 0).length : 0;
                 // ใช้ completedFromStages เป็นหลัก แล้วค่อย fallback ไปที่ array
                 const displayCompleted = completedFromStages > 0 ? completedFromStages : progress.completedStages.length;
-                
-                // Debug information
-                console.log('🏆 Completed Stages Debug:', {
-                  completedStagesArray: progress.completedStages,
-                  completedFromStages: completedFromStages,
-                  displayCompleted: displayCompleted,
-                  stagesObject: progress.stages ? Object.entries(progress.stages).map(([id, stage]) => ({
-                    id,
-                    isCompleted: stage.isCompleted,
-                    stars: stage.stars,
-                    bestScore: stage.bestScore
-                  })) : 'No stages'
-                });
-                
-                // แสดงการ์ดเสมอ - เพื่อให้ user เห็นความคืบหน้า
-                const hasAnyProgress = true; // แสดงเสมอ
                 
                 return (
                   <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-4 sm:p-6 text-center">
@@ -352,11 +302,6 @@ export default function HomePage() {
                     {progress.stages && Object.keys(progress.stages).length > 1 && (
                       <p className="text-green-200 text-xs mt-1">
                         จากทั้งหมด {Object.keys(progress.stages).length} ด่าน
-                      </p>
-                    )}
-                    {process.env.NODE_ENV === 'development' && (
-                      <p className="text-green-100 text-xs mt-1">
-                        {/* Debug: Array={progress.completedStages.length}, Object={completedFromStages}, Display={completedFromStages > 0 ? completedFromStages : (displayCompleted || 1)} */}
                       </p>
                     )}
                   </div>
