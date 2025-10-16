@@ -120,7 +120,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Full Screen Planet Background */}
-      <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+      <div className="fixed inset-0 z-0 transition-all duration-1000 ease-in-out">
         <Image
           src={planets[currentPlanetIndex].image}
           alt={planets[currentPlanetIndex].name}
@@ -133,12 +133,12 @@ export default function HomePage() {
       </div>
 
       {/* Navigation */}
-      <div className="relative z-10">
+      <div className="relative z-30 pointer-events-auto">
         <Navbar />
       </div>
 
       {/* Hero Section - Full Screen Layout */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-16 pointer-events-auto">
         {/* Main Section - LASSMUOO Content */}
         <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[60vh] mb-0">
           {/* Left Content - LASSMUOO */}
@@ -155,7 +155,7 @@ export default function HomePage() {
             </p>
 
             {/* Action Button */}
-            <Link href="/stage">
+            <Link href="/stage" className="relative z-30">
               <button className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-red-500 hover:to-red-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xl">
                 <PlayCircle className="w-6 h-6" />
                 เริ่มต้นผจญภัย
@@ -183,7 +183,7 @@ export default function HomePage() {
             เรียนรู้ดาราศาสตร์ผ่านบทเรียนโดยมีการทดลอง การสำรวจ และการเล่นเกมในแต่ละหัวข้อ ๆ
           </p>
           <div className="flex justify-end">
-            <Link href="/learning">
+            <Link href="/learning" className="relative z-30">
               <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-16 py-4 rounded-lg font-semibold text-lg hover:from-orange-400 hover:to-orange-500 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xl">
                 <PlayCircle className="w-6 h-6" />
                 เริ่มเรียน
@@ -193,7 +193,7 @@ export default function HomePage() {
         </div>
 
         {/* Planet Navigation Dots - Fixed at bottom */}
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex flex-wrap justify-center gap-4 bg-black/30 backdrop-blur-md rounded-full px-6 py-4 border border-white/20">
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 flex flex-wrap justify-center gap-4 bg-black/30 backdrop-blur-md rounded-full px-6 py-4 border border-white/20">
           {planets.map((planet, index) => (
             <button
               key={index}
@@ -218,7 +218,7 @@ export default function HomePage() {
         {progress && (progress.totalStars > 0 || progress.completedStages.length > 0 || 
                      progress.totalPoints > 0 || (learningStats && learningStats.totalModulesStarted > 0) ||
                      (progress.stages && Object.values(progress.stages).some(s => s.stars > 0 || s.isCompleted))) && (
-          <div className="mt-8 sm:mt-12 bg-black/30 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-white/20 shadow-2xl max-w-5xl mx-auto">
+          <div className="relative z-20 mt-8 sm:mt-12 bg-black/30 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-white/20 shadow-2xl max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row items-center justify-center mb-4 sm:mb-6">
               <div className="p-2 sm:p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-0 sm:mr-3 mb-2 sm:mb-0">
                 <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
@@ -385,7 +385,7 @@ export default function HomePage() {
         )}
 
         {/* Background Stars Effect */}
-        <div className="fixed inset-0 pointer-events-none z-5">
+        <div className="fixed inset-0 pointer-events-none z-10">
           <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-pulse shadow-white/50 shadow-sm"></div>
           <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-100 shadow-white/50 shadow-sm"></div>
           <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-200 shadow-white/50 shadow-sm"></div>
