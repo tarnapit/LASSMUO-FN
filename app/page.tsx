@@ -140,25 +140,25 @@ export default function HomePage() {
       {/* Hero Section - Full Screen Layout */}
       <div className="relative z-20 container mx-auto px-4 sm:px-6 lg:px-8 py-16 pointer-events-auto">
         {/* Main Section - LASSMUOO Content */}
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[60vh] mb-0">
+        <div className="grid lg:grid-cols-2 gap-4 lg:gap-6 items-center min-h-[40vh] lg:min-h-[45vh] mb-4 lg:mb-6">
           {/* Left Content - LASSMUOO */}
           <div className="text-left lg:pr-8">
             {/* Main Title */}
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-2xl">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-4 lg:mb-6 leading-tight drop-shadow-2xl">
               LASSMUOO
             </h1>
 
             {/* Description */}
-            <p className="text-gray-200 text-lg sm:text-xl mb-8 leading-relaxed max-w-xl drop-shadow-lg">
+            <p className="text-gray-200 text-base sm:text-lg lg:text-xl mb-6 lg:mb-8 leading-relaxed max-w-xl drop-shadow-lg">
               เรียนรู้ดาราศาสตร์ผ่านการสำรวจ การทดลอง และการเล่นเกม พร้อม
               ระบบการเรียนรู้แบบปฏิบัติที่เน้นประสบการณ์จริง
             </p>
 
             {/* Action Button */}
-            <Link href="/stage" className="relative z-30">
-              <button className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-red-500 hover:to-red-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xl">
-                <PlayCircle className="w-6 h-6" />
-                เริ่มต้นผจญภัย
+            <Link href="/stage" className="relative z-30 w-full sm:w-auto">
+              <button className="bg-gradient-to-r from-red-600 to-red-700 text-white px-6 py-4 rounded-lg font-semibold text-lg hover:from-red-500 hover:to-red-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-64 shadow-2xl">
+                <PlayCircle className="w-6 h-6 flex-shrink-0" />
+                <span className="whitespace-nowrap">เริ่มต้นผจญภัย</span>
               </button>
             </Link>
           </div>
@@ -175,18 +175,18 @@ export default function HomePage() {
         </div>
 
         {/* Learning Section - ตรงกลางล่าง */}
-        <div className="text-right max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 drop-shadow-2xl">
+        <div className="text-left lg:text-right max-w-2xl lg:max-w-4xl mx-auto mb-6 lg:mb-8">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white mb-4 lg:mb-6 drop-shadow-2xl leading-tight">
             เรียนรู้เนื้อหา
           </h2>
-          <p className="text-gray-200 text-lg sm:text-xl mb-8 leading-relaxed drop-shadow-lg">
+          <p className="text-gray-200 text-base sm:text-lg lg:text-xl mb-6 lg:mb-8 leading-relaxed drop-shadow-lg max-w-2xl lg:max-w-3xl lg:ml-auto">
             เรียนรู้ดาราศาสตร์ผ่านบทเรียนโดยมีการทดลอง การสำรวจ และการเล่นเกมในแต่ละหัวข้อ ๆ
           </p>
-          <div className="flex justify-end">
-            <Link href="/learning" className="relative z-30">
-              <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-16 py-4 rounded-lg font-semibold text-lg hover:from-orange-400 hover:to-orange-500 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xl">
-                <PlayCircle className="w-6 h-6" />
-                เริ่มเรียน
+          <div className="flex justify-start lg:justify-end">
+            <Link href="/learning" className="relative z-30 w-full sm:w-auto">
+              <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-4 rounded-lg font-semibold text-lg hover:from-orange-400 hover:to-orange-500 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-64 shadow-2xl">
+                <PlayCircle className="w-6 h-6 flex-shrink-0" />
+                <span className="whitespace-nowrap">เริ่มเรียน</span>
               </button>
             </Link>
           </div>
