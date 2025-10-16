@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
 import { MiniGameQuestion } from "../../../types/mini-game";
+import DragDropOrderingQuestion from "./DragDropOrderingQuestion";
+import EnhancedMatchingQuestion from "./EnhancedMatchingQuestion";
 
 interface QuestionRendererProps {
   question: MiniGameQuestion;
@@ -18,17 +20,13 @@ export default function QuestionRenderer({
   userAnswer 
 }: QuestionRendererProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<any>(null);
-  const [matchingPairs, setMatchingPairs] = useState<Record<string, string>>({});
   const [fillBlankAnswer, setFillBlankAnswer] = useState("");
-  const [orderItems, setOrderItems] = useState<string[]>(question.items || []);
 
   // Reset state when question changes
   useEffect(() => {
     setSelectedAnswer(null);
-    setMatchingPairs({});
     setFillBlankAnswer("");
-    setOrderItems(question.items || []);
-  }, [question.id, question.items]);
+  }, [question.id]);
 
   const handleMultipleChoice = (index: number) => {
     if (disabled) return;
@@ -48,79 +46,25 @@ export default function QuestionRenderer({
     onAnswer(fillBlankAnswer.trim());
   };
 
-  const handleMatching = (left: string, right: string) => {
-    if (disabled) return;
-    const newPairs = { ...matchingPairs, [left]: right };
-    setMatchingPairs(newPairs);
-    
-    // Check if all pairs are matched
-    if (Object.keys(newPairs).length === (question.pairs?.length || 0)) {
-      const result = Object.entries(newPairs).map(([left, right]) => `${left}-${right}`);
-      onAnswer(result);
-    }
-  };
-
-  const handleOrdering = (newOrder: string[]) => {
-    if (disabled) return;
-    setOrderItems(newOrder);
-    // Don't call onAnswer automatically - wait for confirm button
-  };
-
-  const confirmOrder = () => {
-    if (disabled) return;
-    onAnswer(orderItems);
-  };
-
-  const moveItem = (fromIndex: number, toIndex: number) => {
-    if (disabled) return;
-    const newOrder = [...orderItems];
-    const [movedItem] = newOrder.splice(fromIndex, 1);
-    newOrder.splice(toIndex, 0, movedItem);
-    setOrderItems(newOrder);
-  };
-
-  const getCorrectAnswer = () => {
-    switch (question.type) {
+  const isCorrectAnswer = (userAnswer: any, questionData: MiniGameQuestion): boolean => {
+    switch (questionData.type) {
       case 'multiple-choice':
-        return question.correctAnswer;
+        return userAnswer === questionData.correctAnswer;
+      
       case 'true-false':
-        return question.correctAnswer;
+        return String(userAnswer) === String(questionData.correctAnswer);
+      
       case 'fill-blank':
-        return question.correctAnswer;
-      case 'matching':
-        return question.correctAnswer;
-      case 'ordering':
-        return question.correctAnswer;
+        if (Array.isArray(questionData.blanks)) {
+          return questionData.blanks.some(blank => 
+            String(userAnswer).toLowerCase().includes(blank.toLowerCase())
+          );
+        }
+        return String(userAnswer).toLowerCase() === String(questionData.correctAnswer).toLowerCase();
+      
       default:
-        return null;
+        return false;
     }
-  };
-
-  const isCorrectAnswer = (answer: any) => {
-    const correct = getCorrectAnswer();
-    if (question.type === 'multiple-choice') {
-      return answer === correct;
-    } else if (question.type === 'true-false') {
-      return answer === correct;
-    } else if (question.type === 'fill-blank') {
-      if (Array.isArray(question.blanks)) {
-        return question.blanks.some(blank => 
-          answer.toLowerCase().includes(blank.toLowerCase())
-        );
-      }
-      return answer.toLowerCase() === String(correct).toLowerCase();
-    } else if (question.type === 'matching') {
-      if (Array.isArray(correct) && Array.isArray(answer)) {
-        return correct.every(pair => answer.includes(pair));
-      }
-      return false;
-    } else if (question.type === 'ordering') {
-      if (Array.isArray(correct) && Array.isArray(answer)) {
-        return JSON.stringify(correct) === JSON.stringify(answer);
-      }
-      return false;
-    }
-    return false;
   };
 
   switch (question.type) {
@@ -226,7 +170,7 @@ export default function QuestionRenderer({
               <div className="text-center">
                 <p className="text-gray-300">
                   คำตอบของคุณ: <span className={`font-bold ${
-                    isCorrectAnswer(fillBlankAnswer) ? 'text-green-400' : 'text-red-400'
+                    isCorrectAnswer(fillBlankAnswer, question) ? 'text-green-400' : 'text-red-400'
                   }`}>{fillBlankAnswer || 'ไม่ได้ตอบ'}</span>
                 </p>
               </div>
@@ -248,161 +192,46 @@ export default function QuestionRenderer({
       );
 
     case 'matching':
-      return (
-        <div className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <h4 className="text-lg font-semibold text-white">จับคู่</h4>
-              {question.pairs?.map((pair, index) => {
-                let leftStyle = "p-3 rounded-lg border-2 transition-all duration-200 ";
-                
-                if (showResult) {
-                  // Check if this pairing is correct
-                  const correctPairings = question.correctAnswer as string[];
-                  const userPairing = `${pair.left}-${matchingPairs[pair.left]}`;
-                  const isCorrect = correctPairings.includes(userPairing);
-                  
-                  if (matchingPairs[pair.left]) {
-                    if (isCorrect) {
-                      leftStyle += "bg-green-500/20 border-green-500 text-green-300";
-                    } else {
-                      leftStyle += "bg-red-500/20 border-red-500 text-red-300";
-                    }
-                  } else {
-                    leftStyle += "bg-gray-500/20 border-gray-500 text-gray-400";
-                  }
-                } else {
-                  if (matchingPairs[pair.left]) {
-                    leftStyle += "bg-blue-500/20 border-blue-500 text-blue-300";
-                  } else {
-                    leftStyle += "bg-white/10 border-gray-600 text-white hover:border-blue-400";
-                  }
-                }
+      // Convert the simple pairs format to enhanced format for the new component
+      const enhancedPairs = question.pairs?.map((pair, index) => ({
+        left: { 
+          id: `left-${index}`, 
+          text: typeof pair.left === 'string' ? pair.left : pair.left,
+          emoji: undefined 
+        },
+        right: { 
+          id: `right-${index}`, 
+          text: typeof pair.right === 'string' ? pair.right : pair.right,
+          emoji: undefined 
+        }
+      })) || [];
 
-                return (
-                  <div key={index} className={leftStyle}>
-                    {pair.left}
-                    {matchingPairs[pair.left] && (
-                      <span className="ml-2 font-semibold">→ {matchingPairs[pair.left]}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="space-y-3">
-              <h4 className="text-lg font-semibold text-white">เลือกคำตอบ</h4>
-              {question.pairs?.map((pair, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    const unpairedLeft = question.pairs?.find(p => !matchingPairs[p.left])?.left;
-                    if (unpairedLeft && !disabled && !showResult) {
-                      handleMatching(unpairedLeft, pair.right);
-                    }
-                  }}
-                  disabled={disabled || showResult || Object.values(matchingPairs).includes(pair.right)}
-                  className={`w-full p-3 text-left rounded-lg border-2 transition-all duration-200 ${
-                    Object.values(matchingPairs).includes(pair.right)
-                      ? 'bg-gray-500/20 border-gray-500 text-gray-400'
-                      : 'bg-white/10 border-gray-600 text-white hover:border-green-400 hover:bg-green-500/10'
-                  }`}
-                >
-                  {pair.right}
-                </button>
-              ))}
-            </div>
-          </div>
-          
-          {showResult && question.correctAnswer && (
-            <div className="mt-4 p-4 bg-green-500/20 rounded-xl border border-green-500/30">
-              <h5 className="text-green-300 font-semibold mb-2">คำตอบที่ถูกต้อง:</h5>
-              <div className="space-y-2">
-                {(question.correctAnswer as string[]).map((pair, index) => {
-                  const [left, right] = pair.split('-');
-                  return (
-                    <div key={index} className="text-green-300">
-                      {left} → {right}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+      return (
+        <EnhancedMatchingQuestion
+          question={question.question}
+          pairs={enhancedPairs}
+          onAnswer={onAnswer}
+          showResult={showResult}
+          userAnswer={userAnswer}
+          disabled={disabled}
+        />
       );
 
     case 'ordering':
+      if (!question.items || !question.correctAnswer) {
+        return <div className="text-gray-400">ข้อมูลคำถามไม่ครบถ้วน</div>;
+      }
+
       return (
-        <div className="space-y-4">
-          <h4 className="text-lg font-semibold text-white text-center">ลากเพื่อเรียงลำดับ</h4>
-          <div className="space-y-3">
-            {orderItems.map((item, index) => {
-              let itemStyle = "flex items-center gap-3 p-4 rounded-xl text-white border-2 ";
-              
-              if (showResult) {
-                // Show correct answer highlighting
-                const correctOrder = question.correctAnswer as string[];
-                const isCorrectPosition = correctOrder && correctOrder[index] === item;
-                if (isCorrectPosition) {
-                  itemStyle += "bg-green-500/20 border-green-500 text-green-300";
-                } else {
-                  itemStyle += "bg-red-500/20 border-red-500 text-red-300";
-                }
-              } else {
-                itemStyle += "bg-white/10 border-gray-600";
-              }
-
-              return (
-                <div key={`${item}-${index}`} className={itemStyle}>
-                  <span className="text-blue-400 font-bold">{index + 1}.</span>
-                  <span className="flex-1">{item}</span>
-                  {!disabled && !showResult && (
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => moveItem(index, Math.max(0, index - 1))}
-                        disabled={index === 0}
-                        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white rounded transition-all duration-200"
-                      >
-                        ↑
-                      </button>
-                      <button
-                        onClick={() => moveItem(index, Math.min(orderItems.length - 1, index + 1))}
-                        disabled={index === orderItems.length - 1}
-                        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 text-white rounded transition-all duration-200"
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          
-          {showResult && question.correctAnswer && (
-            <div className="mt-4 p-4 bg-green-500/20 rounded-xl border border-green-500/30">
-              <h5 className="text-green-300 font-semibold mb-2">ลำดับที่ถูกต้อง:</h5>
-              <div className="space-y-2">
-                {(question.correctAnswer as string[]).map((item, index) => (
-                  <div key={index} className="text-green-300">
-                    {index + 1}. {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {!disabled && !showResult && (
-            <div className="text-center">
-              <button
-                onClick={confirmOrder}
-                className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-all duration-200"
-              >
-                ยืนยันลำดับ
-              </button>
-            </div>
-          )}
-        </div>
+        <DragDropOrderingQuestion
+          question={question.question}
+          items={question.items}
+          correctOrder={question.correctAnswer as string[]}
+          onAnswer={onAnswer}
+          showResult={showResult}
+          userAnswer={userAnswer}
+          disabled={disabled}
+        />
       );
 
     default:

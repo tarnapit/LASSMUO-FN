@@ -2,12 +2,14 @@ import { MiniGameQuestion } from "../../../types/mini-game";
 
 // ฟังก์ชันตรวจสอบคำตอบ
 export const checkAnswer = (question: MiniGameQuestion, userAnswer: any): boolean => {
+  if (userAnswer === null || userAnswer === undefined) return false;
+  
   switch (question.type) {
     case 'multiple-choice':
       return userAnswer === question.correctAnswer;
     
     case 'true-false':
-      return userAnswer === question.correctAnswer;
+      return String(userAnswer) === String(question.correctAnswer);
     
     case 'fill-blank':
       if (Array.isArray(question.blanks)) {
@@ -18,10 +20,30 @@ export const checkAnswer = (question: MiniGameQuestion, userAnswer: any): boolea
       return String(userAnswer).toLowerCase() === String(question.correctAnswer).toLowerCase();
     
     case 'matching':
-      if (Array.isArray(question.correctAnswer) && Array.isArray(userAnswer)) {
-        return question.correctAnswer.every(pair => userAnswer.includes(pair));
+      if (!question.pairs || !question.correctAnswer) return false;
+      
+      // Handle different formats of userAnswer
+      let userPairs: string[] = [];
+      if (Array.isArray(userAnswer)) {
+        userPairs = userAnswer;
+      } else if (typeof userAnswer === 'object') {
+        // Convert object format to expected string format
+        userPairs = Object.entries(userAnswer).map(([leftId, rightId]) => {
+          // Find the actual text values from pairs
+          const leftPair = question.pairs?.find(p => (p as any).left?.id === leftId || (p as any).left === leftId);
+          const rightPair = question.pairs?.find(p => (p as any).right?.id === rightId || (p as any).right === rightId);
+          
+          // Get text values
+          const leftText = (leftPair as any)?.left?.text || (leftPair as any)?.left || leftId;
+          const rightText = (rightPair as any)?.right?.text || (rightPair as any)?.right || rightId;
+          
+          return `${leftText}-${rightText}`;
+        });
       }
-      return false;
+      
+      const correctPairs = question.correctAnswer as string[];
+      return correctPairs.every(pair => userPairs.includes(pair)) && 
+             userPairs.length === correctPairs.length;
     
     case 'ordering':
       if (Array.isArray(question.correctAnswer) && Array.isArray(userAnswer)) {
