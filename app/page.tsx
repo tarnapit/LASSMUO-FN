@@ -104,7 +104,7 @@ export default function HomePage() {
       setCurrentPlanetIndex((prevIndex) => 
         (prevIndex + 1) % planets.length
       );
-    }, 5000); // สลับทุก 5 วินาที
+    }, 10000); // สลับทุก 10 วินาที
 
     return () => clearInterval(interval);
   }, [planets.length]);
@@ -192,26 +192,28 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Planet Navigation Dots - Fixed at bottom */}
-        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 flex flex-wrap justify-center gap-4 bg-black/30 backdrop-blur-md rounded-full px-6 py-4 border border-white/20">
-          {planets.map((planet, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentPlanetIndex(index)}
-              title={`ดู${planet.name}`}
-              aria-label={`เปลี่ยนไปยังดาว${planet.name}`}
-              className={`w-4 h-4 rounded-full transition-all duration-300 border-2 flex items-center justify-center group ${
-                index === currentPlanetIndex 
-                  ? 'bg-white border-white scale-125 shadow-lg shadow-white/50' 
-                  : 'bg-transparent border-white/50 hover:border-white/80 hover:bg-white/20 hover:scale-110'
-              }`}
-            >
-              {/* Tooltip */}
-              <span className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
-                {planet.name}
-              </span>
-            </button>
-          ))}
+        {/* Planet Navigation Dots - Hidden on mobile, show only on tablet+ */}
+        <div className="hidden sm:block fixed bottom-4 lg:bottom-6 left-1/2 transform -translate-x-1/2 z-40 bg-black/20 backdrop-blur-sm rounded-full px-3 py-2 lg:px-4 lg:py-3 border border-white/10">
+          <div className="flex items-center justify-center gap-2 lg:gap-3">
+            {planets.map((planet, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentPlanetIndex(index)}
+                title={`ดู${planet.name}`}
+                aria-label={`เปลี่ยนไปยังดาว${planet.name}`}
+                className={`transition-all duration-300 rounded-full group ${
+                  index === currentPlanetIndex 
+                    ? 'w-3 h-3 lg:w-4 lg:h-4 bg-white scale-110 lg:scale-125 shadow-md lg:shadow-lg shadow-white/50' 
+                    : 'w-2.5 h-2.5 lg:w-3 lg:h-3 bg-white/40 hover:bg-white/70 hover:scale-105'
+                }`}
+              >
+                {/* Tooltip */}
+                <span className="absolute -top-10 lg:-top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs lg:text-sm px-2 py-1 lg:px-3 lg:py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
+                  {planet.name}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Progress Display */}
