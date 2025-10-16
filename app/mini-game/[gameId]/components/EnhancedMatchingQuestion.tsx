@@ -240,22 +240,6 @@ export default function EnhancedMatchingQuestion({
               zIndex: isHovered ? 21 : 11
             }}
           />
-          
-          {/* Remove button */}
-          {!showResult && !disabled && (
-            <button
-              className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs transition-all duration-200 hover:scale-110 flex items-center justify-center"
-              style={{
-                left: `${(x1 + x2) / 2 - 12}px`,
-                top: `${(y1 + y2) / 2 - 12}px`,
-                zIndex: 22
-              }}
-              onClick={() => handleRemoveMatch(connection.from)}
-              title="ลบการจับคู่"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
-          )}
         </div>
       );
     });
