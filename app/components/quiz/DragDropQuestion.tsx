@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Volume2, CheckCircle, XCircle, RotateCcw } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw } from "lucide-react";
 
 interface DragItem {
   id: string;
@@ -226,19 +226,11 @@ export default function EnhancedDragDropQuestion({
     <div className="w-full max-w-6xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-white">
+        <h1 className="text-3xl lg:text-4xl font-bold text-white mb-6">
           {question}
         </h1>
         
-        <div className="flex items-center space-x-4">
-          <button
-            className="p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors"
-            title="ฟังเสียงคำถาม"
-            aria-label="ฟังเสียงคำถาม"
-          >
-            <Volume2 className="w-6 h-6 text-white" />
-          </button>
-          
+        <div className="flex items-center justify-end space-x-4">          
           {!showResult && (
             <button
               onClick={handleReset}

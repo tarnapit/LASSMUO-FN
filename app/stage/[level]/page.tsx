@@ -290,6 +290,11 @@ export default function StageDetailPage() {
     router.push('/stage');
   };
 
+  const handleQuizExit = () => {
+    // กลับไปหน้า stage list
+    router.push('/stage');
+  };
+
   // Character data (mock for now, can be loaded from API later)
   const character = {
     name: "อาสา",
@@ -337,6 +342,7 @@ export default function StageDetailPage() {
         <EnhancedQuizComponent
           questions={questions}
           onComplete={handleQuizComplete}
+          onExit={handleQuizExit}
         />
       );
 

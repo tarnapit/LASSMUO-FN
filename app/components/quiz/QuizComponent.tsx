@@ -182,6 +182,8 @@ export default function EnhancedQuizComponent({
                 handleAnswer(answerId, isAnswerCorrect);
               }}
               selectedAnswer={selectedAnswer as number}
+              hints={mcQuestion.hints || []}
+              currentQuestionData={mcQuestion}
               {...questionProps}
             />
           );
@@ -197,6 +199,8 @@ export default function EnhancedQuizComponent({
             correctAnswer={tfQuestion.payload?.correctAnswer}
             onAnswer={(answer, isCorrect) => handleAnswer(answer, isCorrect)}
             selectedAnswer={selectedAnswer as boolean}
+            hints={tfQuestion.hints || []}
+            currentQuestionData={tfQuestion}
             {...questionProps}
           />
         );

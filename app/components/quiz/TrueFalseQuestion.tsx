@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Volume2, CheckCircle, XCircle } from "lucide-react";
+import { CheckCircle, XCircle, Lightbulb } from "lucide-react";
 
 interface TrueFalseQuestionProps {
   question: string;
@@ -9,6 +9,8 @@ interface TrueFalseQuestionProps {
   showResult: boolean;
   selectedAnswer: boolean | null;
   disabled?: boolean;
+  hints?: string[];
+  currentQuestionData?: any;
 }
 
 export default function TrueFalseQuestion({
@@ -17,9 +19,16 @@ export default function TrueFalseQuestion({
   onAnswer,
   showResult,
   selectedAnswer,
-  disabled = false
+  disabled = false,
+  hints = [],
+  currentQuestionData
 }: TrueFalseQuestionProps) {
   const [hoveredAnswer, setHoveredAnswer] = useState<boolean | null>(null);
+  const [showHint, setShowHint] = useState(false);
+  const [currentHintIndex, setCurrentHintIndex] = useState(0);
+
+  // Get hints from API data if available
+  const availableHints = hints.length > 0 ? hints : (currentQuestionData?.hints || []);
 
   const handleAnswerClick = (answer: boolean) => {
     if (showResult || disabled) return;
@@ -46,23 +55,21 @@ export default function TrueFalseQuestion({
     return 'bg-gray-300 text-gray-500 border-4 border-gray-300';
   };
 
+  const getNextHint = () => {
+    if (currentHintIndex < availableHints.length - 1) {
+      setCurrentHintIndex(prev => prev + 1);
+    }
+    setShowHint(true);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto">
       {/* Question */}
       <div className="mb-12">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           <h1 className="text-3xl lg:text-4xl font-bold text-white leading-tight">
             {question}
           </h1>
-          
-          {/* Audio Button */}
-          <button
-            className="p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors ml-4"
-            title="ฟังเสียงคำถาม"
-            aria-label="ฟังเสียงคำถาม"
-          >
-            <Volume2 className="w-6 h-6 text-white" />
-          </button>
         </div>
 
         {/* Visual Content Placeholder */}
@@ -114,11 +121,43 @@ export default function TrueFalseQuestion({
       </div>
 
       {/* Instruction */}
-      <div className="text-center">
+      <div className="text-center mb-6">
         <p className="text-gray-300 text-lg">
           เลือกว่าข้อความนี้จริงหรือเท็จ
         </p>
       </div>
+
+      {/* Hint Button */}
+      {availableHints.length > 0 && !showResult && (
+        <div className="text-center">
+          {!showHint ? (
+            <button
+              onClick={getNextHint}
+              className="inline-flex items-center space-x-2 text-yellow-400 hover:text-yellow-300 transition-colors"
+              title="ใบ้"
+            >
+              <Lightbulb className="w-5 h-5" />
+              <span>ต้องการคำใบ้?</span>
+            </button>
+          ) : (
+            <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-xl p-4 max-w-md mx-auto">
+              <div className="flex items-center space-x-2 mb-2">
+                <Lightbulb className="w-5 h-5 text-yellow-400" />
+                <span className="text-yellow-400 font-semibold">คำใบ้:</span>
+              </div>
+              <p className="text-white">{availableHints[currentHintIndex]}</p>
+              {currentHintIndex < availableHints.length - 1 && (
+                <button
+                  onClick={getNextHint}
+                  className="mt-2 text-yellow-300 hover:text-yellow-200 text-sm underline"
+                >
+                  คำใบ้ถัดไป
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

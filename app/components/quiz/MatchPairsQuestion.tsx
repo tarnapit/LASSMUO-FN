@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { Volume2, CheckCircle, XCircle, RotateCcw, Zap, MousePointer } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, Zap, MousePointer, Trash2 } from "lucide-react";
 
 interface PairItem {
   id: string;
@@ -293,21 +293,8 @@ export default function EnhancedMatchPairsQuestion({
             }}
           />
           
-          {/* Remove button for existing connections (when not in result mode) */}
-          {!showResult && (
-            <button
-              className="absolute w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs transition-all duration-200 hover:scale-110"
-              style={{
-                left: `${(x1 + x2) / 2 - 12}px`,
-                top: `${(y1 + y2) / 2 - 12}px`,
-                zIndex: 22
-              }}
-              onClick={() => handleRemoveMatch(connection.from)}
-              title="ลบการจับคู่"
-            >
-              ×
-            </button>
-          )}
+          {/* Remove button for existing connections (when not in result mode) - Show only on left side */}
+          {/* Removed - use the button on the card instead */}
         </div>
       );
     });
@@ -323,15 +310,7 @@ export default function EnhancedMatchPairsQuestion({
           {question}
         </h1>
         
-        <div className="flex items-center space-x-4">
-          <button
-            className="p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors"
-            title="ฟังเสียงคำถาม"
-            aria-label="ฟังเสียงคำถาม"
-          >
-            <Volume2 className="w-6 h-6 text-white" />
-          </button>
-          
+        <div className="flex items-center justify-end space-x-4">          
           {!showResult && (
             <button
               onClick={handleReset}
@@ -398,14 +377,14 @@ export default function EnhancedMatchPairsQuestion({
                     {/* Remove button */}
                     {isMatched && !showResult && (
                       <button
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs transition-all duration-200 hover:scale-110"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveMatch(item.id);
                         }}
                         title="ลบการจับคู่"
                       >
-                        ×
+                        <Trash2 className="w-3 h-3" />
                       </button>
                     )}
                   </div>
