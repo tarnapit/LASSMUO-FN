@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { 
   courseService, 
   courseDetailService, 
-  courseLessonService, 
+  courseLessonService,
+  courseQuizService,
+  coursePostestService,
   stageService, 
-  lessonService, 
-  orderService, 
-  userService, 
-  answerService, 
+  questionService,
+  userService,
+  userCourseProgressService,
+  userStageProgressService,
   authService 
 } from '../../lib/api/services';
 
@@ -79,6 +81,24 @@ export default function ApiTestPage() {
         results.courseLessons = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
+      // Test Course Quiz APIs
+      console.log('Testing Course Quiz APIs...');
+      try {
+        const courseQuizzes = await courseQuizService.getAllCourseQuizzes();
+        results.courseQuizzes = { success: true, data: courseQuizzes };
+      } catch (error) {
+        results.courseQuizzes = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test Course Postest APIs
+      console.log('Testing Course Postest APIs...');
+      try {
+        const coursePostests = await coursePostestService.getAllCoursePostests();
+        results.coursePostests = { success: true, data: coursePostests };
+      } catch (error) {
+        results.coursePostests = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
       // Test Stage APIs
       console.log('Testing Stage APIs...');
       try {
@@ -86,24 +106,6 @@ export default function ApiTestPage() {
         results.stages = { success: true, data: stages };
       } catch (error) {
         results.stages = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-
-      // Test Lesson APIs
-      console.log('Testing Lesson APIs...');
-      try {
-        const lessons = await lessonService.getAllLessons();
-        results.lessons = { success: true, data: lessons };
-      } catch (error) {
-        results.lessons = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-      }
-
-      // Test Order APIs
-      console.log('Testing Order APIs...');
-      try {
-        const orders = await orderService.getAllOrders();
-        results.orders = { success: true, data: orders };
-      } catch (error) {
-        results.orders = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
       }
 
       // Test User APIs (protected)
@@ -120,13 +122,48 @@ export default function ApiTestPage() {
         };
       }
 
-      // Test Answer APIs
-      console.log('Testing Answer APIs...');
+      // Test Question APIs (New - replaces some Order functionality)
+      console.log('Testing Question APIs...');
       try {
-        const answers = await answerService.getAllAnswers();
-        results.answers = { success: true, data: answers };
+        const questions = await questionService.getAllQuestions();
+        results.questions = { success: true, data: questions };
       } catch (error) {
-        results.answers = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+        results.questions = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test User Course Progress APIs (New)
+      console.log('Testing User Course Progress APIs...');
+      try {
+        const userProgress = await userCourseProgressService.getAllUserCourseProgress();
+        results.userCourseProgress = { success: true, data: userProgress };
+      } catch (error) {
+        results.userCourseProgress = { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+      }
+
+      // Test User Stage Progress APIs (New)
+      console.log('Testing User Stage Progress APIs...');
+      try {
+        // Try to get current user's progress instead of all progress
+        const currentUser = authService.getCurrentUser();
+        if (currentUser?.id) {
+          console.log('Testing with authenticated user:', currentUser.id);
+          const userStageProgress = await userStageProgressService.getUserProgress(currentUser.id);
+          results.userStageProgress = { 
+            success: true, 
+            data: userStageProgress,
+            note: `Progress for user: ${currentUser.email}`
+          };
+        } else {
+          console.log('No authenticated user, testing getAllProgress...');
+          const userStageProgress = await userStageProgressService.getAllProgress();
+          results.userStageProgress = { success: true, data: userStageProgress };
+        }
+      } catch (error) {
+        results.userStageProgress = { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'Unknown error',
+          note: 'Try logging in first for user-specific progress'
+        };
       }
 
       // Test Authentication (without credentials to avoid errors)
@@ -186,6 +223,80 @@ export default function ApiTestPage() {
     setLoading(false);
   };
 
+  const testCreatePostest = async () => {
+    setLoading(true);
+    
+    try {
+      // Test creating a new course postest
+      const newPostest = await coursePostestService.createCoursePostest({
+        courseId: 'ba3fd565-dc81-4e74-b253-ef0a4074f8cf', // Solar System course ID
+        title: 'Test Postest from Frontend',
+        description: 'This is a test postest created from the frontend',
+        timeLimit: 1800, // 30 minutes
+        passingScore: 70,
+        maxAttempts: 3,
+        question: {
+          type: 'multiple-choice',
+          questions: [
+            {
+              id: 1,
+              question: 'ระบบสุริยะมีดาวเคราะห์กี่ดวง?',
+              options: ['7 ดวง', '8 ดวง', '9 ดวง', '10 ดวง'],
+              correctAnswer: 1,
+              explanation: 'ระบบสุริยะมีดาวเคราะห์ 8 ดวง'
+            },
+            {
+              id: 2,
+              question: 'ดาวเคราะห์ใดใกล้ดวงอาทิตย์ที่สุด?',
+              options: ['ดาวพุธ', 'ดาวศุกร์', 'โลก', 'ดาวอังคาร'],
+              correctAnswer: 0,
+              explanation: 'ดาวพุธอยู่ใกล้ดวงอาทิตย์ที่สุด'
+            }
+          ]
+        }
+      });
+      
+      console.log('Created postest:', newPostest);
+      alert('Course Postest created successfully! Check console for details.');
+      
+      // Refresh the test results
+      await runTests();
+    } catch (error) {
+      console.error('Failed to create postest:', error);
+      alert(`Failed to create postest: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setLoading(false);
+  };
+
+  const testPostestByCourse = async () => {
+    setLoading(true);
+    
+    try {
+      const courseId = 'ba3fd565-dc81-4e74-b253-ef0a4074f8cf'; // Solar System course ID
+      console.log('Testing CoursePostest by courseId:', courseId);
+      
+      // Test getting postest by course ID
+      const postestResponse = await coursePostestService.getCoursePostestsByCourseId(courseId);
+      
+      console.log('CoursePostest by course response:', postestResponse);
+      
+      if (postestResponse.success && postestResponse.data) {
+        alert(`✅ Found ${postestResponse.data.length} postest(s) for Solar System course!\n\nDetails:\n${JSON.stringify(postestResponse.data, null, 2)}`);
+      } else {
+        alert(`❌ No postests found for course: ${courseId}\n\nError: ${postestResponse.error || 'Unknown error'}`);
+      }
+      
+      // Refresh tests
+      await runTests();
+    } catch (error) {
+      console.error('Postest by course test failed:', error);
+      alert(`Postest by course test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setLoading(false);
+  };
+
   const testAuth = async () => {
     setLoading(true);
     
@@ -237,6 +348,80 @@ export default function ApiTestPage() {
     setLoading(false);
   };
 
+  const testServerConnection = async () => {
+    setLoading(true);
+    
+    try {
+      console.log('Testing backend server connection...');
+      
+      // Test basic connectivity to backend server
+      const response = await fetch('http://localhost:8888', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+      
+      const responseText = await response.text();
+      console.log('Server connection test:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: response.url,
+        responseText: responseText
+      });
+      
+      if (response.ok) {
+        alert('✅ Server connection successful! Backend is running on port 8888.');
+      } else {
+        // ตรวจสอบ error messages ที่เฉพาะเจาะจง
+        let errorDetails = '';
+        try {
+          const errorData = JSON.parse(responseText);
+          if (errorData.error && errorData.error.includes('findMany')) {
+            errorDetails = '\n\n🔧 Database Error Detected:\n- Backend server is running but database connection failed\n- Please check if your database is running\n- Verify Prisma client configuration\n- Check environment variables (DATABASE_URL)';
+          } else if (errorData.error && errorData.error.includes('Cannot read properties of undefined')) {
+            errorDetails = '\n\n⚙️ Backend Configuration Error:\n- ORM/Database client not properly initialized\n- Check backend startup logs\n- Restart backend server\n- Verify all dependencies are installed';
+          } else if (errorData.error && (errorData.error.includes('character') || errorData.error.includes('prerequisites') || errorData.error.includes('include'))) {
+            errorDetails = '\n\n🗄️ Prisma Schema Error Detected:\n- Database model relations are incorrectly defined\n- Fix schema.prisma file (Stage model relations)\n- Remove undefined relation fields\n- Run: npx prisma db push && npx prisma generate\n- Restart backend server';
+          }
+        } catch (e) {
+          // Response is not JSON
+        }
+        
+        alert(`⚠️ Server responded with status ${response.status}: ${response.statusText}${errorDetails}`);
+      }
+    } catch (error) {
+      console.error('Server connection failed:', error);
+      
+      let errorMessage = '';
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('Network error')) {
+          errorMessage = `❌ Cannot connect to backend server at http://localhost:8888
+
+🔍 Possible causes:
+• Backend server is not running
+• Backend is running on different port
+• Firewall blocking connection
+• Network connectivity issues
+
+💡 Solutions:
+• Start your backend server (usually: npm run dev or npm start)
+• Check if backend is running on port 8888
+• Verify backend server logs for errors`;
+        } else {
+          errorMessage = `❌ Connection Error: ${error.message}`;
+        }
+      } else {
+        errorMessage = '❌ Unknown connection error occurred';
+      }
+      
+      alert(errorMessage);
+    }
+    
+    setLoading(false);
+  };
+
   const clearTokens = async () => {
     try {
       await authService.logout();
@@ -247,6 +432,105 @@ export default function ApiTestPage() {
       console.error('Clear tokens failed:', error);
       alert(`Clear tokens failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  };
+
+  const testUserStageProgress = async () => {
+    setLoading(true);
+    
+    try {
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser?.id) {
+        alert('❌ Please login first to test User Stage Progress APIs');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Testing User Stage Progress APIs with user:', currentUser.id);
+      
+      // Test 1: Get user progress
+      console.log('1. Testing getUserProgress...');
+      const userProgressResponse = await userStageProgressService.getUserProgress(currentUser.id);
+      console.log('User progress response:', userProgressResponse);
+      
+      // Test 2: Create new progress (for stage 1)
+      console.log('2. Testing createProgress...');
+      try {
+        const createResponse = await userStageProgressService.createProgress({
+          userId: currentUser.id,
+          stageId: 1,
+          isCompleted: false,
+          currentScore: 0,
+          bestScore: 0,
+          starsEarned: 0,
+          attempts: 1
+        });
+        console.log('Create progress response:', createResponse);
+      } catch (createError) {
+        console.log('Create progress error (might already exist):', createError);
+      }
+      
+      // Test 3: Test upsert progress
+      console.log('3. Testing upsertProgress...');
+      const upsertResponse = await userStageProgressService.upsertProgress(
+        currentUser.id,
+        1,
+        {
+          currentScore: 85,
+          bestScore: 85,
+          starsEarned: 3,
+          attempts: 2,
+          isCompleted: true,
+          completedAt: new Date().toISOString()
+        }
+      );
+      console.log('Upsert progress response:', upsertResponse);
+      
+      // Test 4: Test recordAttempt
+      console.log('4. Testing recordAttempt...');
+      const attemptResponse = await userStageProgressService.recordAttempt(
+        currentUser.id,
+        1,
+        90
+      );
+      console.log('Record attempt response:', attemptResponse);
+      
+      // Test 5: Test completeStage
+      console.log('5. Testing completeStage...');
+      const completeResponse = await userStageProgressService.completeStage(
+        currentUser.id,
+        1,
+        95,
+        3
+      );
+      console.log('Complete stage response:', completeResponse);
+      
+      // Final check - get updated progress
+      console.log('6. Getting final user progress...');
+      const finalProgressResponse = await userStageProgressService.getUserProgress(currentUser.id);
+      console.log('Final user progress:', finalProgressResponse);
+      
+      let resultMessage = '✅ User Stage Progress API Tests Completed!\n\n';
+      resultMessage += `🔍 Get User Progress: ${userProgressResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `🆕 Upsert Progress: ${upsertResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `📊 Record Attempt: ${attemptResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `🏆 Complete Stage: ${completeResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      resultMessage += `📈 Final Progress: ${finalProgressResponse?.success ? '✅ Success' : '❌ Failed'}\n`;
+      
+      if (finalProgressResponse?.data) {
+        resultMessage += `\n📋 Current Progress Count: ${Array.isArray(finalProgressResponse.data) ? finalProgressResponse.data.length : 'Unknown'}`;
+      }
+      
+      alert(resultMessage);
+      
+      // Refresh main test results
+      await runTests();
+      
+    } catch (error) {
+      console.error('User Stage Progress test failed:', error);
+      alert(`❌ User Stage Progress test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+    
+    setLoading(false);
   };
 
   return (
@@ -301,6 +585,33 @@ export default function ApiTestPage() {
               <span>➕</span>
               Test Create Course
             </button>
+
+            <button
+              onClick={testCreatePostest}
+              disabled={loading}
+              className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>📝</span>
+              Test Create Postest
+            </button>
+
+            <button
+              onClick={testPostestByCourse}
+              disabled={loading}
+              className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>🔍</span>
+              Test Postest by Course
+            </button>
+
+            <button
+              onClick={testUserStageProgress}
+              disabled={loading}
+              className="flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>📊</span>
+              Test Stage Progress
+            </button>
             
             <button
               onClick={testAuth}
@@ -318,6 +629,15 @@ export default function ApiTestPage() {
             >
               <span>🎯</span>
               Set Demo Token
+            </button>
+
+            <button
+              onClick={testServerConnection}
+              disabled={loading}
+              className="flex items-center gap-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-400 text-white px-5 py-2.5 rounded-lg transition-all font-medium"
+            >
+              <span>🔗</span>
+              Test Server Connection
             </button>
 
             <button
@@ -462,9 +782,56 @@ export default function ApiTestPage() {
                     </div>
                   ) : (
                     <div className="text-red-600 text-xs">
-                      <div className="truncate" title={result.error}>
+                      <div className="truncate mb-1" title={result.error}>
                         {result.error}
                       </div>
+                      
+                      {/* แสดงคำแนะนำสำหรับ error ที่พบบ่อย */}
+                      {result.error.includes('findMany') && (
+                        <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
+                          <div className="font-medium">💡 Backend Database Error:</div>
+                          <div className="mt-1">
+                            • ตรวจสอบว่า backend server กำลังทำงาน<br/>
+                            • ตรวจสอบการเชื่อมต่อ database<br/>
+                            • ตรวจสอบ Prisma client initialization
+                          </div>
+                        </div>
+                      )}
+                      
+                      {(result.error.includes('character') || result.error.includes('prerequisites') || result.error.includes('schema')) && (
+                        <div className="mt-2 p-2 bg-purple-50 rounded text-purple-700 text-xs">
+                          <div className="font-medium">🗄️ Prisma Schema Error:</div>
+                          <div className="mt-1">
+                            • แก้ไข schema.prisma file<br/>
+                            • ตรวจสอบ relation field names<br/>
+                            • รัน: npx prisma db push<br/>
+                            • Restart backend server
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.error.includes('Cannot read properties of undefined') && (
+                        <div className="mt-2 p-2 bg-red-50 rounded text-red-700 text-xs">
+                          <div className="font-medium">⚠️ Backend Configuration Error:</div>
+                          <div className="mt-1">
+                            • ORM/Database client ไม่ได้ initialize<br/>
+                            • ตรวจสอบ environment variables<br/>
+                            • Restart backend server
+                          </div>
+                        </div>
+                      )}
+                      
+                      {result.error.includes('Network connection failed') && (
+                        <div className="mt-2 p-2 bg-orange-50 rounded text-orange-700 text-xs">
+                          <div className="font-medium">🔌 Connection Error:</div>
+                          <div className="mt-1">
+                            • Backend server ไม่ทำงาน (port 8888)<br/>
+                            • ตรวจสอบ firewall/network<br/>
+                            • ลอง "Test Server Connection"
+                          </div>
+                        </div>
+                      )}
+                      
                       {result.protected && result.needsAuth && (
                         <div className="mt-1 text-orange-600 text-xs">
                           🔒 This endpoint requires authentication. Try logging in first.
@@ -483,43 +850,158 @@ export default function ApiTestPage() {
           )}
         </div>
 
+        {/* API Configuration Info */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">API Configuration & Troubleshooting</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="font-medium text-blue-900 mb-2">Backend Server</h3>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div>• Base URL: http://localhost:8888</div>
+                <div>• Timeout: 5000ms</div>
+                <div>• Max Retries: 2</div>
+              </div>
+            </div>
+            
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="font-medium text-green-900 mb-2">Authentication</h3>
+              <div className="text-xs text-green-700 space-y-1">
+                <div>• Login: POST /login/users</div>
+                <div>• Token Storage: localStorage</div>
+                <div>• Header: Authorization: Bearer</div>
+              </div>
+            </div>
+            
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h3 className="font-medium text-purple-900 mb-2">Response Format</h3>
+              <div className="text-xs text-purple-700 space-y-1">
+                <div>• Content-Type: application/json</div>
+                <div>• Success: {"{success: true, data: ...}"}</div>
+                <div>• Error: {"{success: false, error: ...}"}</div>
+              </div>
+            </div>
+            
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h3 className="font-medium text-purple-900 mb-2">CoursePostest Testing</h3>
+              <div className="text-xs text-purple-700 space-y-1">
+                <div>• GET /coursePostest (All postests)</div>
+                <div>• GET /coursePostest?courseId=xxx</div>
+                <div>• POST /coursePostest (Create)</div>
+                <div>• Test Solar System course ID</div>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 rounded-lg p-4">
+              <h3 className="font-medium text-red-900 mb-2">Common Issues</h3>
+              <div className="text-xs text-red-700 space-y-1">
+                <div>• findMany error: Database issue</div>
+                <div>• undefined properties: ORM error</div>
+                <div>• Network failed: Server down</div>
+                <div>• No postests: Check courseId match</div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Troubleshooting Guide */}
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">🔧 Troubleshooting Guide:</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-600">
+              <div>
+                <div className="font-medium text-red-600 mb-1">❌ "findMany" Error:</div>
+                <div className="space-y-1">
+                  <div>1. Check database connection</div>
+                  <div>2. Verify Prisma configuration</div>
+                  <div>3. Check DATABASE_URL env var</div>
+                  <div>4. Run: npx prisma generate</div>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-orange-600 mb-1">⚠️ Network Failed:</div>
+                <div className="space-y-1">
+                  <div>1. Start backend server</div>
+                  <div>2. Check port 8888 availability</div>
+                  <div>3. Verify firewall settings</div>
+                  <div>4. Test with "Test Server Connection"</div>
+                </div>
+              </div>
+              <div>
+                <div className="font-medium text-purple-600 mb-1">🗄️ Schema Errors:</div>
+                <div className="space-y-1">
+                  <div>1. Check Prisma schema.prisma</div>
+                  <div>2. Fix relation field names</div>
+                  <div>3. Run: npx prisma db push</div>
+                  <div>4. Restart backend server</div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Specific Stage Model Error Guide */}
+            <div className="mt-4 p-3 bg-purple-50 rounded border-l-4 border-purple-400">
+              <div className="font-medium text-purple-800 mb-2">🔍 Current Backend Issue Detected:</div>
+              <div className="text-xs text-purple-700 space-y-1">
+                <div><strong>Stage Model Schema Error:</strong> Relation fields mismatch</div>
+                <div>• Fix in <code>schema.prisma</code>: character, questions, prerequisites relations</div>
+                <div>• Remove undefined fields: course?, lessons?, UserProgress?</div>
+                <div>• Run: <code>npx prisma db push && npx prisma generate</code></div>
+                <div>• Restart backend server after fixing schema</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* API Endpoints Documentation */}
         <div className="bg-white rounded-xl shadow-sm border p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">API Endpoints Reference</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">API Endpoints Reference (Updated)</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <div className="bg-blue-50 rounded-lg p-4">
               <h3 className="font-medium text-blue-900 mb-2">Course APIs</h3>
               <ul className="text-xs text-blue-700 space-y-1">
-                <li>• GET /course/all</li>
-                <li>• POST /course/create</li>
-                <li>• GET /course/getCourse/:id</li>
+                <li>• GET /course</li>
+                <li>• POST /course</li>
+                <li>• GET /course/:id</li>
+                <li>• PUT /course/:id</li>
+                <li>• PATCH /course/:id</li>
+                <li>• DELETE /course/:id</li>
               </ul>
             </div>
             
             <div className="bg-green-50 rounded-lg p-4">
               <h3 className="font-medium text-green-900 mb-2">Stage APIs</h3>
               <ul className="text-xs text-green-700 space-y-1">
-                <li>• GET /stage/getAll</li>
-                <li>• GET /stage/getById/:id</li>
-                <li>• POST /stage/create</li>
+                <li>• GET /stage</li>
+                <li>• POST /stage</li>
+                <li>• DELETE /stage/:id</li>
               </ul>
             </div>
             
             <div className="bg-purple-50 rounded-lg p-4">
-              <h3 className="font-medium text-purple-900 mb-2">Lesson APIs</h3>
+              <h3 className="font-medium text-purple-900 mb-2">Question APIs</h3>
               <ul className="text-xs text-purple-700 space-y-1">
-                <li>• GET /lesson/getAll</li>
-                <li>• GET /lesson/getById/:id</li>
-                <li>• POST /lesson/createLesson</li>
+                <li>• GET /question</li>
+                <li>• POST /question</li>
+                <li>• GET /question/:id</li>
+                <li>• DELETE /question/:id</li>
               </ul>
             </div>
             
             <div className="bg-orange-50 rounded-lg p-4">
-              <h3 className="font-medium text-orange-900 mb-2">Order APIs</h3>
+              <h3 className="font-medium text-orange-900 mb-2">Course Quiz APIs</h3>
               <ul className="text-xs text-orange-700 space-y-1">
-                <li>• GET /order/getOrder</li>
-                <li>• POST /order/createOrder</li>
-                <li>• DELETE /order/deleteOrder/:id</li>
+                <li>• GET /courseQuiz</li>
+                <li>• POST /courseQuiz</li>
+                <li>• DELETE /courseQuiz/:id</li>
+              </ul>
+            </div>
+
+            <div className="bg-pink-50 rounded-lg p-4">
+              <h3 className="font-medium text-pink-900 mb-2">Course Postest APIs</h3>
+              <ul className="text-xs text-pink-700 space-y-1">
+                <li>• GET /coursePostest</li>
+                <li>• POST /coursePostest</li>
+                <li>• GET /coursePostest/:id</li>
+                <li>• PUT /coursePostest/:id</li>
+                <li>• DELETE /coursePostest/:id</li>
+                <li>• GET /coursePostest?courseId=xxx</li>
               </ul>
             </div>
             
@@ -531,20 +1013,33 @@ export default function ApiTestPage() {
               </ul>
             </div>
             
-            <div className="bg-pink-50 rounded-lg p-4">
-              <h3 className="font-medium text-pink-900 mb-2">Answer APIs</h3>
-              <ul className="text-xs text-pink-700 space-y-1">
-                <li>• GET /answer/get</li>
-                <li>• POST /answer/create</li>
-              </ul>
-            </div>
-            
+
             <div className="bg-teal-50 rounded-lg p-4">
               <h3 className="font-medium text-teal-900 mb-2">Course Detail APIs</h3>
               <ul className="text-xs text-teal-700 space-y-1">
-                <li>• GET /courseDetail/all</li>
-                <li>• POST /courseDetail/create</li>
-                <li>• DELETE /courseDetail/delete/:id</li>
+                <li>• GET /courseDetail</li>
+                <li>• POST /courseDetail</li>
+                <li>• DELETE /courseDetail/:id</li>
+              </ul>
+            </div>
+            
+            <div className="bg-yellow-50 rounded-lg p-4">
+              <h3 className="font-medium text-yellow-900 mb-2">Course Lesson APIs</h3>
+              <ul className="text-xs text-yellow-700 space-y-1">
+                <li>• GET /courseLesson</li>
+                <li>• POST /courseLesson</li>
+                <li>• GET /courseLesson/:id</li>
+                <li>• DELETE /courseLesson/:id</li>
+              </ul>
+            </div>
+            
+            <div className="bg-cyan-50 rounded-lg p-4">
+              <h3 className="font-medium text-cyan-900 mb-2">User Progress APIs</h3>
+              <ul className="text-xs text-cyan-700 space-y-1">
+                <li>• GET /user-course-progress</li>
+                <li>• POST /user-course-progress</li>
+                <li>• PUT /user-course-progress/:id</li>
+                <li>• DELETE /user-course-progress/:id</li>
               </ul>
             </div>
             

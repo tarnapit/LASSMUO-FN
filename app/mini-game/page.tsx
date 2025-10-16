@@ -1,8 +1,8 @@
 "use client";
 import Link from "next/link";
-import { miniGames } from "../data/mini-games";
 import Navbar from "../components/layout/Navbar";
 import { MiniGameProgressHelper } from "../lib/mini-game-progress";
+import { useMiniGameData } from "@/app/lib/hooks/useDataAdapter";
 import {
   Gamepad2,
   Clock,
@@ -27,6 +27,9 @@ export default function MiniGamePage() {
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Use data adapter for mini games
+  const { games: miniGames, questions, loading: gamesLoading, error: gamesError } = useMiniGameData();
+  
   // ใช้ real data แทน mock data
   const [gameStats, setGameStats] = useState(MiniGameProgressHelper.getGameStats());
   const [achievements, setAchievements] = useState(MiniGameProgressHelper.getAchievementData());
@@ -38,6 +41,13 @@ export default function MiniGamePage() {
 
   // Update progress data when component mounts and when progress changes
   useEffect(() => {
+    // แสดง loading state ถ้า games ยังโหลดไม่เสร็จ
+    if (gamesLoading) {
+      setIsLoading(true);
+    } else {
+      setIsLoading(false);
+    }
+    
     const updateProgressData = () => {
       setGameStats(MiniGameProgressHelper.getGameStats());
       setAchievements(MiniGameProgressHelper.getAchievementData());
@@ -50,16 +60,7 @@ export default function MiniGamePage() {
       window.addEventListener('progressUpdated', updateProgressData);
       return () => window.removeEventListener('progressUpdated', updateProgressData);
     }
-  }, []);
-
-  useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, []);
+  }, [gamesLoading]);
 
   useEffect(() => {
     // Update progress bar width

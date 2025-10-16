@@ -1,98 +1,177 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Star, Play, Clock, Award, Trophy } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
-import { stageData } from "../data/stages";
 import { progressManager } from "../lib/progress";
 import { PlayerProgress } from "../types/stage";
-import { useStages, useStagesByCourse, useUser } from "../lib/api/hooks";
 import { authManager } from "../lib/auth";
+import { useStageData } from "@/app/lib/hooks/useStageData";
+import { useStageProgressManager } from "@/app/lib/hooks/useStageProgressManager";
 
 export default function StagePage() {
   const router = useRouter();
   const [selectedStage, setSelectedStage] = useState<number | null>(null);
-  const [playerProgress, setPlayerProgress] = useState<PlayerProgress | null>(
-    null
-  );
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // API hooks for stage data
-  const { data: apiStages, loading: stagesLoading, error: stagesError } = useStages();
+  // Use real API hooks
+  const { stages, loading: stagesLoading, error: stagesError } = useStageData();
+  const { 
+    progress: stageProgress, 
+    loading: progressLoading,
+    refreshProgress: refreshStageProgress,
+    updateStageProgress,
+    completeStage,
+    recordAttempt,
+    forceUnlockNextStage
+  } = useStageProgressManager(currentUser?.id);
   
-  // ดึงข้อมูลด่านจาก data และผสมกับความคืบหน้าของผู้เล่น
-  const processedStages = Object.values(stageData).map((stage) => {
-    const progress = playerProgress?.stages[stage.id];
-    const isUnlocked = progress?.isUnlocked || stage.id === 1; // stage 1 ปลดล็อกเสมอ
+  // ดึงข้อมูลด่านจาก API และผสมกับความคืบหน้าของผู้เล่น
+  const processedStages = stages?.map((stage: any) => {
+    const progress = stageProgress[stage.id];
+    
+    // ตรวจสอบการปลดล็อกด่าน
+    let isUnlocked = false;
+    if (stage.id === 1) {
+      // ด่าน 1 ปลดล็อกเสมอ
+      isUnlocked = true;
+    } else {
+      // ด่านอื่นๆ ปลดล็อกได้เมื่อ:
+      // 1. มีข้อมูล progress แล้วและถูกปลดล็อกแล้ว หรือ
+      // 2. ด่านก่อนหน้าผ่านแล้ว (มีอย่างน้อย 1 ดาว)
+      const previousStageProgress = stageProgress[stage.id - 1];
+      const isPreviousStageCompleted = previousStageProgress?.isCompleted || 
+                                      (previousStageProgress?.stars && previousStageProgress.stars >= 1);
+      
+      isUnlocked = progress?.isUnlocked || isPreviousStageCompleted || false;
+      
+      // Auto-unlock if previous stage is completed but current stage is not yet unlocked
+      if (isPreviousStageCompleted && !progress?.isUnlocked && currentUser?.id) {
+        console.log(`🔓 Auto-unlocking stage ${stage.id} because previous stage is completed`);
+        setTimeout(() => {
+          forceUnlockNextStage(stage.id - 1);
+        }, 100);
+      }
+    }
 
     return {
       ...stage,
       isUnlocked,
-      isCompleted: progress?.isCompleted || false,
+      // Check both isCompleted and stars to determine completion status
+      isCompleted: progress?.isCompleted || (progress?.stars && progress.stars > 0) || false,
       stars: progress?.stars || 0,
       bestScore: progress?.bestScore || 0,
       attempts: progress?.attempts || 0,
       lastAttempt: progress?.lastAttempt,
-      totalStars: stage.totalStars || 3, // เพิ่ม totalStars จาก stageData
+      totalStars: stage.totalStars || 3, // เพิ่ม totalStars จาก API data
     };
-  });
+  }) || [];
 
   // จัดเรียงด่านตาม id
-  processedStages.sort((a, b) => a.id - b.id);
+  processedStages.sort((a: any, b: any) => a.id - b.id);
 
-  // Use API stages if available for additional data, otherwise use processed local data
-  const finalStages = apiStages?.data ? 
-    processedStages.map(stage => {
-      const apiStage = apiStages.data?.find((s: any) => s.id === stage.id);
-      return apiStage ? { ...stage, ...apiStage } : stage;
-    }) : processedStages;
+  const finalStages = processedStages;
+
+  // Handle loading state
+  const loading = stagesLoading || progressLoading;
 
   useEffect(() => {
     // โหลดข้อมูล user
-    const user = authManager.getCurrentUser();
+    const user = authManager.getCurrentUser() || {
+      id: "1", // Use string ID to match API
+      name: "ผู้เรียน",
+      level: 1,
+      experience: 150,
+      avatar: "👩‍🚀",
+    };
     setCurrentUser(user);
-    
-    // โหลด progress เมื่อ component mount
-    const progress = progressManager.getProgress();
-    setPlayerProgress(progress);
-    console.log("Initial progress loaded:", progress);
-
-    // เพิ่ม listener สำหรับการกลับมาหน้านี้
-    const handleRouterEvents = () => {
-      setTimeout(() => {
-        const updatedProgress = progressManager.getProgress();
-        setPlayerProgress(updatedProgress);
-        console.log(
-          "Progress auto-refreshed on route change:",
-          updatedProgress
-        );
-      }, 500);
-    };
-
-    // Listen for browser back/forward
-    window.addEventListener("popstate", handleRouterEvents);
-
-    return () => {
-      window.removeEventListener("popstate", handleRouterEvents);
-    };
   }, []);
 
-  // Function to refresh progress (เรียกใช้เมื่อต้องการอัพเดท)
-  const refreshProgress = () => {
-    const progress = progressManager.getProgress();
-    setPlayerProgress(progress);
-    console.log("Stage page progress refreshed:", progress);
-  };
-
-  // Listen for focus event เพื่ออัพเดท progress เมื่อกลับมาจากหน้าเล่นเกม
+  // Refresh progress when component mounts and when coming back to this page
   useEffect(() => {
+    if (currentUser?.id) {
+      console.log('🔄 Stage page mounted/user changed - refreshing progress...');
+      refreshStageProgress();
+    }
+  }, [currentUser?.id, refreshStageProgress]);
+
+  // Additional refresh when page becomes visible (user comes back from other page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && currentUser?.id) {
+        console.log('🔄 Page became visible - refreshing progress...');
+        refreshStageProgress();
+      }
+    };
+
     const handleFocus = () => {
-      refreshProgress();
+      if (currentUser?.id) {
+        console.log('🔄 Window focused - refreshing progress...');
+        refreshStageProgress();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [currentUser?.id, refreshStageProgress]);
+
+  // Function to refresh progress (เรียกใช้เมื่อต้องการอัพเดท)
+  const refreshProgress = useCallback(() => {
+    refreshStageProgress();
+    // console.log("Stage page progress refreshed"); // Reduce logging
+  }, [refreshStageProgress]);
+
+  // Function to check and unlock eligible stages
+  const checkAndUnlockStages = useCallback(async () => {
+    if (!currentUser?.id || !finalStages.length) return;
+    
+    let hasUpdates = false;
+    
+    for (let i = 1; i < finalStages.length; i++) {
+      const currentStage = finalStages[i];
+      const previousStage = finalStages[i - 1];
+      
+      // Check if previous stage is completed but current stage is not unlocked
+      const shouldBeUnlocked = previousStage.isCompleted || (previousStage.stars && previousStage.stars >= 1);
+      
+      if (shouldBeUnlocked && !currentStage.isUnlocked) {
+        console.log(`🔓 Unlocking stage ${currentStage.id} because stage ${previousStage.id} is completed`);
+        await forceUnlockNextStage(previousStage.id);
+        hasUpdates = true;
+      }
+    }
+    
+    if (hasUpdates) {
+      // Refresh after unlocking
+      setTimeout(() => {
+        refreshProgress();
+      }, 500);
+    }
+  }, [finalStages, currentUser?.id, forceUnlockNextStage, refreshProgress]);
+
+  // Listen for focus event เพื่ออัพเดท progress เมื่อกลับมาจากหน้าเล่นเกม (ลด frequency)
+  useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout;
+    
+    const handleFocus = () => {
+      // Debounce refresh calls
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        refreshProgress();
+      }, 500);
     };
 
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshProgress();
+        clearTimeout(refreshTimeout);
+        refreshTimeout = setTimeout(() => {
+          refreshProgress();
+        }, 500);
       }
     };
 
@@ -102,64 +181,51 @@ export default function StagePage() {
     return () => {
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearTimeout(refreshTimeout);
     };
-  }, []);
+  }, [refreshProgress]);
 
   // Listen for storage changes เพื่ออัพเดท progress เมื่อมีการเปลี่ยนแปลง
   useEffect(() => {
+    let refreshTimeout: NodeJS.Timeout;
+    
     const handleStorageChange = () => {
-      refreshProgress();
+      clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => {
+        refreshProgress();
+      }, 500);
     };
 
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, []);
-
-  // Listen for route changes เพื่อ refresh progress
-  useEffect(() => {
-    const handleRouteChange = () => {
-      // รอสักครู่แล้วค่อย refresh เพื่อให้ข้อมูลใหม่อัพเดท
-      setTimeout(() => {
-        refreshProgress();
-      }, 100);
-    };
-
-    // Listen for when component becomes visible again
-    const handlePageShow = () => {
-      refreshProgress();
-    };
-
-    // เพิ่ม interval เพื่อ check progress ทุก 1 วินาที (เฉพาะเมื่อ tab active)
-    const progressInterval = setInterval(() => {
-      if (!document.hidden) {
-        refreshProgress();
-      }
-    }, 1000);
-
-    window.addEventListener("pageshow", handlePageShow);
-
     return () => {
-      window.removeEventListener("pageshow", handlePageShow);
-      clearInterval(progressInterval);
+      window.removeEventListener("storage", handleStorageChange);
+      clearTimeout(refreshTimeout);
     };
-  }, []);
+  }, [refreshProgress]);
 
-  // Debug: แสดงข้อมูล progress ในคอนโซล
+  // Check and unlock stages when data is loaded
   useEffect(() => {
-    if (playerProgress) {
-      console.log("Current player progress:", playerProgress);
+    if (!loading && finalStages.length > 0 && currentUser?.id) {
+      checkAndUnlockStages();
+    }
+  }, [loading, finalStages.length, currentUser?.id, checkAndUnlockStages]);
+
+  // Debug: แสดงข้อมูล progress ในคอนโซล (ลดความถี่)
+  useEffect(() => {
+    if (stageProgress && Object.keys(stageProgress).length > 0) {
+      console.log("Current stage progress:", stageProgress);
       console.log(
         "Stages data with stars:",
-        finalStages.map((s) => ({
+        finalStages.map((s: any) => ({
           id: s.id,
           stars: s.stars,
           isCompleted: s.isCompleted,
           totalStars: s.totalStars,
-          stageProgress: playerProgress.stages[s.id as number],
+          stageProgressData: stageProgress[s.id as number],
         }))
       );
     }
-  }, [playerProgress]);
+  }, [Object.keys(stageProgress).length, finalStages.length]); // Only when actual data changes
 
   // Function to close popup when clicking outside
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -211,16 +277,16 @@ export default function StagePage() {
           <div className="flex justify-center items-center space-x-6 mt-6 text-white">
             <div className="flex items-center space-x-2">
               <Trophy className="text-yellow-400" size={20} />
-              <span>{playerProgress?.totalStars || 0} ดาว</span>
+              <span>{Object.values(stageProgress).reduce((total, progress) => total + (progress.stars || 0), 0)} ดาว</span>
             </div>
             <div className="flex items-center space-x-2">
               <Award className="text-blue-400" size={20} />
-              <span>{playerProgress?.totalPoints || 0} คะแนน</span>
+              <span>{Object.values(stageProgress).reduce((total, progress) => total + (progress.bestScore || 0), 0)} คะแนน</span>
             </div>
             <div className="flex items-center space-x-2">
               <Star className="text-green-400" size={20} />
               <span>
-                {playerProgress?.completedStages.length || 0} ด่านสำเร็จ
+                {Object.values(stageProgress).filter(progress => progress.isCompleted).length} ด่านสำเร็จ
               </span>
             </div>
           </div>
@@ -231,7 +297,7 @@ export default function StagePage() {
           className="relative max-w-4xl mx-auto px-4 sm:px-8"
           onClick={handleBackgroundClick}
         >
-          {finalStages.map((stage, index) => {
+          {finalStages.map((stage: any, index: number) => {
             // Duolingo-style zigzag positioning
             const isEven = index % 2 === 0;
             const translateX = isEven
@@ -256,6 +322,21 @@ export default function StagePage() {
                     }
                   }}
                 >
+                  {/* Play Button สำหรับไปเล่นด่าน */}
+                  {stage.isUnlocked && (
+                    <button
+                      className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-lg z-50 transition-all duration-300 hover:scale-110"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log(`Navigating to stage ${stage.id}`);
+                        router.push(`/stage/${stage.id}`);
+                      }}
+                      title={`เล่นด่าน ${stage.title}`}
+                      aria-label={`เล่นด่าน ${stage.title}`}
+                    >
+                      <Play size={20} />
+                    </button>
+                  )}
                   {/* Glow Effect */}
                   {stage.isUnlocked && (
                     <div
@@ -370,7 +451,7 @@ export default function StagePage() {
             onClick={(e) => e.stopPropagation()}
           >
             {(() => {
-              const stage = finalStages.find((s) => s.id === selectedStage);
+              const stage = finalStages.find((s: any) => s.id === selectedStage);
               if (!stage) return null;
 
               return (
@@ -391,16 +472,16 @@ export default function StagePage() {
                       </h3>
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          stage.difficulty === "easy"
+                          stage.difficulty === "Easy"
                             ? "bg-green-100 text-green-800"
-                            : stage.difficulty === "medium"
+                            : stage.difficulty === "Medium"
                             ? "bg-yellow-100 text-yellow-800"
                             : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {stage.difficulty === "easy"
+                        {stage.difficulty === "Easy"
                           ? "ง่าย"
-                          : stage.difficulty === "medium"
+                          : stage.difficulty === "Medium"
                           ? "ปานกลาง"
                           : "ยาก"}
                       </span>
@@ -423,14 +504,25 @@ export default function StagePage() {
                       </span>
                     </div>
 
-                    {stage.prerequisites.length > 0 && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-400">ต้องผ่านด่าน:</span>
-                        <span className="text-white font-medium">
-                          {stage.prerequisites.join(", ")}
-                        </span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400 flex items-center">
+                        <Trophy size={16} className="mr-2" />
+                        ดาวที่ได้รับ:
+                      </span>
+                      <div className="flex space-x-1">
+                        {[1, 2, 3].map((star) => (
+                          <Star
+                            key={star}
+                            size={16}
+                            className={
+                              star <= stage.stars
+                                ? "text-yellow-400 fill-yellow-400"
+                                : "text-gray-600"
+                            }
+                          />
+                        ))}
                       </div>
-                    )}
+                    </div>
 
                     {stage.attempts > 0 && (
                       <div className="flex items-center justify-between text-sm">
@@ -451,6 +543,13 @@ export default function StagePage() {
                         </span>
                       </div>
                     )}
+
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-gray-400">รางวัล XP:</span>
+                      <span className="text-white font-medium">
+                        {stage.xpReward || 0} XP
+                      </span>
+                    </div>
                   </div>
 
                   {/* Stars */}
@@ -544,16 +643,27 @@ export default function StagePage() {
                     </div>
                   )}
 
-                  {/* Play Button */}
-                  <button
-                    onClick={() => router.push(`/stage/${stage.id}`)}
-                    className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-semibold py-3 px-4 rounded-lg hover:from-yellow-400 hover:to-orange-400 transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
-                  >
-                    <Play size={18} />
-                    <span>
-                      {stage.isCompleted ? "เล่นอีกครั้ง" : "เริ่มเล่น"}
-                    </span>
-                  </button>
+                  {/* Action Buttons */}
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setSelectedStage(null)}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                      ปิด
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedStage(null);
+                        router.push(`/stage/${stage.id}`);
+                      }}
+                      className="flex-2 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center space-x-2 shadow-lg"
+                    >
+                      <Play size={18} />
+                      <span>
+                        {stage.isCompleted ? "เล่นอีกครั้ง" : "เริ่มเล่น"}
+                      </span>
+                    </button>
+                  </div>
                 </>
               );
             })()}

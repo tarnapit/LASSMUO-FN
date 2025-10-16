@@ -9,17 +9,14 @@
 
 .progressFillGreen {
   background: linear-gradient(90deg, #4ade80, #16a34a);
-  width: calc(var(--progress, 0) * 1%);
 }
 
 .progressFillYellow {
   background: linear-gradient(90deg, #4ade80, #eab308);
-  width: calc(var(--progress, 0) * 1%);
 }
 
 .progressFillPurple {
   background: linear-gradient(90deg, #a855f7, #3b82f6);
-  width: calc(var(--progress, 0) * 1%);
 }
 
 .moduleCard {

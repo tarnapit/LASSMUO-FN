@@ -4,10 +4,15 @@ export interface Course {
   description: string;
   price?: number;
   duration?: string;
+  estimatedTime?: number;
+  coverImage?: string;
   isActive?: boolean;
   level?: 'Fundamental' | 'Intermediate' | 'Advanced';
   createdAt?: string;
+  createAt?: string;
   updatedAt?: string;
+  courseLesson?: CourseLesson[];
+  coursePostest?: CoursePostest[];
 }
 
 export interface CreateCourseRequest {
@@ -24,9 +29,15 @@ export interface UpdateCourseRequest extends Partial<CreateCourseRequest> {}
 // Course Detail Types
 export interface CourseDetail {
   id: string;
-  courseId: string;
-  content: string;
-  objectives: string;
+  courseId?: string;
+  courseLessonId?: string;
+  content: any; // เปลี่ยนเป็น any เพื่อรองรับ JSON object
+  type?: string;
+  objectives?: string;
+  ImageUrl?: string;
+  imageUrl?: string;
+  required?: boolean;
+  score?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -39,14 +50,43 @@ export interface CreateCourseDetailRequest {
 
 export interface UpdateCourseDetailRequest extends Partial<CreateCourseDetailRequest> {}
 
+// Course Postest Types
+export interface CoursePostest {
+  id: string;
+  courseId: string;
+  title: string;
+  description?: string;
+  timeLimit?: number;
+  passingScore?: number;
+  maxAttempts?: number;
+  question: any; // JSON field
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCoursePostestRequest {
+  courseId: string;
+  title: string;
+  description?: string;
+  timeLimit?: number;
+  passingScore?: number;
+  maxAttempts?: number;
+  question: any;
+}
+
+export interface UpdateCoursePostestRequest extends Partial<CreateCoursePostestRequest> {}
+
 // Course Lesson Types
 export interface CourseLesson {
   id: string;
   courseId: string;
-  lessonId: string;
-  order: number;
+  lessonId?: string;
+  title?: string;
+  order?: number;
+  estimatedTime?: number;
   createdAt?: string;
   updatedAt?: string;
+  courseDetail?: CourseDetail[];
 }
 
 export interface CreateCourseLessonRequest {
@@ -78,48 +118,6 @@ export interface CreateStageRequest {
 
 export interface UpdateStageRequest extends Partial<CreateStageRequest> {}
 
-export interface Lesson {
-  id: string;
-  stageId?: string;
-  title: string;
-  content?: string;
-  order?: number;
-  duration?: number;
-  videoUrl?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateLessonRequest {
-  stageId?: string;
-  title: string;
-  content?: string;
-  order?: number;
-  duration?: number;
-  videoUrl?: string;
-}
-
-export interface UpdateLessonRequest extends Partial<CreateLessonRequest> {}
-
-export interface Order {
-  id: string;
-  userId: string;
-  courseId: string;
-  amount: number;
-  status: 'pending' | 'completed' | 'cancelled';
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateOrderRequest {
-  userId: string;
-  courseId: string;
-  amount: number;
-  status: 'pending' | 'completed' | 'cancelled';
-}
-
-export interface UpdateOrderRequest extends Partial<CreateOrderRequest> {}
-
 export interface User {
   id: string;
   name: string;
@@ -140,25 +138,6 @@ export interface CreateUserRequest {
 export interface UpdateUserRequest extends Partial<Omit<CreateUserRequest, 'password'>> {
   password?: string;
 }
-
-export interface Answer {
-  id: string;
-  userId: string;
-  questionId: string;
-  answer: string;
-  isCorrect: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface CreateAnswerRequest {
-  userId: string;
-  questionId: string;
-  answer: string;
-  isCorrect: boolean;
-}
-
-export interface UpdateAnswerRequest extends Partial<CreateAnswerRequest> {}
 
 // Authentication Types
 export interface LoginRequest {

@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { getLearningModuleById } from "../../data/learning-modules";
-import { getQuizByModuleId } from "../../data/quizzes";
+import { getLearningModuleById } from "../../lib/hooks/useLearningData";
 import { LearningModule, Chapter } from "../../types/learning";
+import { courseQuizService, coursePostestService } from "../../lib/api/services";
 import { progressManager } from "../../lib/progress";
 import Navbar from "../../components/layout/Navbar";
 import ProgressBar from "../../components/ui/ProgressBar";
@@ -46,6 +46,21 @@ export default function LearningTopicPage() {
   // เพิ่ม state เพื่อติดตามกิจกรรมที่กำลังทำอยู่
   const [currentActivityId, setCurrentActivityId] = useState<string | null>(null);
 
+  // ฟังก์ชันหาลำดับ module ในหลักสูตร
+  const getModuleOrder = (moduleId: string): number => {
+    // กำหนดลำดับ module ตาม API หรือการออกแบบหลักสูตร
+    const moduleOrder: Record<string, number> = {
+      'ba3fd565-dc81-4e74-b253-ef0a4074f8cf': 1, // Solar System
+      '4db710de-f734-4c7e-bf5f-a5645847b5bc': 2, // Earth Structure
+      // เพิ่ม module อื่นๆ ตามลำดับที่ออกแบบไว้
+      // 'stellar-evolution': 3,
+      // 'galaxies-universe': 4,
+    };
+    
+    console.log(`📊 Module order for ${moduleId}: ${moduleOrder[moduleId] || 1}`);
+    return moduleOrder[moduleId] || 1; // default เป็น 1 ถ้าไม่เจอ
+  };
+
   // ตรวจสอบว่าสามารถไปหน้าต่อไปได้หรือไม่
   const checkCanProceed = useCallback(() => {
     if (!module) {
@@ -84,44 +99,175 @@ export default function LearningTopicPage() {
   }, [module, currentChapterIndex, currentContentIndex, completedActivities]);
 
   useEffect(() => {
-    if (params.topic) {
-      const foundModule = getLearningModuleById(params.topic as string);
-      const foundQuiz = getQuizByModuleId(params.topic as string);
+    const fetchModule = async () => {
+      if (params.topic) {
+        try {
+          const foundModule = await getLearningModuleById(params.topic as string);
+          
+          // ดึงข้อมูล quiz จาก API (PostTest)
+          let foundQuiz = null;
+          try {
+            // ลองดึง PostTest จาก coursePostest API โดยใช้ courseId
+            if (foundModule && foundModule.id) {
+              console.log('Looking for PostTest quiz for course:', foundModule.id);
+              
+              const postestResponse = await coursePostestService.getCoursePostestsByCourseId(foundModule.id);
+              
+              if (postestResponse.success && postestResponse.data && postestResponse.data.length > 0) {
+                // ใช้ PostTest แรกที่มี
+                foundQuiz = postestResponse.data[0];
+                console.log('Found PostTest quiz for course:', foundQuiz.title || foundQuiz.id);
+              } else {
+                console.log('No PostTest found for course:', foundModule.id);
+                
+                // Fallback: ลองดึงจาก course response หากมี coursePostest
+                // TODO: เพิ่ม courseService หรือใช้ API อื่นที่มีอยู่แล้ว
+                console.log('CourseService not available, skipping course response check');
+              }
+            }
+            
+            // ถ้ายังไม่ได้ quiz จาก PostTest ให้ลองดูจาก CourseQuiz API
+            if (!foundQuiz) {
+              console.log('No PostTest found, trying CourseQuiz API as fallback');
+              const quizResponse = await courseQuizService.getAllCourseQuizzes();
+              
+              if (quizResponse && Array.isArray(quizResponse) && quizResponse.length > 0) {
+                // หาข้อมูล quiz แรกเป็น fallback (อาจต้องปรับให้จับคู่กับ course)
+                foundQuiz = quizResponse[0];
+                console.log('Using fallback quiz from CourseQuiz API:', foundQuiz.title || foundQuiz.id);
+              }
+            }
+          } catch (quizError) {
+            console.log('Error fetching quiz:', quizError);
+          }
 
-      if (foundModule) {
-        setModule(foundModule);
-        setQuiz(foundQuiz);
-        
-        // รีเซ็ต states เมื่อเปลี่ยน module
-        setCompletedActivities(new Set());
-        setActivityScores({});
-        setTotalScore(0);
-        setCurrentActivityId(null);
-        
-        // เริ่มการเรียน module
-        progressManager.startLearningModule(params.topic as string);
+          if (foundModule) {
+            setModule(foundModule);
+            setQuiz(foundQuiz);
+            
+            console.log(`📚 Module loaded:`, {
+              id: foundModule.id,
+              title: foundModule.title,
+              moduleOrder: getModuleOrder(foundModule.id),
+              chaptersCount: foundModule.chapters.length
+            });
+            
+            // รีเซ็ต states เมื่อเปลี่ยน module
+            setCompletedActivities(new Set());
+            setActivityScores({});
+            setTotalScore(0);
+            setCurrentActivityId(null);
+            
+            // เริ่มการเรียน module
+            progressManager.startLearningModule(params.topic as string);
 
-        // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยัง
-        const moduleProgress = progressManager.getModuleProgress(
-          params.topic as string
-        );
-        setModuleCompleted(moduleProgress?.isCompleted || false);
+            // ตรวจสอบว่า module เสร็จสิ้นแล้วหรือยังจาก API จริง
+            const checkModuleCompletion = async () => {
+              try {
+                // ใช้ฟังก์ชันเดียวกับหน้า Learning page
+                const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(foundModule.id);
+                const isModuleCompleted = completionPercentage >= 100;
+                
+                console.log(`📊 Module completion check for ${foundModule.title}:`, {
+                  completionPercentage,
+                  isModuleCompleted,
+                  moduleId: foundModule.id
+                });
+                
+                setModuleCompleted(isModuleCompleted);
+                
+                // ถ้า module เสร็จแล้ว ให้ complete ใน local storage ด้วย
+                if (isModuleCompleted) {
+                  await progressManager.completeModule(foundModule.id, foundModule.chapters.length);
+                }
+              } catch (error) {
+                console.error('Error checking module completion:', error);
+                // Fallback ใช้ local progress
+                const moduleProgress = progressManager.getModuleProgress(params.topic as string);
+                setModuleCompleted(moduleProgress?.isCompleted || false);
+              }
+            };
+            
+            await checkModuleCompletion();
 
-        // โหลด progress ของแต่ละ chapter
-        const progresses: Record<string, any> = {};
-        foundModule.chapters.forEach((chapter) => {
-          const chapterProg = progressManager.getChapterProgress(
-            params.topic as string,
-            chapter.id
-          );
-          progresses[chapter.id] = chapterProg;
-        });
-        setChapterProgress(progresses);
-      } else {
-        router.push("/learning");
+            // โหลด progress ของแต่ละ chapter จาก API ถ้าเป็นไปได้
+            const progresses: Record<string, any> = {};
+            foundModule.chapters.forEach((chapter) => {
+              const chapterProg = progressManager.getChapterProgress(
+                params.topic as string,
+                chapter.id
+              );
+              progresses[chapter.id] = chapterProg;
+            });
+            setChapterProgress(progresses);
+          } else {
+            router.push("/learning");
+          }
+        } catch (error) {
+          console.error('Error fetching module:', error);
+          router.push("/learning");
+        }
       }
-    }
+    };
+
+    fetchModule();
   }, [params.topic, router]);
+
+  // Listen for progress updates และรีเฟรช module completion
+  useEffect(() => {
+    const handleProgressUpdate = async () => {
+      if (module) {
+        console.log('📡 Progress update received, checking module completion...');
+        try {
+          const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+          const isModuleCompleted = completionPercentage >= 100;
+          
+          console.log(`📊 Updated module completion for ${module.title}:`, {
+            completionPercentage,
+            isModuleCompleted
+          });
+          
+          setModuleCompleted(isModuleCompleted);
+        } catch (error) {
+          console.error('Error updating module completion:', error);
+        }
+      }
+    };
+
+    window.addEventListener('progressUpdated', handleProgressUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('progressUpdated', handleProgressUpdate as EventListener);
+    };
+  }, [module]);
+
+  // เช็ค module completion เมื่อหน้าเว็บ visible อีกครั้ง
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (!document.hidden && module) {
+        console.log('👁️ Page visible again, checking module completion...');
+        try {
+          const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+          const isModuleCompleted = completionPercentage >= 100;
+          
+          console.log(`👁️ Visibility check module completion for ${module.title}:`, {
+            completionPercentage,
+            isModuleCompleted
+          });
+          
+          setModuleCompleted(isModuleCompleted);
+        } catch (error) {
+          console.error('Error checking module completion on visibility change:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [module]);
 
   // บันทึกเวลาเมื่อเปลี่ยน chapter หรือ content
   useEffect(() => {
@@ -148,6 +294,14 @@ export default function LearningTopicPage() {
     );
   }
 
+  // Debug log การแสดงผล
+  console.log('🎯 Learning page render:', {
+    moduleId: module.id,
+    moduleTitle: module.title,
+    moduleCompleted: moduleCompleted,
+    hasQuiz: !!quiz
+  });
+
   const currentChapter = module.chapters[currentChapterIndex];
   const currentContent = currentChapter?.content[currentContentIndex];
   const isLastContent =
@@ -156,18 +310,18 @@ export default function LearningTopicPage() {
   const isFirstContent = currentContentIndex === 0;
   const isFirstChapter = currentChapterIndex === 0;
 
-  const nextContent = () => {
+  const nextContent = async () => {
     if (!isLastContent) {
       setCurrentContentIndex((prev) => prev + 1);
     } else if (!isLastChapter) {
       // บันทึก progress ของ chapter ปัจจุบันเมื่อจบ chapter
-      completeCurrentChapter();
+      await completeCurrentChapter();
       setCurrentChapterIndex((prev) => prev + 1);
       setCurrentContentIndex(0);
     } else {
       // จบ module แล้ว
-      completeCurrentChapter();
-      completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
+      await completeCurrentChapter();
+      await completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
 
       // ถ้ามี quiz ให้ไปหน้า quiz เลย
       if (quiz) {
@@ -188,7 +342,7 @@ export default function LearningTopicPage() {
   };
 
   // บันทึก progress ของ chapter ปัจจุบัน
-  const completeCurrentChapter = () => {
+  const completeCurrentChapter = async () => {
     if (!module) return;
 
     const timeSpent = Math.round(
@@ -200,7 +354,7 @@ export default function LearningTopicPage() {
       `Completing chapter ${currentChapter.id} in module ${module.id}`
     );
 
-    progressManager.updateChapterProgress(
+    await progressManager.updateChapterProgress(
       module.id,
       currentChapter.id,
       100, // อ่านครบ 100%
@@ -236,13 +390,13 @@ export default function LearningTopicPage() {
   };
 
   // จบการเรียน module
-  const completeModule = (shouldRedirect = false) => {
+  const completeModule = async (shouldRedirect = false) => {
     if (!module) return;
 
     console.log(
       `Completing module ${module.id} with ${module.chapters.length} chapters`
     );
-    progressManager.completeModule(module.id, module.chapters.length);
+    await progressManager.completeModule(module.id, module.chapters.length);
 
     // ถ้าไม่ต้องการ redirect ให้แสดงหน้าสรุป
     if (!shouldRedirect) {
@@ -325,31 +479,115 @@ export default function LearningTopicPage() {
           </div>
         );
 
+      case "video":
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              {currentContent.imageUrl ? (
+                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                  {/* ตรวจสอบว่าเป็น YouTube URL หรือไม่ */}
+                  {currentContent.imageUrl.includes('youtube.com') || currentContent.imageUrl.includes('youtu.be') ? (
+                    <div className="relative w-full aspect-video">
+                      <iframe
+                        src={currentContent.imageUrl.replace('watch?v=', 'embed/')}
+                        title={currentContent.content}
+                        className="absolute top-0 left-0 w-full h-full rounded-lg"
+                        allowFullScreen
+                      />
+                    </div>
+                  ) : (
+                    <video
+                      src={currentContent.imageUrl}
+                      controls
+                      className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLVideoElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    >
+                      ไม่สามารถเล่นวิดีโอได้
+                    </video>
+                  )}
+                  <div className="hidden text-gray-400 text-lg py-8">
+                    🎥 {currentContent.content}
+                    <div className="text-sm text-gray-500 mt-2">
+                      (ไม่สามารถโหลดวิดีโอได้)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-800 rounded-lg p-8 mb-4">
+                  <div className="text-gray-400 text-lg">
+                    🎥 {currentContent.content}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-2">
+                    (ไม่มีวิดีโอ)
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* แสดงคำบรรยายวิดีโอ */}
+            {currentContent.content && (
+              <div className="prose prose-lg prose-invert max-w-none">
+                <p className="text-gray-200 leading-relaxed text-center">
+                  {currentContent.content}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
       case "image":
         return (
-          <div className="text-center">
-            <div className="bg-gray-800 rounded-lg p-8 mb-4">
-              <div className="text-gray-400 text-lg">
-                <img src={currentContent.imageUrl} alt={currentContent.content} className="mx-auto rounded-lg shadow-lg" />
-              </div>
-              <div className="text-sm text-gray-500 mt-2">
-                (รูปภาพจะแสดงที่นี่)
-              </div>
+          <div className="space-y-6">
+            <div className="text-center">
+              {currentContent.imageUrl ? (
+                <div className="bg-white/5 rounded-lg p-4 mb-4">
+                  <img
+                    src={currentContent.imageUrl}
+                    alt={currentContent.content}
+                    className="max-w-full max-h-96 mx-auto rounded-lg shadow-lg object-contain"
+                    onError={(e) => {
+                      // ถ้าโหลดรูปไม่ได้ให้แสดง placeholder
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden text-gray-400 text-lg py-8">
+                    📷 {currentContent.content}
+                    <div className="text-sm text-gray-500 mt-2">
+                      (ไม่สามารถโหลดรูปภาพได้)
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-gray-800 rounded-lg p-8 mb-4">
+                  <div className="text-gray-400 text-lg">
+                    📷 {currentContent.content}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-2">
+                    (ไม่มีรูปภาพ)
+                  </div>
+                </div>
+              )}
             </div>
-            {currentContent.imageUrl && (
-              <p className="text-sm text-gray-400">{currentContent.imageUrl}</p>
+            
+            {/* แสดงคำบรรยายรูปภาพ */}
+            {currentContent.content && currentContent.content !== 'รูปภาพประกอบการเรียน' && (
+              <div className="prose prose-lg prose-invert max-w-none">
+                <p className="text-gray-200 leading-relaxed text-center">
+                  {currentContent.content}
+                </p>
+              </div>
             )}
           </div>
         );
 
       // กิจกรรมอินเตอร์แอคทีฟแต่ละประเภท
-      case "multiple-choice":
-      case "matching":
-      case "fill-blanks":
-      case "image-identification":
-      case "true-false":
-      case "sentence-ordering":
-      case "range-answer":
+      case "quiz":
         return currentContent.activity ? (
           <InteractiveActivityComponent
             key={`${currentChapterIndex}-${currentContentIndex}-${currentContent.activity.id}`}
@@ -370,66 +608,36 @@ export default function LearningTopicPage() {
         );
 
       case "interactive":
-        return (
-          <div className="bg-gradient-to-br from-orange-500/30 to-red-500/20 rounded-xl p-8 text-center border-2 border-orange-500/40">
-            <h3 className="text-3xl font-bold text-orange-400 mb-4">
-              แบบฝึกหัด
-            </h3>
-            <p className="text-white text-lg mb-2">{currentContent.content}</p>
-            <p className="text-gray-300 text-sm mb-6">
-              ทดสอบความเข้าใจด้วยแบบทดสอบที่เกี่ยวข้องกับบทเรียนนี้
-            </p>
-
-            {quiz ? (
-              <div className="space-y-4">
-                {isLastChapter && (
-                  <div className="bg-green-500/20 border border-green-500/40 rounded-lg p-4 mb-4">
-                    <div className="flex items-center text-green-400 text-sm font-medium">
-                      <CheckCircle size={16} className="mr-2" />
-                      เมื่อไปทำแบบทดสอบ จะถือว่าเรียนจบบทเรียนนี้แล้ว
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => {
-                    // บันทึก progress ของ chapter ปัจจุบันก่อนไปทำ quiz
-                    completeCurrentChapter();
-                    // ถ้าเป็น chapter สุดท้าย ให้ complete module ด้วย (แต่ไม่แสดงหน้าสรุป)
-                    if (isLastChapter) {
-                      completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
-                    }
-                    // ไปหน้า quiz
-                    router.push(`/quiz/${quiz.id}`);
-                  }}
-                  className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-10 py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-105 shadow-lg inline-flex items-center"
-                >
-                  <Brain size={24} className="mr-3" />
-                  {isLastChapter ? "เสร็จสิ้นและไปทำแบบทดสอบ" : "ไปทำแบบทดสอบ"}
-                </button>
-              </div>
-            ) : (
-              <div className="text-gray-400 py-4">
-                <p>ยังไม่มีแบบทดสอบสำหรับบทเรียนนี้</p>
-              </div>
-            )}
-
-            {quiz && (
-              <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
-                <div className="flex items-center">
-                  <Brain size={16} className="mr-1 text-orange-400" />
-                  {quiz.questions.length} ข้อ
-                </div>
-                <div className="flex items-center">
-                  <Clock size={16} className="mr-1 text-orange-400" />
-                  {quiz.timeLimit ? `${quiz.timeLimit} นาที` : "ไม่จำกัด"}
-                </div>
-                <div className="flex items-center">
-                  <Trophy size={16} className="mr-1 text-orange-400" />
-                  ผ่าน {quiz.passingScore}%
-                </div>
-              </div>
-            )}
+        return currentContent.activity ? (
+          <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl p-8 border border-blue-500/30">
+            <div className="text-center mb-6">
+              <h3 className="text-2xl font-bold text-blue-400 mb-2">
+                💡 กิจกรรมปฏิสัมพันธ์
+              </h3>
+              <p className="text-white text-lg mb-2">
+                {currentContent.activity.title}
+              </p>
+              <p className="text-gray-300 text-sm">
+                ทดสอบความเข้าใจจากเนื้อหาที่เพิ่งศึกษา
+              </p>
+            </div>
+            <InteractiveActivityComponent
+              key={`${currentChapterIndex}-${currentContentIndex}-${currentContent.activity.id}`}
+              activity={currentContent.activity}
+              onComplete={(score, timeSpent, passed) =>
+                handleActivityComplete(
+                  currentContent.activity!.id,
+                  score,
+                  timeSpent,
+                  passed
+                )
+              }
+              required={currentContent.required}
+              minimumScore={currentContent.minimumScore}
+            />
           </div>
+        ) : (
+          <div className="text-red-400">ข้อมูลกิจกรรมไม่ถูกต้อง</div>
         );
 
       default:
@@ -461,12 +669,12 @@ export default function LearningTopicPage() {
                 <div className="flex items-center">
                   <BookOpen size={16} className="mr-1" />
                   <span>
-                    บทที่ {currentChapterIndex + 1}: {currentChapter.title}
+                    บทที่ {getModuleOrder(module.id)}: {module.title}
                   </span>
                 </div>
                 <div className="flex items-center">
                   <Clock size={16} className="mr-1" />
-                  <span>{currentChapter.estimatedTime}</span>
+                  <span>{module.estimatedTime}</span>
                 </div>
               </div>
             </div>
@@ -533,7 +741,7 @@ export default function LearningTopicPage() {
                   }`}
                 >
                   {isCompleted && <CheckCircle size={16} />}
-                  <span>บทที่ {index + 1}</span>
+                  <span>ส่วนที่ {index + 1}</span>
                 </button>
               );
             })}
@@ -624,7 +832,7 @@ export default function LearningTopicPage() {
                     <div className="mt-6 flex justify-center space-x-6 text-sm text-gray-300">
                       <div className="flex items-center">
                         <Brain size={16} className="mr-1 text-orange-400" />
-                        {quiz.questions.length} ข้อ
+                        {quiz.question?.questions?.length || 0} ข้อ
                       </div>
                       <div className="flex items-center">
                         <Clock size={16} className="mr-1 text-orange-400" />
@@ -699,7 +907,7 @@ export default function LearningTopicPage() {
 
                 <div className="text-center">
                   <div className="text-sm text-gray-400 mb-1">
-                    บทที่ {currentChapterIndex + 1} จาก {module.chapters.length}
+                    ส่วนที่ {currentChapterIndex + 1} จาก {module.chapters.length}
                   </div>
                   <div className="text-lg font-semibold text-white">
                     {currentChapter.title}

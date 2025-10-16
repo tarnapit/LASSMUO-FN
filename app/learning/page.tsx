@@ -2,13 +2,12 @@
 import React from "react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { learningModules } from "../data/learning-modules";
 import { getQuizByModuleId } from "../data/quizzes";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
 import QuizCard from "../components/ui/QuizCard";
-import { useCourses, useStages, useUser } from "../lib/api/hooks";
 import { authManager } from "../lib/auth";
+import { useLearningData } from "@/app/lib/hooks/useDataAdapter";
 import {
   BookOpen,
   Clock,
@@ -20,6 +19,51 @@ import {
 } from "lucide-react";
 import styles from "../styles/learning.module.css";
 
+// Component สำหรับแสดง Progress Bar
+const ProgressBar = ({ percentage, type }: { percentage: number; type: 'green' | 'yellow' | 'purple' }) => {
+  const getProgressColors = () => {
+    switch (type) {
+      case 'green': return 'bg-gradient-to-r from-green-400 to-green-600';
+      case 'yellow': return 'bg-gradient-to-r from-green-400 to-yellow-500';
+      case 'purple': return 'bg-gradient-to-r from-purple-500 to-blue-500';
+      default: return 'bg-gradient-to-r from-purple-500 to-blue-500';
+    }
+  };
+
+  // จัดเป็นช่วงเพื่อใช้ Tailwind classes
+  const getWidthClass = (pct: number) => {
+    if (pct === 0) return 'w-0';
+    if (pct <= 5) return 'w-[5%]';
+    if (pct <= 10) return 'w-[10%]';
+    if (pct <= 15) return 'w-[15%]';
+    if (pct <= 20) return 'w-[20%]';
+    if (pct <= 25) return 'w-1/4';
+    if (pct <= 30) return 'w-[30%]';
+    if (pct <= 35) return 'w-[35%]';
+    if (pct <= 40) return 'w-[40%]';
+    if (pct <= 45) return 'w-[45%]';
+    if (pct <= 50) return 'w-1/2';
+    if (pct <= 55) return 'w-[55%]';
+    if (pct <= 60) return 'w-[60%]';
+    if (pct <= 65) return 'w-[65%]';
+    if (pct <= 70) return 'w-[70%]';
+    if (pct <= 75) return 'w-3/4';
+    if (pct <= 80) return 'w-[80%]';
+    if (pct <= 85) return 'w-[85%]';
+    if (pct <= 90) return 'w-[90%]';
+    if (pct <= 95) return 'w-[95%]';
+    return 'w-full';
+  };
+
+  return (
+    <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
+      <div
+        className={`h-2 rounded-full transition-all duration-300 absolute left-0 top-0 ${getProgressColors()} ${getWidthClass(percentage)}`}
+      />
+    </div>
+  );
+};
+
 export default function LearningPage() {
   const [moduleProgresses, setModuleProgresses] = useState<Record<string, any>>(
     {}
@@ -27,8 +71,20 @@ export default function LearningPage() {
   const [showQuizCard, setShowQuizCard] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // API hooks for course/module data
-  const { data: apiCourses, loading: coursesLoading, error: coursesError } = useCourses();
+  // Use data adapter for learning modules
+  const { modules: learningModules, loading: modulesLoading, error: modulesError } = useLearningData();
+
+  // Debug: ดู structure ของ learning modules
+  useEffect(() => {
+    if (learningModules && learningModules.length > 0) {
+      console.log('📚 Learning modules loaded:', learningModules.map(m => ({
+        id: m.id,
+        title: m.title,
+        chaptersCount: m.chapters?.length || 0,
+        chapters: m.chapters?.map(c => ({ id: c.id, title: c.title })) || []
+      })));
+    }
+  }, [learningModules]);
 
   useEffect(() => {
     // โหลดข้อมูล user
@@ -38,32 +94,91 @@ export default function LearningPage() {
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
 
-    // ฟังก์ชันโหลด progress
-    const loadProgress = () => {
-      const progresses: Record<string, any> = {};
-      learningModules.forEach((module) => {
-        // ตรวจสอบและ complete module ถ้าจำเป็น
-        progressManager.checkAndCompleteModule(module.id);
+    // โหลด progress จาก API (ถ้า login อยู่)
+    const initializeProgress = async () => {
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('✅ Progress loaded from API');
+      }
+      
+      // ฟังก์ชันโหลด progress
+      const loadProgress = async () => {
+        const progresses: Record<string, any> = {};
+        
+        if (learningModules) {
+          // ใช้ Promise.all เพื่อรอให้ async operations เสร็จ
+          await Promise.all(learningModules.map(async (module: any) => {
+            // ตรวจสอบและ complete module ถ้าจำเป็น
+            await progressManager.checkAndCompleteModule(module.id);
 
-        const moduleProgress = progressManager.getModuleProgress(module.id);
-        const completionPercentage =
-          progressManager.getModuleCompletionPercentage(module.id);
-        progresses[module.id] = {
-          ...moduleProgress,
-          completionPercentage,
-        };
-      });
-      setModuleProgresses(progresses);
+            const moduleProgress = progressManager.getModuleProgress(module.id);
+            const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+            
+            console.log(`📊 Progress for ${module.title} (${module.id}):`, {
+              moduleProgress,
+              completionPercentage,
+              isCompleted: moduleProgress?.isCompleted,
+              completedChapters: moduleProgress?.completedChapters?.length || 0,
+              rawModuleProgress: moduleProgress
+            });
+            
+            progresses[module.id] = {
+              ...moduleProgress,
+              completionPercentage,
+            };
+            
+            console.log(`🔧 Set progress for ${module.id}:`, {
+              completionPercentage,
+              fullProgress: progresses[module.id]
+            });
+          }));
+        }
+        
+        console.log('📊 All module progresses loaded:', progresses);
+        console.log('📊 Final moduleProgresses keys:', Object.keys(progresses));
+        console.log('📊 Final moduleProgresses values:', Object.values(progresses));
+        setModuleProgresses(progresses);
+      };
+
+      // โหลด progress ครั้งแรก
+      await loadProgress();
     };
 
-    // โหลด progress ครั้งแรก
-    loadProgress();
+    initializeProgress();
 
     // ฟัง progress updates จาก quiz completion หรือ chapter completion
     const handleProgressUpdate = (event: CustomEvent) => {
       console.log("Progress updated:", event.detail);
-      setTimeout(() => {
-        loadProgress(); // โหลด progress ใหม่หลังจาก delay เล็กน้อย
+      setTimeout(async () => {
+        // โหลด progress ใหม่หลังจาก delay เล็กน้อย
+        const progresses: Record<string, any> = {};
+        
+        if (learningModules) {
+          await Promise.all(learningModules.map(async (module: any) => {
+            await progressManager.checkAndCompleteModule(module.id);
+            const moduleProgress = progressManager.getModuleProgress(module.id);
+            const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+            
+            console.log(`🔄 Refreshed progress for ${module.title} (${module.id}):`, {
+              moduleProgress,
+              completionPercentage,
+              isCompleted: moduleProgress?.isCompleted,
+              completedChapters: moduleProgress?.completedChapters?.length || 0
+            });
+            
+            progresses[module.id] = {
+              ...moduleProgress,
+              completionPercentage,
+            };
+            
+            console.log(`🔧 Refresh set progress for ${module.id}:`, {
+              completionPercentage,
+              fullProgress: progresses[module.id]
+            });
+          }));
+        }
+        
+        setModuleProgresses(progresses);
       }, 100);
     };
 
@@ -71,8 +186,37 @@ export default function LearningPage() {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         console.log("Page visible again, reloading progress...");
-        setTimeout(() => {
-          loadProgress();
+        setTimeout(async () => {
+          if (user) {
+            await progressManager.loadProgressFromAPI();
+          }
+          
+          const progresses: Record<string, any> = {};
+          if (learningModules) {
+            await Promise.all(learningModules.map(async (module: any) => {
+              await progressManager.checkAndCompleteModule(module.id);
+              const moduleProgress = progressManager.getModuleProgress(module.id);
+              const completionPercentage = await progressManager.getModuleCompletionPercentageWithAPI(module.id);
+              
+              console.log(`👁️ Visibility refresh for ${module.title} (${module.id}):`, {
+                moduleProgress,
+                completionPercentage,
+                isCompleted: moduleProgress?.isCompleted,
+                completedChapters: moduleProgress?.completedChapters?.length || 0
+              });
+              
+              progresses[module.id] = {
+                ...moduleProgress,
+                completionPercentage,
+              };
+              
+              console.log(`🔧 Visibility set progress for ${module.id}:`, {
+                completionPercentage,
+                fullProgress: progresses[module.id]
+              });
+            }));
+          }
+          setModuleProgresses(progresses);
         }, 200);
       }
     };
@@ -91,7 +235,99 @@ export default function LearningPage() {
       );
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, []);
+  }, [learningModules]);
+
+  // Handle loading state
+  if (modulesLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-white text-xl">กำลังโหลดข้อมูล...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (modulesError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-900 via-blue-900 to-indigo-900">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-screen px-4">
+          <div className="text-center max-w-md">
+            <div className="text-6xl mb-4">🚧</div>
+            <h2 className="text-2xl font-bold text-white mb-4">ระบบกำลังพัฒนา</h2>
+            <p className="text-gray-300 mb-6">
+              เนื้อหาการเรียนจะมาเร็วๆ นี้ ขณะนี้ระบบยังอยู่ในขั้นตอนการเพิ่มเนื้อหาจาก API
+            </p>
+            <p className="text-sm text-gray-400">
+              ข้อผิดพลาด: {modulesError}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!learningModules || learningModules.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
+        <Navbar />
+        <div className="flex flex-col items-center justify-center min-h-screen px-4">
+          <div className="text-center max-w-lg">
+            <div className="text-8xl mb-6">📚</div>
+            <h2 className="text-3xl font-bold text-white mb-4">เนื้อหาการเรียนกำลังมา!</h2>
+            <p className="text-gray-300 text-lg mb-6 leading-relaxed">
+              ทีมงานกำลังเตรียมเนื้อหาการเรียนรู้ดาราศาสตร์ที่น่าสนใจให้คุณ
+              กรุณารอสักครู่นะครับ
+            </p>
+            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl p-6">
+              <h3 className="text-xl font-semibold text-blue-300 mb-3">สิ่งที่กำลังจะมา</h3>
+              <ul className="text-gray-300 space-y-2 text-left">
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  บทเรียนระบบสุริยะ
+                </li>
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  กิจกรรมอินเตอร์แอคทีฟ
+                </li>
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  แบบทดสอบความเข้าใจ
+                </li>
+                <li className="flex items-center">
+                  <span className="text-green-400 mr-2">✓</span>
+                  ภาพและวิดีโอประกอบ
+                </li>
+              </ul>
+            </div>
+            <div className="mt-8 space-y-4">
+              <p className="text-sm text-gray-400">
+                ในระหว่างนี้คุณสามารถลองเล่นเกมหรือทำแบบทดสอบได้
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+                <Link
+                  href="/mini-game"
+                  className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg font-semibold hover:from-green-400 hover:to-emerald-400 transition-all"
+                >
+                  <PlayCircle size={16} className="inline mr-2" />
+                  เล่นเกม
+                </Link>
+                <Link
+                  href="/quiz"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-semibold hover:from-blue-400 hover:to-purple-400 transition-all"
+                >
+                  <Brain size={16} className="inline mr-2" />
+                  ทำแบบทดสอบ
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const text = {
     lesson: "บทเรียน",
@@ -102,20 +338,44 @@ export default function LearningPage() {
     advanced: "ขั้นสูง",
   };
 
+  // ฟังก์ชันดึงจำนวนบทจาก API จริง
+  const getActualChapterCount = (moduleId: string): number => {
+    const module = learningModules?.find((m: any) => m.id === moduleId);
+    if (module && module.chapters && Array.isArray(module.chapters)) {
+      const chapterCount = module.chapters.length;
+      console.log(`📊 Module ${moduleId} (${module.title}) has ${chapterCount} chapters from API`);
+      return chapterCount;
+    }
+    
+    // Fallback ถ้าไม่เจอ - ดูจาก progress manager
+    const expectedChapters = progressManager.getExpectedChaptersByModuleId(moduleId);
+    if (expectedChapters && expectedChapters.length > 0) {
+      console.log(`📊 Module ${moduleId} fallback to progress manager: ${expectedChapters.length} chapters`);
+      return expectedChapters.length;
+    }
+    
+    // สุดท้าย fallback เป็น 3 (ตามที่เห็นในรูป)
+    console.log(`⚠️ No chapters found for module ${moduleId}, using default 3`);
+    return 3;
+  };
+
   const getModuleStatusIcon = (moduleId: string) => {
     const progress = moduleProgresses[moduleId];
     if (!progress) return <BookOpen className="text-yellow-400" size={32} />;
 
-    // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
-    if (progressManager.isModulePerfect(moduleId)) {
+    // ตรวจสอบจาก progress percentage จาก API
+    const completionPercentage = progress.completionPercentage || 0;
+    
+    // เสร็จสมบูรณ์ 100%
+    if (completionPercentage >= 100) {
       return <CheckCircle className="text-green-500" size={32} />;
     }
-    // ตรวจสอบว่าผ่านเกณฑ์ (70%)
-    else if (progressManager.isModulePassed(moduleId)) {
+    // ผ่านเกณฑ์ (70% ขึ้นไป)
+    else if (completionPercentage >= 70) {
       return <CheckCircle className="text-green-400" size={32} />;
     }
-    // กำลังเรียนอยู่
-    else if (progress.isStarted) {
+    // กำลังเรียนอยู่ (มี progress แต่ยังไม่ผ่าน)
+    else if (completionPercentage > 0) {
       return <PlayCircle className="text-blue-400" size={32} />;
     }
     // ยังไม่เริ่ม
@@ -128,17 +388,20 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return "เริ่มเรียน";
 
-    // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
-    if (progressManager.isModulePerfect(moduleId)) {
+    // ตรวจสอบจาก progress percentage จาก API
+    const completionPercentage = progress.completionPercentage || 0;
+    
+    // เสร็จสมบูรณ์ 100%
+    if (completionPercentage >= 100) {
       return "เรียนจบแล้ว";
     }
-    // ตรวจสอบว่าผ่านเกณฑ์ (70%)
-    else if (progressManager.isModulePassed(moduleId)) {
-      return `ผ่านแล้ว`;
+    // ผ่านเกณฑ์ (70% ขึ้นไป)
+    else if (completionPercentage >= 70) {
+      return "ผ่านแล้ว";
     }
-    // กำลังเรียนอยู่
-    else if (progress.isStarted) {
-      return `กำลังเรียน`;
+    // กำลังเรียนอยู่ (มี progress แต่ยังไม่ผ่าน)
+    else if (completionPercentage > 0) {
+      return "กำลังเรียน";
     }
     // ยังไม่เริ่ม
     else {
@@ -150,13 +413,19 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return null;
 
-    // ใช้ข้อมูลจาก learning modules โดยตรง
-    const module = learningModules.find((m) => m.id === moduleId);
-    const totalChapters = module?.chapters?.length || 0;
+    // ใช้ข้อมูลจาก API จริง
+    const totalChapters = getActualChapterCount(moduleId);
     const completedChapters = progress.completedChapters?.length || 0;
     const readingProgress =
       totalChapters > 0 ? (completedChapters / totalChapters) * 60 : 0;
     const quizProgress = progressManager.getModuleQuizProgress?.(moduleId) || 0;
+
+    console.log(`📊 Progress details for ${moduleId}:`, {
+      totalChapters,
+      completedChapters,
+      readingProgress,
+      quizProgress
+    });
 
     return {
       readingProgress: Math.round(readingProgress),
@@ -170,16 +439,19 @@ export default function LearningPage() {
     const progress = moduleProgresses[moduleId];
     if (!progress) return "text-yellow-400";
 
-    // ตรวจสอบว่าได้ 100% (เสร็จสมบูรณ์)
-    if (progressManager.isModulePerfect(moduleId)) {
+    // ตรวจสอบจาก progress percentage จาก API
+    const completionPercentage = progress.completionPercentage || 0;
+    
+    // เสร็จสมบูรณ์ 100%
+    if (completionPercentage >= 100) {
       return "text-green-500";
     }
-    // ตรวจสอบว่าผ่านเกณฑ์ (70%)
-    else if (progressManager.isModulePassed(moduleId)) {
+    // ผ่านเกณฑ์ (70% ขึ้นไป)
+    else if (completionPercentage >= 70) {
       return "text-green-400";
     }
-    // กำลังเรียนอยู่
-    else if (progress.isStarted) {
+    // กำลังเรียนอยู่ (มี progress แต่ยังไม่ผ่าน)
+    else if (completionPercentage > 0) {
       return "text-blue-400";
     }
     // ยังไม่เริ่ม
@@ -292,10 +564,19 @@ export default function LearningPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto px-4">
-          {learningModules.map((module) => {
+          {learningModules?.map((module: any) => {
             const quiz = getQuizByModuleId(module.id);
             const progress = moduleProgresses[module.id];
             const isCompleted = progress?.isCompleted;
+            const actualChapterCount = getActualChapterCount(module.id);
+
+            // Debug log แต่ละ module
+            console.log(`🔍 Rendering module ${module.id}:`, {
+              title: module.title,
+              chaptersFromAPI: module.chapters?.length || 0,
+              actualChapterCount: actualChapterCount,
+              completionPercentage: progress?.completionPercentage || 0
+            });
 
             return (
               <div key={module.id} className="group h-full">
@@ -367,52 +648,49 @@ export default function LearningPage() {
                     </div>
 
                     {/* Progress Bar */}
-                    {moduleProgresses[module.id]?.isStarted && (
+                    {moduleProgresses[module.id] && moduleProgresses[module.id].completionPercentage > 0 && (
                       <div className="mb-4">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-gray-400">ความคืบหน้า</span>
                           <span
                             className={
-                              progressManager.isModulePerfect(module.id)
+                              moduleProgresses[module.id].completionPercentage >= 100
                                 ? "text-green-500"
-                                : progressManager.isModulePassed(module.id)
+                                : moduleProgresses[module.id].completionPercentage >= 70
                                 ? "text-green-400"
                                 : "text-blue-400"
                             }
                           >
-                            {moduleProgresses[module.id].completionPercentage}%
+                            {moduleProgresses[module.id]?.completionPercentage || 0}%
                           </span>
                         </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2 relative overflow-hidden">
-                          <div
-                            className={`h-2 rounded-full transition-all duration-300 absolute left-0 top-0 ${
-                              progressManager.isModulePerfect(module.id)
-                                ? styles.progressFillGreen
-                                : progressManager.isModulePassed(module.id)
-                                ? styles.progressFillYellow
-                                : styles.progressFillPurple
-                            }`}
-                            data-progress={moduleProgresses[module.id].completionPercentage}
-                          />
-                        </div>
+                        <ProgressBar 
+                          percentage={moduleProgresses[module.id].completionPercentage || 0}
+                          type={
+                            moduleProgresses[module.id].completionPercentage >= 100 ? 'green' :
+                            moduleProgresses[module.id].completionPercentage >= 70 ? 'yellow' : 'purple'
+                          }
+                        />
                         {/* แสดงข้อมูลเพิ่มเติมเกี่ยวกับสิ่งที่ต้องทำ */}
-                        {moduleProgresses[module.id]?.isStarted && (
-                          <div className="text-xs mt-1">
-                            {progressManager.isModulePerfect(module.id) ? (
-                              <div className="text-green-400">
-                                ✅ เรียนจบแล้ว คะแนนเต็ม!
-                              </div>
-                            ) : progressManager.isModulePassed(module.id) ? (
-                              <div className="text-yellow-400">
-                                💡 ทำแบบฝึกหัดให้ได้คะแนนเต็มเพื่อให้ได้ 100%
-                              </div>
-                            ) : (
-                              <div className="text-red-400">
-                                ⚠️ ต้องได้คะแนนรวม 70% ขึ้นไปจึงจะผ่าน
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <div className="text-xs mt-1">
+                          {moduleProgresses[module.id].completionPercentage >= 100 ? (
+                            <div className="text-green-400">
+                              ✅ เรียนจบแล้ว คะแนนเต็ม!
+                            </div>
+                          ) : moduleProgresses[module.id].completionPercentage >= 70 ? (
+                            <div className="text-green-400">
+                              ✅ ผ่านเกณฑ์แล้ว สามารถศึกษาต่อได้
+                            </div>
+                          ) : moduleProgresses[module.id].completionPercentage > 0 ? (
+                            <div className="text-blue-400">
+                              📚 กำลังเรียน ต้องได้ 70% ขึ้นไปจึงจะผ่าน
+                            </div>
+                          ) : (
+                            <div className="text-gray-400">
+                              🎯 เริ่มเรียนเพื่อปลดล็อกความคืบหน้า
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
@@ -440,7 +718,7 @@ export default function LearningPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="text-sm text-gray-400">
-                            {module.chapters.length} บท
+                            {getActualChapterCount(module.id)} บท
                           </span>
                           <span
                             className={`text-sm font-semibold ${getModuleStatusColor(
@@ -458,7 +736,7 @@ export default function LearningPage() {
                   </Link>
 
                   {/* Quiz Section - Show when reading is complete (can attempt quiz) */}
-                  {moduleProgresses[module.id]?.isStarted && quiz && (
+                  {moduleProgresses[module.id] && moduleProgresses[module.id].completionPercentage > 0 && quiz && (
                     <div className="mt-4 pt-4 border-t border-white/10">
                       <QuizCard quiz={quiz} moduleTitle={module.title} />
                     </div>

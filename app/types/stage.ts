@@ -2,95 +2,73 @@ import { ModuleProgress } from './learning';
 import { QuizProgress } from './quiz';
 import { GameStats } from './mini-game';
 
+// Updated to match database schema
 export interface BaseQuestion {
   id: number;
+  stageId: number;
+  order: number;
   question: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: 'Easy' | 'Medium' | 'Hard';
   points: number;
-  timeLimit?: number;
+  timeLimit: number;
   explanation?: string;
-  image?: string;
-  animation?: string;
   funFact?: string;
-  hints?: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MultipleChoiceQuestion extends BaseQuestion {
-  type: "multiple-choice";
-  answers: Array<{
-    id: number;
-    text: string;
-    isCorrect: boolean;
-    emoji?: string;
-  }>;
+  type: "MULTIPLE_CHOICE";
+  payload: {
+    options: Array<{
+      id: number;
+      text: string;
+      isCorrect: boolean;
+      emoji?: string;
+    }>;
+  };
 }
 
 export interface DragDropQuestion extends BaseQuestion {
-  type: "drag-drop";
-  dragItems: Array<{
-    id: string;
-    text: string;
-    emoji?: string;
-    correctPosition: number;
-  }>;
-  dropZones: Array<{
-    id: number;
-    label: string;
-  }>;
+  type: "DRAG_DROP";
+  payload: {
+    dragItems: Array<{
+      id: string;
+      text: string;
+      emoji?: string;
+      correctPosition: number;
+    }>;
+    dropZones: Array<{
+      id: number;
+      label: string;
+    }>;
+  };
 }
 
 export interface FillBlankQuestion extends BaseQuestion {
-  type: "fill-blank";
-  correctAnswer: string;
-  alternatives?: string[];
-  placeholder?: string;
+  type: "FILL_BLANK";
+  payload: {
+    correctAnswer: string;
+    alternatives?: string[];
+    placeholder?: string;
+    hints?: string[];
+  };
 }
 
 export interface MatchPairsQuestion extends BaseQuestion {
-  type: "match-pairs";
-  pairs: Array<{
-    left: { id: string; text: string; emoji?: string };
-    right: { id: string; text: string; emoji?: string };
-  }>;
+  type: "MATCHING";
+  payload: {
+    pairs: Array<{
+      left: { id: string; text: string; emoji?: string };
+      right: { id: string; text: string; emoji?: string };
+    }>;
+  };
 }
 
 export interface TrueFalseQuestion extends BaseQuestion {
-  type: "true-false";
-  correctAnswer: boolean;
-}
-
-export interface ImageIdentificationQuestion extends BaseQuestion {
-  type: "image-identification";
-  imageUrl: string;
-  imageDescription?: string;
-  answers: Array<{
-    id: number;
-    text: string;
-    isCorrect: boolean;
-    emoji?: string;
-  }>;
-}
-
-export interface SentenceReorderingQuestion extends BaseQuestion {
-  type: "sentence-reordering";
-  sentences: string[];
-  correctOrder: number[]; // indices of sentences in correct order
-  instruction?: string;
-}
-
-export interface RangeAnswerQuestion extends BaseQuestion {
-  type: "range-answer";
-  minValue: number;
-  maxValue: number;
-  correctRange: {
-    min: number;
-    max: number;
-  };
-  unit?: string;
-  step?: number;
-  labels?: {
-    min?: string;
-    max?: string;
+  type: "TRUE_FALSE";
+  payload: {
+    correctAnswer: boolean;
   };
 }
 
@@ -99,34 +77,54 @@ export type Question =
   | DragDropQuestion 
   | FillBlankQuestion 
   | MatchPairsQuestion 
-  | TrueFalseQuestion
-  | ImageIdentificationQuestion
-  | SentenceReorderingQuestion
-  | RangeAnswerQuestion;
+  | TrueFalseQuestion;
 
-export interface StageData {
+// Updated Stage interface to match database
+export interface Stage {
   id: number;
   title: string;
   description: string;
-  thumbnail: string;
-  difficulty: 'easy' | 'medium' | 'hard';
+  thumbnail?: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
   estimatedTime: string;
-  prerequisites: number[];
-  rewards: StageReward;
-  character: {
-    name: string;
-    avatar: string;
-    introduction: string;
-    learningContent: string;
-    completionMessage: string;
-    encouragements?: string[];
-    hints?: string[];
-  };
-  questions: Question[];
   totalStars: number;
-  xpReward?: number;
-  streakBonus?: boolean;
-  healthSystem?: boolean;
+  xpReward: number;
+  streakBonus: boolean;
+  healthSystem: boolean;
+  rewards: any; // JSON field in database
+  maxStars: number;
+  requiredStarsToUnlockNext: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StageCharacter {
+  id: number;
+  stageId: number;
+  name: string;
+  avatar: string;
+  introduction: string;
+  learningContent: string;
+  completionMessage: string;
+  encouragements: string[]; // JSON array
+  hints: string[]; // JSON array
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StagePrerequisite {
+  id: number;
+  stageId: number;
+  prerequisiteStageId: number;
+  createdAt: string;
+}
+
+// Composite type for full stage data
+export interface StageData {
+  stage: Stage;
+  character?: StageCharacter;
+  prerequisites: StagePrerequisite[];
+  questions: Question[];
 }
 
 export interface StageReward {
@@ -137,6 +135,21 @@ export interface StageReward {
   badges?: string[];
   unlocksStages?: number[];
   achievementUnlocks?: string[];
+}
+
+// User stage progress from database
+export interface UserStageProgress {
+  id: string;
+  userId: string;
+  stageId: number;
+  isCompleted: boolean;
+  currentScore: number;
+  bestScore: number;
+  starsEarned: number;
+  attempts: number;
+  lastAttemptAt?: string;
+  completedAt?: string;
+  createdAt: string;
 }
 
 export interface StageProgress {

@@ -24,6 +24,10 @@ class AuthManager {
   private currentUser: User | null = null;
   private authKey = 'astronomy_app_user';
   private tokenKey = 'astronomy_app_token';
+  private tokenExpiryKey = 'astronomy_app_token_expiry';
+  private checkTokenInterval: NodeJS.Timeout | null = null;
+  private lastActivityKey = 'astronomy_app_last_activity';
+  private authStateListeners: ((user: User | null) => void)[] = [];
 
   constructor() {
     // โหลดข้อมูล user จาก localStorage เมื่อเริ่มต้น
@@ -32,12 +36,115 @@ class AuthManager {
       if (savedUser) {
         this.currentUser = JSON.parse(savedUser);
       }
+
+      // ตรวจสอบ token expiry เมื่อเริ่มต้น
+      this.checkTokenExpiry();
+      
+      // เริ่มต้น token monitoring
+      this.startTokenMonitoring();
+      
+      // ติดตาม user activity
+      this.initializeActivityTracking();
+      
+      // ตรวจสอบ token expiry เมื่อ page visible again (กลับมาจากการปิดหน้าต่าง)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && this.isLoggedIn()) {
+          this.checkTokenExpiry();
+        }
+      });
     }
   }
 
   // ตรวจสอบสถานะการล็อกอิน
   isLoggedIn(): boolean {
-    return this.currentUser !== null;
+    return this.currentUser !== null && !this.isTokenExpired();
+  }
+
+  // ตรวจสอบว่า token หมดอายุหรือไม่
+  private isTokenExpired(): boolean {
+    if (typeof window === 'undefined') return false;
+    
+    const expiry = localStorage.getItem(this.tokenExpiryKey);
+    if (!expiry) return false;
+    
+    const expiryTime = new Date(expiry).getTime();
+    const currentTime = Date.now();
+    
+    return currentTime >= expiryTime;
+  }
+
+  // ตรวจสอบและจัดการ token expiry
+  private checkTokenExpiry(): void {
+    if (this.isTokenExpired() && this.currentUser) {
+      console.log('🔒 Token expired, logging out...');
+      this.forceLogout();
+    }
+  }
+
+  // เริ่มต้น token monitoring
+  private startTokenMonitoring(): void {
+    // ตรวจสอบทุก ๆ 5 นาที
+    this.checkTokenInterval = setInterval(() => {
+      this.checkTokenExpiry();
+    }, 5 * 60 * 1000); // 5 minutes
+  }
+
+  // หยุด token monitoring
+  private stopTokenMonitoring(): void {
+    if (this.checkTokenInterval) {
+      clearInterval(this.checkTokenInterval);
+      this.checkTokenInterval = null;
+    }
+  }
+
+  // ติดตาม user activity
+  private initializeActivityTracking(): void {
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+    
+    const updateActivity = () => {
+      if (this.isLoggedIn()) {
+        localStorage.setItem(this.lastActivityKey, Date.now().toString());
+      }
+    };
+
+    events.forEach(event => {
+      document.addEventListener(event, updateActivity, true);
+    });
+
+    // บันทึก activity เริ่มต้น
+    updateActivity();
+  }
+
+  // บังคับ logout โดยไม่เรียก API
+  private forceLogout(): void {
+    this.currentUser = null;
+    this.stopTokenMonitoring();
+    
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(this.authKey);
+      localStorage.removeItem(this.tokenKey);
+      localStorage.removeItem(this.tokenExpiryKey);
+      localStorage.removeItem(this.lastActivityKey);
+    }
+
+    // แจ้งเตือน listeners
+    this.notifyAuthStateChange();
+    
+    // รีเฟรชหน้าเพื่อกลับไปหน้า login
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
+  }
+
+  // แจ้งเตือน auth state listeners
+  private notifyAuthStateChange(): void {
+    this.authStateListeners.forEach(listener => {
+      try {
+        listener(this.currentUser);
+      } catch (error) {
+        console.error('Error in auth state listener:', error);
+      }
+    });
   }
 
   // ดึงข้อมูลผู้ใช้ปัจจุบัน
@@ -113,17 +220,22 @@ class AuthManager {
         createdAt: new Date(userData.createAt || userData.createdAt || userData.created_at || Date.now())
       };
 
-      // บันทึกข้อมูลผู้ใช้ลง localStorage
-      this.currentUser = user;
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(this.authKey, JSON.stringify(user));
-        
-        // บันทึก token ถ้ามี
-        if (token) {
-          localStorage.setItem(this.tokenKey, token);
-        }
+          // บันทึกข้อมูลผู้ใช้ลง localStorage
+          this.currentUser = user;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(this.authKey, JSON.stringify(user));
+            
+            // บันทึก token ถ้ามี และตั้งเวลาหมดอายุ
+            if (token) {
+              localStorage.setItem(this.tokenKey, token);
+              
+              // ตั้งเวลาหมดอายุ token เป็น 60 นาที (1 ชั่วโมง)
+              const expiryTime = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+              localStorage.setItem(this.tokenExpiryKey, expiryTime.toISOString());
+            }
 
-        // บันทึกผู้ใช้ไว้ในรายการสำหรับการ login ในอนาคต
+            // เริ่มต้น token monitoring
+            this.startTokenMonitoring();        // บันทึกผู้ใช้ไว้ในรายการสำหรับการ login ในอนาคต
         const savedUsers = localStorage.getItem('astronomy_app_all_users');
         let allUsers = [];
         if (savedUsers) {
@@ -233,15 +345,20 @@ class AuthManager {
             createdAt: new Date(userData.createAt || userData.createdAt || userData.created_at || Date.now())
           };
 
-          this.currentUser = user;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem(this.authKey, JSON.stringify(user));
-            if (token) {
-              localStorage.setItem(this.tokenKey, token);
-            }
-          }
-
-          console.log('Login successful via login endpoint, user:', user);
+            this.currentUser = user;
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(this.authKey, JSON.stringify(user));
+              if (token) {
+                localStorage.setItem(this.tokenKey, token);
+                
+                // ตั้งเวลาหมดอายุ token เป็น 60 นาที
+                const expiryTime = new Date(Date.now() + 60 * 60 * 1000);
+                localStorage.setItem(this.tokenExpiryKey, expiryTime.toISOString());
+              }
+              
+              // เริ่มต้น token monitoring
+              this.startTokenMonitoring();
+            }          console.log('Login successful via login endpoint, user:', user);
           return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
         } else {
           console.log('No valid user data found in response');
@@ -281,6 +398,13 @@ class AuthManager {
             this.currentUser = user;
             if (typeof window !== 'undefined') {
               localStorage.setItem(this.authKey, JSON.stringify(user));
+              
+              // ตั้งเวลาหมดอายุ token เป็น 60 นาที (สำหรับ public user list login)
+              const expiryTime = new Date(Date.now() + 60 * 60 * 1000);
+              localStorage.setItem(this.tokenExpiryKey, expiryTime.toISOString());
+              
+              // เริ่มต้น token monitoring
+              this.startTokenMonitoring();
             }
 
             console.log('Login successful via public user list, user:', user);
@@ -320,6 +444,13 @@ class AuthManager {
             this.currentUser = user;
             if (typeof window !== 'undefined') {
               localStorage.setItem(this.authKey, JSON.stringify(user));
+              
+              // ตั้งเวลาหมดอายุ token เป็น 60 นาที (สำหรับ regular user list login)
+              const expiryTime = new Date(Date.now() + 60 * 60 * 1000);
+              localStorage.setItem(this.tokenExpiryKey, expiryTime.toISOString());
+              
+              // เริ่มต้น token monitoring
+              this.startTokenMonitoring();
             }
 
             console.log('Login successful via regular user list, user:', user);
@@ -352,6 +483,13 @@ class AuthManager {
 
               this.currentUser = user;
               localStorage.setItem(this.authKey, JSON.stringify(user));
+              
+              // ตั้งเวลาหมดอายุ token เป็น 60 นาที (สำหรับ localStorage fallback)
+              const expiryTime = new Date(Date.now() + 60 * 60 * 1000);
+              localStorage.setItem(this.tokenExpiryKey, expiryTime.toISOString());
+              
+              // เริ่มต้น token monitoring
+              this.startTokenMonitoring();
 
               console.log('Login successful via localStorage fallback, user:', user);
               return { success: true, message: 'เข้าสู่ระบบสำเร็จ (โหมดออฟไลน์)', user };
@@ -400,28 +538,69 @@ class AuthManager {
     } finally {
       // ล็อกเอาต์ในฝั่ง client
       this.currentUser = null;
+      this.stopTokenMonitoring();
+      
       if (typeof window !== 'undefined') {
         localStorage.removeItem(this.authKey);
         localStorage.removeItem(this.tokenKey);
+        localStorage.removeItem(this.tokenExpiryKey);
+        localStorage.removeItem(this.lastActivityKey);
       }
+      
+      // แจ้งเตือน listeners
+      this.notifyAuthStateChange();
     }
   }
 
   // ดึง authentication token
   getToken(): string | null {
     if (typeof window === 'undefined') return null;
+    
+    // ตรวจสอบว่า token หมดอายุหรือไม่
+    if (this.isTokenExpired()) {
+      return null;
+    }
+    
     return localStorage.getItem(this.tokenKey);
+  }
+
+  // ตรวจสอบว่า token ยังใช้ได้หรือไม่
+  isTokenValid(): boolean {
+    return this.getToken() !== null && !this.isTokenExpired();
+  }
+
+  // รีเฟรช token expiry (เมื่อมี activity ใหม่)
+  refreshTokenExpiry(): void {
+    if (this.isLoggedIn() && typeof window !== 'undefined') {
+      const expiryTime = new Date(Date.now() + 60 * 60 * 1000); // 60 minutes
+      localStorage.setItem(this.tokenExpiryKey, expiryTime.toISOString());
+      console.log('🔄 Token expiry refreshed to:', expiryTime.toISOString());
+    }
+  }
+
+  // ดึงเวลาหมดอายุของ token
+  getTokenExpiry(): Date | null {
+    if (typeof window === 'undefined') return null;
+    
+    const expiry = localStorage.getItem(this.tokenExpiryKey);
+    return expiry ? new Date(expiry) : null;
   }
 
   // สำหรับ listener เมื่อสถานะ auth เปลี่ยน
   onAuthStateChange(callback: (user: User | null) => void): () => void {
-    const handler = () => callback(this.currentUser);
+    // เพิ่ม listener เข้าไปใน array
+    this.authStateListeners.push(callback);
     
     // ส่งค่าปัจจุบันทันที
-    handler();
+    callback(this.currentUser);
     
     // Return unsubscribe function
-    return () => {};
+    return () => {
+      const index = this.authStateListeners.indexOf(callback);
+      if (index > -1) {
+        this.authStateListeners.splice(index, 1);
+      }
+    };
   }
 }
 

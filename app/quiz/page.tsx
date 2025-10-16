@@ -1,11 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { quizzes } from "../data/quizzes";
-import { learningModules } from "../data/learning-modules";
+import { useState, useEffect, useMemo } from "react";
 import { progressManager } from "../lib/progress";
 import Navbar from "../components/layout/Navbar";
-import { useOrdersByLesson, useUser } from "../lib/api/hooks";
+import { useLearningData, useQuizData } from "@/app/lib/hooks/useDataAdapter";
+import { useQuizUnlockManager } from "../lib/hooks/useQuizUnlockManager";
 import { authManager } from "../lib/auth";
 import { 
   Brain, 
@@ -22,12 +21,13 @@ import {
 
 export default function QuizPage() {
   const [quizProgresses, setQuizProgresses] = useState<Record<string, any>>({});
-  const [quizUnlockStatus, setQuizUnlockStatus] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // สำหรับตอนนี้ จะใช้ local data หลัก และ API เป็น optional
-  // ในอนาคตสามารถขยายให้ใช้ API เป็นหลักได้
-  const quizzesToShow = quizzes; // ใช้ local data
+  // Use data adapters
+  const { modules: learningModules } = useLearningData();
+  const { quizzes, loading: quizzesLoading, error: quizzesError } = useQuizData();
+  const { unlockStatus, loading: unlockLoading, getAllQuizUnlockStatus } = useQuizUnlockManager();
+  const quizzesToShow = quizzes || [];
 
   useEffect(() => {
     // โหลดข้อมูล user
@@ -37,14 +37,64 @@ export default function QuizPage() {
     // มิเกรตข้อมูลเก่าก่อน
     progressManager.migrateOldQuizData();
     
-    // โหลด progress ของทุก quiz จาก progressManager
-    const progresses = progressManager.getAllQuizProgress();
-    setQuizProgresses(progresses);
+    const loadQuizData = async () => {
+      // โหลดจาก API ก่อนถ้าล็อกอินอยู่
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('🧠 Quiz: Progress loaded from API');
+      }
+      
+      // โหลด progress ของทุก quiz จาก progressManager
+      const progresses = progressManager.getAllQuizProgress();
+      setQuizProgresses(progresses);
+      
+      console.log('🧠 Quiz: Quiz data updated', {
+        progressCount: Object.keys(progresses).length
+      });
+    };
+    
+    loadQuizData();
+  }, [learningModules]); // ลบ getAllQuizUnlockStatus ออกจาก dependency
 
-    // โหลดสถานะการปลดล็อกของแบบฝึกหัด
-    const unlockStatus = progressManager.getAllQuizUnlockStatus();
-    setQuizUnlockStatus(unlockStatus);
+  // ฟัง progress updates จาก learning modules
+  useEffect(() => {
+    const handleProgressUpdate = async (event: CustomEvent) => {
+      console.log("🧠 Quiz: Progress updated from learning:", event.detail);
+      
+      // รอ delay เล็กน้อยแล้วรีโหลด quiz unlock status
+      setTimeout(async () => {
+        const user = authManager.getCurrentUser();
+        if (user) {
+          await progressManager.loadProgressFromAPI();
+        }
+        
+        // อัพเดท quiz unlock status
+        console.log('🧠 Quiz: Unlock status updated');
+      }, 500);
+    };
+
+    window.addEventListener(
+      "progressUpdated",
+      handleProgressUpdate as any
+    );
+
+    // Cleanup
+    return () => {
+      window.removeEventListener(
+        "progressUpdated",
+        handleProgressUpdate as any
+      );
+    };
   }, []);
+
+  // คำนวณจำนวน quiz ที่ unlock/lock แล้ว
+  const { unlockedCount, lockedCount } = useMemo(() => {
+    const allStatus = Object.values(unlockStatus);
+    return {
+      unlockedCount: allStatus.filter(info => info?.isUnlocked).length,
+      lockedCount: allStatus.filter(info => !info?.isUnlocked).length
+    };
+  }, [unlockStatus]);
 
   const getModuleTitle = (moduleId: string) => {
     const module = learningModules.find(m => m.id === moduleId);
@@ -53,7 +103,8 @@ export default function QuizPage() {
 
   const getQuizStatusIcon = (quizId: string) => {
     const progress = quizProgresses[quizId];
-    const isUnlocked = quizUnlockStatus[quizId];
+    const quizUnlockInfo = unlockStatus[quizId];
+    const isUnlocked = quizUnlockInfo?.isUnlocked || false;
     
     if (!isUnlocked) {
       return <Brain className="text-gray-500" size={32} />;
@@ -72,11 +123,11 @@ export default function QuizPage() {
 
   const getQuizStatusText = (quizId: string) => {
     const progress = quizProgresses[quizId];
-    const isUnlocked = quizUnlockStatus[quizId];
+    const quizUnlockInfo = unlockStatus[quizId];
+    const isUnlocked = quizUnlockInfo?.isUnlocked || false;
     
     if (!isUnlocked) {
-      const unlockReq = progressManager.getQuizUnlockRequirements(quizId);
-      return `ต้องเรียน ${unlockReq.moduleTitle} ${unlockReq.requiredPercentage}% ก่อน`;
+      return `ต้องเรียน ${quizUnlockInfo?.moduleTitle || 'บทเรียน'} ${quizUnlockInfo?.requiredPercentage || 60}% ก่อน`;
     }
     
     if (!progress) return "เริ่มทำแบบทดสอบ";
@@ -94,7 +145,8 @@ export default function QuizPage() {
 
   const getQuizStatusColor = (quizId: string) => {
     const progress = quizProgresses[quizId];
-    const isUnlocked = quizUnlockStatus[quizId];
+    const quizUnlockInfo = unlockStatus[quizId];
+    const isUnlocked = quizUnlockInfo?.isUnlocked || false;
     
     if (!isUnlocked) return "text-gray-500";
     
@@ -157,14 +209,14 @@ export default function QuizPage() {
             <div className="flex items-center space-x-2">
               <CheckCircle className="text-green-400" size={16} />
               <span className="text-green-400 text-xs sm:text-sm font-medium">
-                {Object.values(quizUnlockStatus).filter(Boolean).length} ปลดล็อกแล้ว
+                {unlockedCount} ปลดล็อกแล้ว
               </span>
             </div>
             <div className="hidden sm:block w-px h-4 bg-white/20"></div>
             <div className="flex items-center space-x-2">
               <XCircle className="text-yellow-400" size={16} />
               <span className="text-yellow-400 text-xs sm:text-sm font-medium">
-                {Object.values(quizUnlockStatus).filter(status => !status).length} ล็อกอยู่
+                {lockedCount} ล็อกอยู่
               </span>
             </div>
           </div>
@@ -174,8 +226,8 @@ export default function QuizPage() {
           {quizzes.map((quiz) => {
             const averageDifficulty = calculateAverageDifficulty(quiz);
             const progress = quizProgresses[quiz.id];
-            const isUnlocked = quizUnlockStatus[quiz.id];
-            const unlockReq = progressManager.getQuizUnlockRequirements(quiz.id);
+            const quizUnlockInfo = unlockStatus[quiz.id];
+            const isUnlocked = quizUnlockInfo?.isUnlocked || false;
             
             return (
               <div key={quiz.id} className="group h-full">
@@ -274,7 +326,7 @@ export default function QuizPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex flex-col">
                             <span className="text-sm text-gray-400">
-                              คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                              คะแนนเต็ม {quiz.questions.reduce((sum: number, q: any) => sum + q.points, 0)} คะแนน
                             </span>
                             <span className={`text-sm font-semibold ${getQuizStatusColor(quiz.id)}`}>
                               {getQuizStatusText(quiz.id)}
@@ -330,19 +382,19 @@ export default function QuizPage() {
                           <div className="text-sm text-yellow-200 space-y-3">
                             <div className="flex items-center space-x-2">
                               <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-                              <span>ต้องเรียน "<span className="font-semibold text-yellow-300 group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.moduleTitle}</span>" อย่างน้อย <span className="font-bold text-yellow-300 text-lg group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.requiredPercentage}%</span></span>
+                              <span>ต้องเรียน "<span className="font-semibold text-yellow-300 group-hover/unlock:text-yellow-200 transition-colors duration-300">{quizUnlockInfo?.moduleTitle || 'บทเรียน'}</span>" อย่างน้อย <span className="font-bold text-yellow-300 text-lg group-hover/unlock:text-yellow-200 transition-colors duration-300">{quizUnlockInfo?.requiredPercentage || 60}%</span></span>
                             </div>
                             
                             <div className="bg-gray-800/50 rounded-lg p-3 border border-yellow-400/20 group-hover/unlock:border-yellow-400/40 transition-all duration-300">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-yellow-300 font-medium group-hover/unlock:text-yellow-200 transition-colors duration-300">ความคืบหน้าปัจจุบัน:</span>
-                                <span className="font-bold text-yellow-300 text-lg group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.currentPercentage}%</span>
+                                <span className="font-bold text-yellow-300 text-lg group-hover/unlock:text-yellow-200 transition-colors duration-300">{quizUnlockInfo?.currentPercentage || 0}%</span>
                               </div>
                               
                               <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden border border-yellow-400/30 group-hover/unlock:border-yellow-400/50 transition-all duration-300">
                                 <div 
                                   className="bg-gradient-to-r from-yellow-400 to-orange-400 h-3 rounded-full transition-all duration-500 ease-out relative group-hover/unlock:from-yellow-300 group-hover/unlock:to-orange-300"
-                                  style={{ width: `${Math.min(unlockReq.currentPercentage, 100)}%` }}
+                                  style={{ width: `${Math.min(quizUnlockInfo?.currentPercentage || 0, 100)}%` }}
                                 >
                                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
                                   <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover/unlock:opacity-100 transition-opacity duration-300 animate-[shimmer_2s_infinite]"></div>
@@ -350,20 +402,18 @@ export default function QuizPage() {
                               </div>
                               
                               <div className="mt-2 text-xs text-yellow-200 group-hover/unlock:text-yellow-100 transition-colors duration-300">
-                                {unlockReq.currentPercentage >= unlockReq.requiredPercentage ? (
+                                {(quizUnlockInfo?.currentPercentage || 0) >= (quizUnlockInfo?.requiredPercentage || 60) ? (
                                   <span className="text-green-400 font-semibold animate-pulse">✅ ครบเงื่อนไขแล้ว!</span>
                                 ) : (
-                                  <span>ต้องเรียนเพิ่มอีก <span className="font-semibold text-yellow-300 group-hover/unlock:text-yellow-200 transition-colors duration-300">{unlockReq.requiredPercentage - unlockReq.currentPercentage}%</span></span>
+                                  <span>ต้องเรียนเพิ่มอีก <span className="font-semibold text-yellow-300 group-hover/unlock:text-yellow-200 transition-colors duration-300">{(quizUnlockInfo?.requiredPercentage || 60) - (quizUnlockInfo?.currentPercentage || 0)}%</span></span>
                                 )}
                               </div>
                             </div>
                             
-                            {unlockReq.remainingChapters.length > 0 && (
-                              <div className="flex items-center space-x-2 text-sm">
-                                <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
-                                <span>ต้องอ่านอีก <span className="font-semibold text-orange-300 group-hover/unlock:text-orange-200 transition-colors duration-300">{Math.max(0, unlockReq.requiredChapters - unlockReq.completedChapters)} บท</span></span>
-                              </div>
-                            )}
+                            <div className="flex items-center space-x-2 text-sm">
+                              <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                              <span>💡 เคล็ดลับ: อ่านเนื้อหาในบทเรียนให้ครบตามที่กำหนด</span>
+                            </div>
                           </div>
                         </div>
                         
@@ -423,7 +473,7 @@ export default function QuizPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
                           <span className="text-sm text-gray-600">
-                            คะแนนเต็ม {quiz.questions.reduce((sum, q) => sum + q.points, 0)} คะแนน
+                            คะแนนเต็ม {quiz.questions.reduce((sum: number, q: any) => sum + q.points, 0)} คะแนน
                           </span>
                           <span className="text-sm font-semibold text-red-400 flex items-center">
                             <XCircle size={14} className="mr-1" />

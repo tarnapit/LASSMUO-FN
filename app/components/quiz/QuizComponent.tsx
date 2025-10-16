@@ -15,7 +15,13 @@ import { AlertCircle } from "lucide-react";
 
 interface EnhancedQuizComponentProps {
   questions: Question[];
-  onComplete: (score: number) => void;
+  onComplete: (results: {
+    score: number;
+    totalQuestions: number;
+    time: string;
+    answers: boolean[];
+    percentage: number;
+  }) => void;
   onExit?: () => void;
 }
 
@@ -32,9 +38,28 @@ export default function EnhancedQuizComponent({
   const [answers, setAnswers] = useState<boolean[]>([]);
   const [userAnswers, setUserAnswers] = useState<Record<number, any>>({});
   const [isExiting, setIsExiting] = useState(false);
+  const [startTime] = useState(Date.now());
   
   const currentQuestion = questions[currentQuestionIndex];
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
+
+  const calculateTime = () => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    const minutes = Math.floor(elapsed / 60);
+    const seconds = elapsed % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const createResults = () => {
+    const percentage = (score / questions.length) * 100;
+    return {
+      score,
+      totalQuestions: questions.length,
+      time: calculateTime(),
+      answers,
+      percentage
+    };
+  };
 
   // Effect to ensure clean state when moving to a new question
   useEffect(() => {
@@ -67,7 +92,7 @@ export default function EnhancedQuizComponent({
 
   const handleContinue = () => {
     if (isLastQuestion) {
-      onComplete(score);
+      onComplete(createResults());
     } else {
       setCurrentQuestionIndex(prev => prev + 1);
       setSelectedAnswer(null);
@@ -96,7 +121,7 @@ export default function EnhancedQuizComponent({
     if (lives === 0 && showResult) {
       // Game over - complete with current score
       const timer = setTimeout(() => {
-        onComplete(score);
+        onComplete(createResults());
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -118,56 +143,132 @@ export default function EnhancedQuizComponent({
       disabled: isExiting
     };
 
-    switch (currentQuestion.type) {
+    const questionType = currentQuestion.type as string;
+    
+    switch (questionType) {
+      case 'MULTIPLE_CHOICE':
       case 'multiple-choice':
-        if ('answers' in currentQuestion && currentQuestion.answers) {
+        const mcQuestion = currentQuestion as any;
+        
+        // Handle different payload formats
+        let options = null;
+        
+        // API format: payload is array directly
+        if (Array.isArray(mcQuestion.payload)) {
+          options = mcQuestion.payload;
+        }
+        // API format: payload.options
+        else if (mcQuestion.payload?.options) {
+          options = mcQuestion.payload.options;
+        }
+        // Mock data format: answers
+        else if (mcQuestion.answers) {
+          options = mcQuestion.answers;
+        }
+        
+        if (options && Array.isArray(options)) {
           return (
             <MultipleChoiceQuestion
-              question={currentQuestion.question}
-              answers={currentQuestion.answers}
-              onAnswer={(answerId, isCorrect) => handleAnswer(answerId, isCorrect)}
+              question={mcQuestion.question}
+              answers={options.map((opt: any, index: number) => ({
+                id: index,
+                text: opt.text,
+                isCorrect: opt.isCorrect
+              }))}
+              onAnswer={(answerId, isCorrect) => {
+                // Find correct answer index
+                const correctAnswerId = options.findIndex((opt: any) => opt.isCorrect);
+                const isAnswerCorrect = answerId === correctAnswerId;
+                handleAnswer(answerId, isAnswerCorrect);
+              }}
               selectedAnswer={selectedAnswer as number}
               {...questionProps}
             />
           );
         }
+        
         break;
 
-      case 'true-false':
+      case 'TRUE_FALSE':
+        const tfQuestion = currentQuestion as any;
         return (
           <TrueFalseQuestion
-            question={currentQuestion.question}
-            correctAnswer={currentQuestion.correctAnswer}
+            question={tfQuestion.question}
+            correctAnswer={tfQuestion.payload?.correctAnswer}
             onAnswer={(answer, isCorrect) => handleAnswer(answer, isCorrect)}
             selectedAnswer={selectedAnswer as boolean}
             {...questionProps}
           />
         );
 
-      case 'drag-drop':
-        if ('dragItems' in currentQuestion && 'dropZones' in currentQuestion) {
+      case 'DRAG_DROP':
+        const ddQuestion = currentQuestion as any;
+        console.log('🔍 DRAG_DROP Question Debug:', {
+          question: ddQuestion.question,
+          payload: ddQuestion.payload,
+          dragItems: ddQuestion.payload?.dragItems,
+          dropZones: ddQuestion.payload?.dropZones,
+          fullQuestion: ddQuestion
+        });
+        
+        let dragDropData = null;
+        
+        // Handle different payload formats
+        if (ddQuestion.payload?.dragItems && ddQuestion.payload?.dropZones) {
+          // Mock data format: payload is object with dragItems and dropZones
+          dragDropData = {
+            dragItems: ddQuestion.payload.dragItems,
+            dropZones: ddQuestion.payload.dropZones,
+            correctMatches: ddQuestion.payload.correctMatches
+          };
+        } else if (Array.isArray(ddQuestion.payload) && ddQuestion.payload.length > 0) {
+          // API format: payload is array, take first element which should contain the drag-drop data
+          const payloadData = ddQuestion.payload[0];
+          console.log('🔍 API Payload Data:', payloadData);
+          
+          if (payloadData?.dragItems && payloadData?.dropZones) {
+            dragDropData = {
+              dragItems: payloadData.dragItems,
+              dropZones: payloadData.dropZones,
+              correctMatches: payloadData.correctMatches
+            };
+          }
+        }
+        
+        if (dragDropData) {
+          console.log('✅ Using drag-drop data:', dragDropData);
           return (
             <EnhancedDragDropQuestion
-              dragItems={currentQuestion.dragItems}
-              dropZones={currentQuestion.dropZones}
+              dragItems={dragDropData.dragItems}
+              dropZones={dragDropData.dropZones}
               onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
-              question={currentQuestion.question}
+              question={ddQuestion.question}
             />
           );
+        } else {
+          console.error('🚨 DRAG_DROP payload validation failed:', {
+            hasDragItems: !!ddQuestion.payload?.dragItems,
+            hasDropZones: !!ddQuestion.payload?.dropZones,
+            isArray: Array.isArray(ddQuestion.payload),
+            arrayLength: Array.isArray(ddQuestion.payload) ? ddQuestion.payload.length : 0,
+            payloadKeys: Object.keys(ddQuestion.payload || {}),
+            payload: ddQuestion.payload
+          });
         }
         break;
 
-      case 'fill-blank':
-        if ('correctAnswer' in currentQuestion) {
+      case 'FILL_BLANK':
+        const fbQuestion = currentQuestion as any;
+        if (fbQuestion.payload?.correctAnswer) {
           return (
             <EnhancedFillBlankQuestion
-              question={currentQuestion.question}
-              correctAnswer={currentQuestion.correctAnswer}
-              alternatives={currentQuestion.alternatives}
-              placeholder={currentQuestion.placeholder || "พิมพ์คำตอบ..."}
-              hints={currentQuestion.hints}
+              question={fbQuestion.question}
+              correctAnswer={fbQuestion.payload.correctAnswer}
+              alternatives={fbQuestion.payload.alternatives}
+              placeholder={fbQuestion.payload.placeholder || "พิมพ์คำตอบ..."}
+              hints={fbQuestion.payload.hints}
               onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
@@ -176,78 +277,68 @@ export default function EnhancedQuizComponent({
         }
         break;
 
-      case 'match-pairs':
-        if ('pairs' in currentQuestion) {
+      case 'MATCHING':
+      case 'MATCH_PAIRS':  // Support both MATCHING and MATCH_PAIRS
+        const matchQuestion = currentQuestion as any;
+        console.log('🔍 MATCH_PAIRS Question Debug:', {
+          question: matchQuestion.question,
+          payload: matchQuestion.payload,
+          pairs: matchQuestion.payload?.pairs,
+          fullQuestion: matchQuestion
+        });
+
+        let matchPairsData = null;
+
+        // Handle different payload formats for matching questions
+        if (matchQuestion.payload?.pairs) {
+          // Standard format: payload has pairs array
+          matchPairsData = matchQuestion.payload.pairs;
+        } else if (Array.isArray(matchQuestion.payload) && matchQuestion.payload.length > 0) {
+          // API format: payload is array, take first element which should contain pairs
+          const payloadData = matchQuestion.payload[0];
+          console.log('🔍 Match Pairs API Payload Data:', payloadData);
+          
+          if (payloadData?.pairs) {
+            matchPairsData = payloadData.pairs;
+          } else if (Array.isArray(payloadData)) {
+            // Sometimes pairs might be directly in the array
+            matchPairsData = payloadData;
+          }
+        }
+
+        if (matchPairsData) {
+          console.log('✅ Using match pairs data:', matchPairsData);
           return (
             <EnhancedMatchPairsQuestion
-              pairs={currentQuestion.pairs}
+              pairs={matchPairsData}
               onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
-              question={currentQuestion.question}
+              question={matchQuestion.question}
             />
           );
-        }
-        break;
-
-      case 'image-identification':
-        if ('imageUrl' in currentQuestion && 'answers' in currentQuestion) {
-          return (
-            <ImageIdentificationQuestion
-              question={currentQuestion.question}
-              imageUrl={currentQuestion.imageUrl}
-              imageDescription={currentQuestion.imageDescription}
-              answers={currentQuestion.answers}
-              onAnswer={(answerId, isCorrect) => handleAnswer(answerId, isCorrect)}
-              selectedAnswer={selectedAnswer as number}
-              {...questionProps}
-            />
-          );
-        }
-        break;
-
-      case 'sentence-reordering':
-        if ('sentences' in currentQuestion && 'correctOrder' in currentQuestion) {
-          return (
-            <SentenceReorderingQuestion
-              question={currentQuestion.question}
-              sentences={currentQuestion.sentences}
-              correctOrder={currentQuestion.correctOrder}
-              instruction={currentQuestion.instruction}
-              onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
-              showResult={showResult}
-              userAnswer={userAnswers[currentQuestionIndex]}
-            />
-          );
-        }
-        break;
-
-      case 'range-answer':
-        if ('minValue' in currentQuestion && 'maxValue' in currentQuestion && 'correctRange' in currentQuestion) {
-          return (
-            <RangeAnswerQuestion
-              question={currentQuestion.question}
-              minValue={currentQuestion.minValue}
-              maxValue={currentQuestion.maxValue}
-              correctRange={currentQuestion.correctRange}
-              unit={currentQuestion.unit}
-              step={currentQuestion.step}
-              labels={currentQuestion.labels}
-              onAnswer={(isCorrect: boolean, userAnswer: any) => handleAnswer(userAnswer, isCorrect)}
-              showResult={showResult}
-              userAnswer={userAnswers[currentQuestionIndex]}
-            />
-          );
+        } else {
+          console.error('🚨 MATCH_PAIRS payload validation failed:', {
+            hasPairs: !!matchQuestion.payload?.pairs,
+            isArray: Array.isArray(matchQuestion.payload),
+            arrayLength: Array.isArray(matchQuestion.payload) ? matchQuestion.payload.length : 0,
+            payloadKeys: Object.keys(matchQuestion.payload || {}),
+            payload: matchQuestion.payload
+          });
         }
         break;
 
       default:
+        console.warn('🚨 Unsupported question type:', questionType, 'Question data:', currentQuestion);
         return (
           <div className="flex flex-col items-center justify-center text-white text-center">
             <AlertCircle className="w-16 h-16 text-yellow-400 mb-4" />
             <h2 className="text-2xl font-bold mb-2">ประเภทคำถามไม่รองรับ</h2>
             <p className="text-gray-300">
-              ประเภทคำถาม &quot;{(currentQuestion as any).type}&quot; ยังไม่ได้รับการพัฒนา
+              ประเภทคำถาม &quot;{questionType}&quot; ยังไม่ได้รับการพัฒนา
+            </p>
+            <p className="text-sm text-gray-400 mt-2">
+              รูปแบบข้อมูล: {JSON.stringify(currentQuestion, null, 2).substring(0, 100)}...
             </p>
           </div>
         );

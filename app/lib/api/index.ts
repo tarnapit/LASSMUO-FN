@@ -8,20 +8,14 @@ export * from './services';
 import { 
   courseService, 
   stageService, 
-  lessonService, 
-  orderService, 
-  userService, 
-  answerService 
+  userService 
 } from './services';
 
 // Export default API object with all services
 export const api = {
   course: courseService,
   stage: stageService,
-  lesson: lessonService,
-  order: orderService,
   user: userService,
-  answer: answerService,
 };
 
 // Default export
