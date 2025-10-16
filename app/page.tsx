@@ -8,10 +8,25 @@ import { progressManager } from "./lib/progress";
 import { authManager } from "./lib/auth";
 import { PlayerProgress } from "./types/stage";
 import { useUser } from "./lib/api/hooks";
+import Image from "next/image";
 
 export default function HomePage() {
   const [progress, setProgress] = useState<PlayerProgress | null>(null);
   const [learningStats, setLearningStats] = useState<any>(null);
+  const [currentPlanetIndex, setCurrentPlanetIndex] = useState(0);
+
+  // รายการดาวเคราะห์ที่จะหมุนเวียน (เรียงตามลำดับจากดวงอาทิตย์)
+  const planets = [
+    { name: 'Sun', image: '/images/planets/sun.png' },
+    { name: 'Mercury', image: '/images/planets/mercury.png' },
+    { name: 'Venus', image: '/images/planets/venus.png' },
+    { name: 'Earth', image: '/images/planets/earth.png' },
+    { name: 'Mars', image: '/images/planets/mars.png' },
+    { name: 'Jupiter', image: '/images/planets/jupiter.png' },
+    { name: 'Saturn', image: '/images/planets/saturn.png' },
+    { name: 'Uranus', image: '/images/planets/uranus.png' },
+    { name: 'Neptune', image: '/images/planets/neptune.png' }
+  ];
 
   // API hooks for user data - removed unused useUserProfile
 
@@ -83,6 +98,17 @@ export default function HomePage() {
     return unsubscribe;
   }, []);
 
+  // ระบบสลับดาวเคราะห์อัตโนมัติ
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPlanetIndex((prevIndex) => 
+        (prevIndex + 1) % planets.length
+      );
+    }, 5000); // สลับทุก 5 วินาที
+
+    return () => clearInterval(interval);
+  }, [planets.length]);
+
   // ข้อความภาษาไทย
   const text = {
     explore: "สำรวจอวกาศ",
@@ -92,71 +118,73 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900">
-      {/* Navigation */}
-      <Navbar />
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Full Screen Planet Background */}
+      <div className="absolute inset-0 transition-all duration-1000 ease-in-out">
+        <Image
+          src={planets[currentPlanetIndex].image}
+          alt={planets[currentPlanetIndex].name}
+          fill
+          className="object-cover transition-opacity duration-1000"
+          priority
+        />
+        {/* Dark overlay for better text readability */}
+        <div className="absolute inset-0 bg-black/50"></div>
+      </div>
 
-      {/* Hero Section - Split Layout */}
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Main Section - LASSMUOO และ Neptune */}
+      {/* Navigation */}
+      <div className="relative z-10">
+        <Navbar />
+      </div>
+
+      {/* Hero Section - Full Screen Layout */}
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Main Section - LASSMUOO Content */}
         <div className="grid lg:grid-cols-2 gap-12 items-center min-h-[60vh] mb-0">
           {/* Left Content - LASSMUOO */}
           <div className="text-left lg:pr-8">
             {/* Main Title */}
-            <h1 className="text-5xl sm:text-6xl lg:text-5xl font-bold text-white mb-6 leading-tight">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-2xl">
               LASSMUOO
             </h1>
 
             {/* Description */}
-            <p className="text-gray-300 text-lg sm:text-xl mb-8 leading-relaxed max-w-xl">
+            <p className="text-gray-200 text-lg sm:text-xl mb-8 leading-relaxed max-w-xl drop-shadow-lg">
               เรียนรู้ดาราศาสตร์ผ่านการสำรวจ การทดลอง และการเล่นเกม พร้อม
               ระบบการเรียนรู้แบบปฏิบัติที่เน้นประสบการณ์จริง
             </p>
 
             {/* Action Button */}
             <Link href="/stage">
-              <button className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-red-500 hover:to-red-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto">
+              <button className="bg-gradient-to-r from-red-600 to-red-700 text-white px-8 py-4 rounded-lg font-semibold text-lg hover:from-red-500 hover:to-red-600 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xl">
                 <PlayCircle className="w-6 h-6" />
                 เริ่มต้นผจญภัย
               </button>
             </Link>
           </div>
 
-          {/* Right Content - Neptune Planet */}
-          <div className="flex justify-center lg:justify-end">
-            <div className="relative">
-              <div className="w-96 h-96 sm:w-[450px] sm:h-[450px] lg:w-[500px] lg:h-[500px] rounded-full bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 shadow-2xl relative overflow-hidden">
-                {/* Neptune surface patterns */}
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-blue-400/30 to-indigo-700/50"></div>
-                <div className="absolute top-1/3 left-1/4 w-32 h-8 bg-cyan-300/40 rounded-full blur-sm"></div>
-                <div className="absolute bottom-1/3 right-1/4 w-40 h-6 bg-blue-300/30 rounded-full blur-sm"></div>
-                
-                {/* Atmospheric glow effect */}
-                <div className="absolute -inset-4 bg-gradient-to-r from-blue-400/20 via-cyan-400/10 to-transparent rounded-full blur-xl"></div>
-              </div>
-              
-              {/* Floating stars around Neptune */}
-              <div className="absolute -top-8 -left-8 w-2 h-2 bg-white rounded-full animate-pulse"></div>
-              <div className="absolute top-12 -right-6 w-1.5 h-1.5 bg-yellow-300 rounded-full animate-pulse delay-500"></div>
-              <div className="absolute -bottom-6 left-12 w-1 h-1 bg-white rounded-full animate-pulse delay-1000"></div>
-              <div className="absolute bottom-1/4 -right-12 w-1.5 h-1.5 bg-cyan-300 rounded-full animate-pulse delay-700"></div>
-              <div className="absolute top-1/4 -left-12 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
-              <div className="absolute bottom-12 -left-8 w-1.5 h-1.5 bg-yellow-200 rounded-full animate-pulse delay-800"></div>
-            </div>
+          {/* Right Content - Planet Info */}
+          <div className="flex justify-center lg:justify-end items-center">
+            {/* Planet Name Display - Large */}
+            {/* <div className="bg-black/30 backdrop-blur-md rounded-2xl px-8 py-6 border border-white/20 shadow-2xl">
+              <h2 className="text-white font-bold text-4xl sm:text-5xl text-center drop-shadow-lg">
+                {planets[currentPlanetIndex].name}
+              </h2>
+            </div> */}
           </div>
         </div>
 
         {/* Learning Section - ตรงกลางล่าง */}
-        <div className="text-right max-w-2xl mx-auto mb-12">
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
+        <div className="text-right max-w-2xl mx-auto mb-16">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6 drop-shadow-2xl">
             เรียนรู้เนื้อหา
           </h2>
-          <p className="text-gray-300 text-lg sm:text-xl mb-8 leading-relaxed">
+          <p className="text-gray-200 text-lg sm:text-xl mb-8 leading-relaxed drop-shadow-lg">
             เรียนรู้ดาราศาสตร์ผ่านบทเรียนโดยมีการทดลอง การสำรวจ และการเล่นเกมในแต่ละหัวข้อ ๆ
           </p>
           <div className="flex justify-end">
             <Link href="/learning">
-              <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-16 py-4 rounded-lg font-semibold text-lg hover:from-orange-400 hover:to-orange-500 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto">
+              <button className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-16 py-4 rounded-lg font-semibold text-lg hover:from-orange-400 hover:to-orange-500 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 w-full sm:w-auto shadow-2xl">
                 <PlayCircle className="w-6 h-6" />
                 เริ่มเรียน
               </button>
@@ -164,11 +192,33 @@ export default function HomePage() {
           </div>
         </div>
 
+        {/* Planet Navigation Dots - Fixed at bottom */}
+        <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-20 flex flex-wrap justify-center gap-4 bg-black/30 backdrop-blur-md rounded-full px-6 py-4 border border-white/20">
+          {planets.map((planet, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentPlanetIndex(index)}
+              title={`ดู${planet.name}`}
+              aria-label={`เปลี่ยนไปยังดาว${planet.name}`}
+              className={`w-4 h-4 rounded-full transition-all duration-300 border-2 flex items-center justify-center group ${
+                index === currentPlanetIndex 
+                  ? 'bg-white border-white scale-125 shadow-lg shadow-white/50' 
+                  : 'bg-transparent border-white/50 hover:border-white/80 hover:bg-white/20 hover:scale-110'
+              }`}
+            >
+              {/* Tooltip */}
+              <span className="absolute -top-12 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-sm px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap shadow-lg">
+                {planet.name}
+              </span>
+            </button>
+          ))}
+        </div>
+
         {/* Progress Display */}
         {progress && (progress.totalStars > 0 || progress.completedStages.length > 0 || 
                      progress.totalPoints > 0 || (learningStats && learningStats.totalModulesStarted > 0) ||
                      (progress.stages && Object.values(progress.stages).some(s => s.stars > 0 || s.isCompleted))) && (
-          <div className="mt-8 sm:mt-12 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-slate-700/50 shadow-2xl max-w-5xl mx-auto">
+          <div className="mt-8 sm:mt-12 bg-black/30 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-white/20 shadow-2xl max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row items-center justify-center mb-4 sm:mb-6">
               <div className="p-2 sm:p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-0 sm:mr-3 mb-2 sm:mb-0">
                 <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-black" />
@@ -335,13 +385,17 @@ export default function HomePage() {
         )}
 
         {/* Background Stars Effect */}
-        <div className="fixed inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-pulse"></div>
-          <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-100"></div>
-          <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-200"></div>
-          <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-white rounded-full animate-pulse delay-300"></div>
-          <div className="absolute top-1/2 left-1/6 w-1 h-1 bg-white rounded-full animate-pulse delay-500"></div>
-          <div className="absolute top-3/4 right-1/6 w-1 h-1 bg-white rounded-full animate-pulse delay-700"></div>
+        <div className="fixed inset-0 pointer-events-none z-5">
+          <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white rounded-full animate-pulse shadow-white/50 shadow-sm"></div>
+          <div className="absolute top-1/3 right-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-100 shadow-white/50 shadow-sm"></div>
+          <div className="absolute bottom-1/4 left-1/3 w-1 h-1 bg-white rounded-full animate-pulse delay-200 shadow-white/50 shadow-sm"></div>
+          <div className="absolute bottom-1/3 right-1/4 w-1 h-1 bg-white rounded-full animate-pulse delay-300 shadow-white/50 shadow-sm"></div>
+          <div className="absolute top-1/2 left-1/6 w-1 h-1 bg-white rounded-full animate-pulse delay-500 shadow-white/50 shadow-sm"></div>
+          <div className="absolute top-3/4 right-1/6 w-1 h-1 bg-white rounded-full animate-pulse delay-700 shadow-white/50 shadow-sm"></div>
+          <div className="absolute top-1/5 right-1/5 w-1.5 h-1.5 bg-yellow-300 rounded-full animate-pulse delay-400 shadow-yellow-300/50 shadow-sm"></div>
+          <div className="absolute bottom-1/5 left-1/5 w-1.5 h-1.5 bg-cyan-300 rounded-full animate-pulse delay-600 shadow-cyan-300/50 shadow-sm"></div>
+          <div className="absolute top-2/3 left-2/3 w-1 h-1 bg-purple-300 rounded-full animate-pulse delay-800 shadow-purple-300/50 shadow-sm"></div>
+          <div className="absolute bottom-2/3 right-2/3 w-1 h-1 bg-blue-300 rounded-full animate-pulse delay-900 shadow-blue-300/50 shadow-sm"></div>
         </div>
       </div>
     </div>
