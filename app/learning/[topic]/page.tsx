@@ -45,6 +45,8 @@ export default function LearningTopicPage() {
   const [canProceed, setCanProceed] = useState(true);
   // เพิ่ม state เพื่อติดตามกิจกรรมที่กำลังทำอยู่
   const [currentActivityId, setCurrentActivityId] = useState<string | null>(null);
+  // เพิ่ม state เพื่อเช็คว่าควรแสดงหน้าเสร็จสิ้นหรือไม่
+  const [shouldShowCompletion, setShouldShowCompletion] = useState(false);
 
   // ฟังก์ชันหาลำดับ module ในหลักสูตร
   const getModuleOrder = (moduleId: string): number => {
@@ -59,6 +61,20 @@ export default function LearningTopicPage() {
     
     console.log(`📊 Module order for ${moduleId}: ${moduleOrder[moduleId] || 1}`);
     return moduleOrder[moduleId] || 1; // default เป็น 1 ถ้าไม่เจอ
+  };
+
+  // ตรวจสอบว่าควรแสดงหน้าเสร็จสิ้นหรือไม่
+  const shouldDisplayCompletionScreen = () => {
+    if (!module || !moduleCompleted) return false;
+    
+    // แสดงหน้าเสร็จสิ้นเฉพาะเมื่อ:
+    // 1. module เสร็จแล้ว AND
+    // 2. อยู่ในส่วนสุดท้ายของ chapter สุดท้าย AND
+    // 3. shouldShowCompletion เป็น true
+    const isLastChapter = currentChapterIndex === module.chapters.length - 1;
+    const isLastContent = currentContentIndex === module.chapters[currentChapterIndex]?.content.length - 1;
+    
+    return isLastChapter && isLastContent && shouldShowCompletion;
   };
 
   // ตรวจสอบว่าสามารถไปหน้าต่อไปได้หรือไม่
@@ -157,6 +173,7 @@ export default function LearningTopicPage() {
             setActivityScores({});
             setTotalScore(0);
             setCurrentActivityId(null);
+            setShouldShowCompletion(false);
             
             // เริ่มการเรียน module
             progressManager.startLearningModule(params.topic as string);
@@ -176,15 +193,34 @@ export default function LearningTopicPage() {
                 
                 setModuleCompleted(isModuleCompleted);
                 
-                // ถ้า module เสร็จแล้ว ให้ complete ใน local storage ด้วย
+                // ถ้า module เสร็จแล้ว ให้ไปส่วนสุดท้ายและแสดงหน้าเสร็จสิ้น
                 if (isModuleCompleted) {
                   await progressManager.completeModule(foundModule.id, foundModule.chapters.length);
+                  
+                  // ไปส่วนสุดท้ายของ module
+                  const lastChapterIndex = foundModule.chapters.length - 1;
+                  const lastContentIndex = foundModule.chapters[lastChapterIndex].content.length - 1;
+                  
+                  setCurrentChapterIndex(lastChapterIndex);
+                  setCurrentContentIndex(lastContentIndex);
+                  setShouldShowCompletion(true);
                 }
               } catch (error) {
                 console.error('Error checking module completion:', error);
                 // Fallback ใช้ local progress
                 const moduleProgress = progressManager.getModuleProgress(params.topic as string);
-                setModuleCompleted(moduleProgress?.isCompleted || false);
+                const isCompleted = moduleProgress?.isCompleted || false;
+                setModuleCompleted(isCompleted);
+                
+                if (isCompleted) {
+                  // ไปส่วนสุดท้ายของ module
+                  const lastChapterIndex = foundModule.chapters.length - 1;
+                  const lastContentIndex = foundModule.chapters[lastChapterIndex].content.length - 1;
+                  
+                  setCurrentChapterIndex(lastChapterIndex);
+                  setCurrentContentIndex(lastContentIndex);
+                  setShouldShowCompletion(true);
+                }
               }
             };
             
@@ -228,6 +264,16 @@ export default function LearningTopicPage() {
           });
           
           setModuleCompleted(isModuleCompleted);
+          
+          // ถ้า module เสร็จแล้วและอยู่ในส่วนสุดท้าย ให้แสดงหน้าเสร็จสิ้น
+          if (isModuleCompleted) {
+            const isLastChapter = currentChapterIndex === module.chapters.length - 1;
+            const isLastContent = currentContentIndex === module.chapters[currentChapterIndex]?.content.length - 1;
+            
+            if (isLastChapter && isLastContent) {
+              setShouldShowCompletion(true);
+            }
+          }
         } catch (error) {
           console.error('Error updating module completion:', error);
         }
@@ -239,7 +285,7 @@ export default function LearningTopicPage() {
     return () => {
       window.removeEventListener('progressUpdated', handleProgressUpdate as EventListener);
     };
-  }, [module]);
+  }, [module, currentChapterIndex, currentContentIndex]);
 
   // เช็ค module completion เมื่อหน้าเว็บ visible อีกครั้ง
   useEffect(() => {
@@ -256,6 +302,16 @@ export default function LearningTopicPage() {
           });
           
           setModuleCompleted(isModuleCompleted);
+          
+          // ถ้า module เสร็จแล้วและอยู่ในส่วนสุดท้าย ให้แสดงหน้าเสร็จสิ้น
+          if (isModuleCompleted) {
+            const isLastChapter = currentChapterIndex === module.chapters.length - 1;
+            const isLastContent = currentContentIndex === module.chapters[currentChapterIndex]?.content.length - 1;
+            
+            if (isLastChapter && isLastContent) {
+              setShouldShowCompletion(true);
+            }
+          }
         } catch (error) {
           console.error('Error checking module completion on visibility change:', error);
         }
@@ -267,7 +323,7 @@ export default function LearningTopicPage() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [module]);
+  }, [module, currentChapterIndex, currentContentIndex]);
 
   // บันทึกเวลาเมื่อเปลี่ยน chapter หรือ content
   useEffect(() => {
@@ -321,12 +377,10 @@ export default function LearningTopicPage() {
     } else {
       // จบ module แล้ว
       await completeCurrentChapter();
-      await completeModule(true); // ส่ง true เพื่อบอกว่าจะ redirect
-
-      // ถ้ามี quiz ให้ไปหน้า quiz เลย
-      if (quiz) {
-        router.push(`/quiz/${quiz.id}`);
-      }
+      await completeModule(false); // ไม่ redirect ให้แสดงหน้าเสร็จสิ้น
+      
+      // แสดงหน้าเสร็จสิ้น
+      setShouldShowCompletion(true);
     }
   };
 
@@ -398,10 +452,7 @@ export default function LearningTopicPage() {
     );
     await progressManager.completeModule(module.id, module.chapters.length);
 
-    // ถ้าไม่ต้องการ redirect ให้แสดงหน้าสรุป
-    if (!shouldRedirect) {
-      setModuleCompleted(true);
-    }
+    setModuleCompleted(true);
 
     console.log(`Module ${module.id} completed successfully`);
 
@@ -772,7 +823,7 @@ export default function LearningTopicPage() {
             </div>
           )}
 
-          {moduleCompleted ? (
+          {shouldDisplayCompletionScreen() ? (
             // Module Completed Screen
             <div className="bg-gradient-to-br from-green-500/20 to-blue-500/20 backdrop-blur-sm rounded-2xl p-8 mb-8 border border-green-500/30 text-center">
               <div className="mb-6">
@@ -860,12 +911,27 @@ export default function LearningTopicPage() {
 
                 <div className="flex justify-center space-x-4">
                   <button
-                    onClick={() => setModuleCompleted(false)}
+                    onClick={() => {
+                      setShouldShowCompletion(false);
+                      setCurrentChapterIndex(0);
+                      setCurrentContentIndex(0);
+                    }}
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
                   >
                     <BookOpen size={20} className="mr-2" />
                     ดูเนื้อหาการเรียน
                   </button>
+                  
+                  {/* {quiz && (
+                    <Link
+                      href={`/quiz/${quiz.id}`}
+                      className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
+                    >
+                      <Brain size={20} className="mr-2" />
+                      ไปทำแบบทดสอบ
+                    </Link>
+                  )} */}
+                  
                   <Link
                     href="/learning"
                     className="px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors font-semibold inline-flex items-center"
