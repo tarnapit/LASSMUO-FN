@@ -33,11 +33,29 @@ export default function EnhancedMatchingQuestion({
   const rightRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Shuffle right items
-  const [rightItems] = useState(() => 
-    [...pairs.map(p => p.right)].sort(() => Math.random() - 0.5)
-  );
+  // Shuffle right items - อัปเดตเมื่อ pairs เปลี่ยน
+  const [rightItems, setRightItems] = useState<Array<{ id: string; text: string; emoji?: string }>>([]);
+  const [currentPairsKey, setCurrentPairsKey] = useState<string>('');
   const leftItems = pairs.map(p => p.left);
+
+  // Reset และ shuffle right items เมื่อ pairs เปลี่ยนจริงๆ
+  useEffect(() => {
+    // สร้าง key ที่ unique สำหรับ pairs ปัจจุบัน
+    const pairsKey = pairs.map(p => `${p.left.id}-${p.right.id}`).join('|');
+    
+    // ตรวจสอบว่า pairs เปลี่ยนจริงหรือไม่
+    if (pairsKey !== currentPairsKey) {
+      const shuffledRightItems = [...pairs.map(p => p.right)].sort(() => Math.random() - 0.5);
+      setRightItems(shuffledRightItems);
+      setCurrentPairsKey(pairsKey);
+      
+      // รีเซ็ต state ทั้งหมดเฉพาะเมื่อ pairs เปลี่ยนจริง
+      setMatches({});
+      setConnections([]);
+      setSelectedLeft(null);
+      setSelectedRight(null);
+    }
+  }, [pairs, currentPairsKey]);
 
   // Initialize matches from userAnswer
   useEffect(() => {
@@ -45,16 +63,18 @@ export default function EnhancedMatchingQuestion({
       setMatches(userAnswer);
       updateConnections(userAnswer);
     }
-  }, [userAnswer, pairs]);
+  }, [userAnswer]);
 
   // Update connections based on current matches
   const updateConnections = (currentMatches: Record<string, string>) => {
     const newConnections = Object.entries(currentMatches).map(([leftId, rightId]) => {
       const correctPair = pairs.find(p => p.left.id === leftId);
+      const isCorrect = correctPair?.right.id === rightId;
+      
       return {
         from: leftId,
         to: rightId,
-        isCorrect: correctPair?.right.id === rightId
+        isCorrect: isCorrect
       };
     });
     setConnections(newConnections);

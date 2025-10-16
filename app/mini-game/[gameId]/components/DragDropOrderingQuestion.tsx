@@ -32,10 +32,12 @@ export default function DragDropOrderingQuestion({
   useEffect(() => {
     if (userAnswer && userAnswer.length > 0) {
       setOrderedItems(userAnswer);
+      setIsSubmitted(true); // ถ้ามี userAnswer แสดงว่าส่งแล้ว
     } else {
       // Shuffle items initially
       const shuffled = [...items].sort(() => Math.random() - 0.5);
       setOrderedItems(shuffled);
+      setIsSubmitted(false); // รีเซ็ต isSubmitted เมื่อเริ่มข้อใหม่
     }
   }, [items, userAnswer]);
 

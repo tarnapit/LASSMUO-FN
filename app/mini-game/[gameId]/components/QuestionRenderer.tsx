@@ -195,12 +195,12 @@ export default function QuestionRenderer({
       // Convert the simple pairs format to enhanced format for the new component
       const enhancedPairs = question.pairs?.map((pair, index) => ({
         left: { 
-          id: `left-${index}`, 
+          id: typeof pair.left === 'string' ? pair.left : pair.left, // ใช้ text เป็น id
           text: typeof pair.left === 'string' ? pair.left : pair.left,
           emoji: undefined 
         },
         right: { 
-          id: `right-${index}`, 
+          id: typeof pair.right === 'string' ? pair.right : pair.right, // ใช้ text เป็น id
           text: typeof pair.right === 'string' ? pair.right : pair.right,
           emoji: undefined 
         }
