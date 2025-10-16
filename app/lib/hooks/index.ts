@@ -4,6 +4,7 @@ export * from './useStageProgressManager';
 export * from './useLearningData';
 export * from './useCoursePostestData';
 export * from './useQuizUnlockManager';
+export * from './useTokenMonitor';
 
 // Re-export specific hooks from useDataAdapter to avoid conflicts
 export { 

@@ -14,6 +14,16 @@ class ApiClient {
     // console.log(`Response text from ${response.url}:`, responseText);
 
     if (!response.ok) {
+      // ตรวจสอบ 401 Unauthorized - token หมดอายุ
+      if (response.status === 401) {
+        // ลบ token ที่หมดอายุและ logout
+        if (typeof window !== 'undefined') {
+          const { authManager } = await import('../auth');
+          console.log('🔒 Received 401 - Token expired, logging out...');
+          await authManager.logout();
+        }
+      }
+
       let errorMessage = `HTTP Error: ${response.status}`;
       
       try {
