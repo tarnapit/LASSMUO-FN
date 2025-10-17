@@ -307,11 +307,14 @@ export default function HomePage() {
                     </div>
                     <span className="text-2xl sm:text-3xl font-bold text-white block">{displayStars}</span>
                     <p className="text-yellow-300 text-xs sm:text-sm font-medium mt-1">ดาวจากด่าน</p>
-                    {progress.stages && Object.keys(progress.stages).length > 1 && (
-                      <p className="text-yellow-200 text-xs mt-1">
-                        จาก {Object.values(progress.stages).filter(s => s.isCompleted || s.stars > 0).length} ด่านที่ผ่าน
-                      </p>
-                    )}
+                    {progress.stages && (() => {
+                      const completedStages = Object.values(progress.stages).filter(s => s.isCompleted || s.stars > 0).length;
+                      return completedStages > 1 && (
+                        <p className="text-yellow-200 text-xs mt-1">
+                          จาก {completedStages} ด่านที่ผ่าน
+                        </p>
+                      );
+                    })()}
                   </div>
                 );
               })()}
@@ -344,11 +347,17 @@ export default function HomePage() {
                       {completedFromStages}
                     </span>
                     <p className="text-green-300 text-xs sm:text-sm font-medium mt-1">ด่านที่ผ่าน</p>
-                    {progress.stages && Object.keys(progress.stages).length > 1 && (
-                      <p className="text-green-200 text-xs mt-1">
-                        จากทั้งหมด {Object.keys(progress.stages).length} ด่าน
-                      </p>
-                    )}
+                    {progress.stages && (() => {
+                      // นับเฉพาะ stage ที่ผ่านจริง ๆ (ได้ดาวหรือคะแนนดีกว่า 0)
+                      const actualStages = Object.values(progress.stages).filter(stage => 
+                        stage.isCompleted || stage.stars > 0 || (stage.bestScore && stage.bestScore > 0)
+                      ).length;
+                      return actualStages > 1 && (
+                        <p className="text-green-200 text-xs mt-1">
+                          จากทั้งหมด {actualStages} ด่าน
+                        </p>
+                      );
+                    })()}
                   </div>
                 );
               })()}
