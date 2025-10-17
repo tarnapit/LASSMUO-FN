@@ -77,17 +77,26 @@ class ProgressManager {
         stageProgress: stageProgressResponse
       });
       
-      // ล้าง localStorage เพื่อใช้ค่า default ใหม่
-      if (typeof window !== 'undefined') {
-        // ลบทั้ง player-progress และ user progress
-        localStorage.removeItem('player-progress');
-        const userKey = `${this.userProgressKey}_${user.id}`;
-        localStorage.removeItem(userKey);
-        console.log('🗑️ Cleared old progress data to use fresh defaults');
+      // ตรวจสอบว่า API มีข้อมูลที่ถูกต้องสำหรับ user ปัจจุบันหรือไม่
+      let hasValidCourseData = false;
+      if (userProgress && Array.isArray(userProgress)) {
+        hasValidCourseData = userProgress.some((item: any) => !item.userId || item.userId === user.id);
+      } else if (userProgress?.success && Array.isArray(userProgress.data)) {
+        hasValidCourseData = userProgress.data.some((item: any) => !item.userId || item.userId === user.id);
       }
       
-      // เริ่มต้นด้วย default progress ใหม่
-      const localProgress = this.getDefaultProgress();
+      // เริ่มต้นด้วย current progress หรือ default progress
+      let localProgress = this.getProgress();
+      
+      // ถ้าไม่มีข้อมูล API ที่ถูกต้อง และยังไม่เคยมี progress ให้ใช้ default
+      if (!hasValidCourseData && (!localProgress || localProgress.totalPoints === 0)) {
+        console.log('🆕 No valid API data and no local progress, using fresh defaults');
+        localProgress = this.getDefaultProgress();
+      } else if (!hasValidCourseData) {
+        console.log('📱 No valid API data but keeping existing local progress');
+      } else {
+        console.log('🔄 Valid API data found, will merge with local progress');
+      }
       
       // คืนข้อมูล mini-game progress ที่เก็บไว้
       if (existingMiniGameStats) {
@@ -140,48 +149,74 @@ class ProgressManager {
 
       progressData.forEach((apiProgress: any) => {
         const moduleId = apiProgress.courseId;
+        const currentUser = authManager.getCurrentUser();
         
-        // อัพเดท module progress จาก API
-        if (!localProgress.learningProgress!.modules[moduleId]) {
-          localProgress.learningProgress!.modules[moduleId] = {
-            moduleId,
-            isStarted: true,
-            isCompleted: apiProgress.completed || false,
-            completedChapters: [],
-            totalTimeSpent: 0,
-            chapters: {}
-          };
-        } else {
-          // Merge กับข้อมูลที่มีอยู่
-          localProgress.learningProgress!.modules[moduleId].isCompleted = 
-            localProgress.learningProgress!.modules[moduleId].isCompleted || apiProgress.completed;
-        }
+        // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบัน และมี progress จริง ๆ 
+        const isCorrectUser = !apiProgress.userId || apiProgress.userId === currentUser?.id;
+        const hasActualProgress = (apiProgress.progressPercent && apiProgress.progressPercent > 0) || 
+                                (apiProgress.completed === true);
+        
+        console.log(`🔍 Processing course progress for ${moduleId}:`, {
+          progressPercent: apiProgress.progressPercent,
+          completed: apiProgress.completed,
+          userId: apiProgress.userId,
+          currentUserId: currentUser?.id,
+          isCorrectUser,
+          hasActualProgress
+        });
+        
+        // เฉพาะกรณีที่เป็นข้อมูลของ user ปัจจุบันและมี progress จริง ๆ เท่านั้นที่จะอัพเดท
+        if (isCorrectUser && hasActualProgress) {
+          // อัพเดท module progress จาก API
+          if (!localProgress.learningProgress!.modules[moduleId]) {
+            localProgress.learningProgress!.modules[moduleId] = {
+              moduleId,
+              isStarted: true,
+              isCompleted: apiProgress.completed || false,
+              completedChapters: [],
+              totalTimeSpent: 0,
+              chapters: {}
+            };
+          } else {
+            // Merge กับข้อมูลที่มีอยู่
+            localProgress.learningProgress!.modules[moduleId].isCompleted = 
+              localProgress.learningProgress!.modules[moduleId].isCompleted || apiProgress.completed;
+          }
 
-        // ถ้ามี progressPercent จาก API ให้คำนวณ completedChapters
-        if (apiProgress.progressPercent && apiProgress.progressPercent > 0) {
-          const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
-          const completedChapterCount = Math.floor((apiProgress.progressPercent / 100) * expectedChapters.length);
-          
-          for (let i = 0; i < completedChapterCount; i++) {
-            const chapterId = expectedChapters[i];
-            if (chapterId && !localProgress.learningProgress!.modules[moduleId].completedChapters.includes(chapterId)) {
-              localProgress.learningProgress!.modules[moduleId].completedChapters.push(chapterId);
-              
-              localProgress.learningProgress!.modules[moduleId].chapters[chapterId] = {
-                moduleId,
-                chapterId,
-                completed: true,
-                readProgress: 100,
-                timeSpent: 5,
-                completedAt: new Date()
-              };
+          // ถ้ามี progressPercent จาก API ให้คำนวณ completedChapters
+          if (apiProgress.progressPercent && apiProgress.progressPercent > 0) {
+            const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+            const completedChapterCount = Math.floor((apiProgress.progressPercent / 100) * expectedChapters.length);
+            
+            for (let i = 0; i < completedChapterCount; i++) {
+              const chapterId = expectedChapters[i];
+              if (chapterId && !localProgress.learningProgress!.modules[moduleId].completedChapters.includes(chapterId)) {
+                localProgress.learningProgress!.modules[moduleId].completedChapters.push(chapterId);
+                
+                localProgress.learningProgress!.modules[moduleId].chapters[chapterId] = {
+                  moduleId,
+                  chapterId,
+                  completed: true,
+                  readProgress: 100,
+                  timeSpent: 5,
+                  completedAt: new Date()
+                };
+              }
             }
           }
-        }
 
-        // เพิ่มใน completed modules ถ้าเสร็จแล้ว
-        if (apiProgress.completed && !localProgress.learningProgress!.completedModules.includes(moduleId)) {
-          localProgress.learningProgress!.completedModules.push(moduleId);
+          // เพิ่มใน completed modules ถ้าเสร็จแล้ว
+          if (apiProgress.completed && !localProgress.learningProgress!.completedModules.includes(moduleId)) {
+            localProgress.learningProgress!.completedModules.push(moduleId);
+          }
+          
+          console.log(`✅ Updated progress for ${moduleId}`);
+        } else {
+          if (!isCorrectUser) {
+            console.log(`⚠️ Skipped ${moduleId} - wrong user data (expected: ${currentUser?.id}, got: ${apiProgress.userId})`);
+          } else if (!hasActualProgress) {
+            console.log(`⚠️ Skipped ${moduleId} - no actual progress`);
+          }
         }
       });
 
@@ -311,19 +346,29 @@ class ProgressManager {
     let totalScoreFromAPI = 0;
     let completedModulesCount = 0;
     
-    // คำนวณคะแนนจาก API data โดยตรง
-    progressData.forEach((apiProgress: any) => {
-      if (apiProgress.totalScore) {
-        totalScoreFromAPI += apiProgress.totalScore;
-        console.log(`📊 Added ${apiProgress.totalScore} points from course ${apiProgress.courseId}`);
-      }
-      
-      if (apiProgress.progressPercent === 100 || apiProgress.completed) {
-        completedModulesCount++;
-      }
-    });
+  // คำนวณคะแนนจาก API data โดยตรง (แต่ตรวจสอบว่าเป็นข้อมูลของ user ปัจจุบันและมี progress จริงหรือไม่)
+  progressData.forEach((apiProgress: any) => {
+    const currentUser = authManager.getCurrentUser();
+    // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบัน และมี progress จริง ๆ
+    const isCorrectUser = !apiProgress.userId || apiProgress.userId === currentUser?.id;
+    const hasActualProgress = (apiProgress.progressPercent && apiProgress.progressPercent > 0) || 
+                            (apiProgress.completed === true);
     
-    // อัพเดทคะแนนจาก API (รวมคะแนนเดิมจาก stages และ mini-games)
+    if (apiProgress.totalScore && isCorrectUser && hasActualProgress) {
+      totalScoreFromAPI += apiProgress.totalScore;
+      console.log(`📊 Added ${apiProgress.totalScore} points from course ${apiProgress.courseId} (progress: ${apiProgress.progressPercent}%, user: ${apiProgress.userId})`);
+    } else if (apiProgress.totalScore) {
+      if (!isCorrectUser) {
+        console.log(`⚠️ Skipped ${apiProgress.totalScore} points from course ${apiProgress.courseId} - wrong user (expected: ${currentUser?.id}, got: ${apiProgress.userId})`);
+      } else if (!hasActualProgress) {
+        console.log(`⚠️ Skipped ${apiProgress.totalScore} points from course ${apiProgress.courseId} - no actual progress (progress: ${apiProgress.progressPercent}%, completed: ${apiProgress.completed})`);
+      }
+    }
+    
+    if ((apiProgress.progressPercent === 100 || apiProgress.completed) && isCorrectUser && hasActualProgress) {
+      completedModulesCount++;
+    }
+  });    // อัพเดทคะแนนจาก API (รวมคะแนนเดิมจาก stages และ mini-games)
     const existingNonLearningScore = this.getNonLearningScore(progress);
     progress.totalPoints = existingNonLearningScore + totalScoreFromAPI;
     
@@ -471,12 +516,24 @@ class ProgressManager {
       const response = await userCourseProgressService.getUserProgressForCourse(user.id, moduleId);
       
       if (response && response.success && response.data) {
-        console.log('✅ Module progress fetched from API:', response.data);
-        return response.data;
+        // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบัน
+        if (!response.data.userId || response.data.userId === user.id) {
+          console.log('✅ Module progress fetched from API:', response.data);
+          return response.data;
+        } else {
+          console.log(`❌ API returned data for different user. Expected: ${user.id}, Got: ${response.data.userId}`);
+          return null;
+        }
       } else if (response && Array.isArray(response) && response.length > 0) {
-        // บางครั้ง API ส่งกลับเป็น array โดยตรง
-        console.log('✅ Module progress fetched from API (array format):', response[0]);
-        return response[0];
+        // บางครั้ง API ส่งกลับเป็น array โดยตรง - ต้องหาข้อมูลของ user ปัจจุบัน
+        const userProgress = response.find((item: any) => !item.userId || item.userId === user.id);
+        if (userProgress) {
+          console.log('✅ Module progress fetched from API (array format):', userProgress);
+          return userProgress;
+        } else {
+          console.log(`❌ No progress found for current user in API array. User ID: ${user.id}`);
+          return null;
+        }
       } else {
         console.log('No progress found in API for this module');
         return null;
@@ -1552,14 +1609,19 @@ class ProgressManager {
         const moduleProgressFromAPI = await this.getModuleProgressFromAPI(moduleId);
         console.log(`🌐 API response for ${moduleId}:`, moduleProgressFromAPI);
         
-        if (moduleProgressFromAPI && moduleProgressFromAPI.progressPercent) {
-          console.log(`📊 Using API progress for ${moduleId}: ${moduleProgressFromAPI.progressPercent}%`);
-          return moduleProgressFromAPI.progressPercent;
-        } else if (moduleProgressFromAPI && moduleProgressFromAPI.completed) {
-          console.log(`📊 Module ${moduleId} is completed via API, returning 100%`);
-          return 100;
+        // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบันและมี progress จริง ๆ
+        if (moduleProgressFromAPI && moduleProgressFromAPI.userId === user.id) {
+          if (moduleProgressFromAPI.progressPercent && moduleProgressFromAPI.progressPercent > 0) {
+            console.log(`📊 Using API progress for ${moduleId}: ${moduleProgressFromAPI.progressPercent}%`);
+            return moduleProgressFromAPI.progressPercent;
+          } else if (moduleProgressFromAPI.completed === true && moduleProgressFromAPI.progressPercent === 100) {
+            console.log(`📊 Module ${moduleId} is completed via API, returning 100%`);
+            return 100;
+          } else {
+            console.log(`❌ No valid progress in API response for ${moduleId} (progressPercent: ${moduleProgressFromAPI?.progressPercent}, completed: ${moduleProgressFromAPI?.completed})`);
+          }
         } else {
-          console.log(`❌ No progressPercent in API response for ${moduleId}`);
+          console.log(`❌ API returned data for different user or no data for ${moduleId}. Expected userId: ${user.id}, Got userId: ${moduleProgressFromAPI?.userId}`);
         }
       } catch (error) {
         console.log(`❌ Failed to get API progress for ${moduleId}:`, error);
@@ -1572,10 +1634,19 @@ class ProgressManager {
           const moduleData = allUserProgress.data.find((p: any) => p.courseId === moduleId);
           if (moduleData) {
             console.log(`📊 Found progress in user data for ${moduleId}:`, moduleData);
-            if ((moduleData as any).progressPercent) {
-              return (moduleData as any).progressPercent;
-            } else if (moduleData.completed) {
-              return 100;
+            // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบันและมี progress จริง ๆ
+            if (moduleData.userId === user.id) {
+              if ((moduleData as any).progressPercent && (moduleData as any).progressPercent > 0) {
+                console.log(`📊 Using fallback progress for ${moduleId}: ${(moduleData as any).progressPercent}%`);
+                return (moduleData as any).progressPercent;
+              } else if (moduleData.completed === true && (moduleData as any).progressPercent === 100) {
+                console.log(`📊 Using fallback completed for ${moduleId}: 100%`);
+                return 100;
+              } else {
+                console.log(`❌ No valid fallback progress for ${moduleId} (progressPercent: ${(moduleData as any).progressPercent}, completed: ${moduleData.completed})`);
+              }
+            } else {
+              console.log(`❌ Fallback data is for different user. Expected userId: ${user.id}, Got userId: ${moduleData.userId}`);
             }
           }
         }
@@ -1589,20 +1660,6 @@ class ProgressManager {
     // ถ้าไม่มีข้อมูลจาก API ใช้ local progress
     const localProgress = this.getModuleCompletionPercentage(moduleId, totalChapters);
     console.log(`📱 Using local progress for ${moduleId}: ${localProgress}%`);
-    
-    // ชั่วคราว: สำหรับการทดสอบ ถ้าเป็น user ที่ login แล้วให้แสดง progress จำลอง
-    if (user && user.id) {
-      if (moduleId === 'solar-system-intro') {
-        console.log(`🧪 TEST: Returning 60% for ${moduleId}`);
-        return 60;
-      } else if (moduleId === 'planets-exploration') {
-        console.log(`🧪 TEST: Returning 100% for ${moduleId}`);
-        return 100;
-      } else if (moduleId === 'space-missions') {
-        console.log(`🧪 TEST: Returning 30% for ${moduleId}`);
-        return 30;
-      }
-    }
     
     return localProgress;
   }
