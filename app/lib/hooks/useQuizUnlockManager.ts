@@ -55,9 +55,9 @@ export function useQuizUnlockManager() {
         for (const quiz of quizzes) {
           const courseId = quiz.moduleId; // This is actually courseId from API
           
-          // Find progress for this course
+          // Find progress for this course - ตรวจสอบ userId ให้ถูกต้อง
           const courseProgress = allUserProgress.find((progress: any) => 
-            progress.courseId === courseId
+            progress.courseId === courseId && (!progress.userId || progress.userId === user?.id)
           );
           
           // Determine current progress percentage
@@ -65,23 +65,19 @@ export function useQuizUnlockManager() {
           let progressFromAPI = null;
           
           if (courseProgress) {
-            currentPercentage = courseProgress.progressPercent || 0;
-            progressFromAPI = courseProgress;
-            console.log(`📊 [Quiz Unlock] Course ${courseId} progress: ${currentPercentage}%`);
+            // ตรวจสอบให้แน่ใจว่าเป็นข้อมูลของ user ปัจจุบัน
+            if (!courseProgress.userId || courseProgress.userId === user?.id) {
+              currentPercentage = courseProgress.progressPercent || 0;
+              progressFromAPI = courseProgress;
+              console.log(`📊 [Quiz Unlock] Course ${courseId} progress: ${currentPercentage}% (userId: ${courseProgress.userId})`);
+            } else {
+              console.log(`⚠️ [Quiz Unlock] Skipping wrong user data for course ${courseId} (expected: ${user?.id}, got: ${courseProgress.userId})`);
+            }
           } else {
-            console.log(`📊 [Quiz Unlock] No progress found for course ${courseId}`);
+            console.log(`📊 [Quiz Unlock] No progress found for course ${courseId} (current user: ${user?.id})`);
           }
           
-          // For testing: if user is logged in, set some test data
-          if (user && user.id && currentPercentage === 0) {
-            if (quiz.title.includes('ระบบสุริยะ') || quiz.title.includes('Solar System')) {
-              currentPercentage = 75; // Unlock this quiz
-              console.log(`🧪 [TEST] Setting Solar System quiz progress to ${currentPercentage}%`);
-            } else if (quiz.title.includes('โครงสร้างโลก') || quiz.title.includes('Earth Structure')) {
-              currentPercentage = 45; // Keep this quiz locked
-              console.log(`🧪 [TEST] Setting Earth Structure quiz progress to ${currentPercentage}%`);
-            }
-          }
+          // ลบ test data - ใช้ข้อมูลจริงจาก API เท่านั้น
 
           // Unlock criteria: need at least 60% progress in the course
           const requiredPercentage = 60;
@@ -122,25 +118,36 @@ export function useQuizUnlockManager() {
             progressFromAPI
           };
 
-          console.log(`🔓 [Quiz Unlock] Quiz "${quiz.title}": ${isUnlocked ? 'UNLOCKED' : 'LOCKED'} (${currentPercentage}%/${requiredPercentage}%)`);
+          console.log(`🔓 [Quiz Unlock] Quiz "${quiz.title}": ${isUnlocked ? 'UNLOCKED' : 'LOCKED'} (${currentPercentage}%/${requiredPercentage}%) - CourseId: ${courseId}`);
         }
+
+        console.log('📋 [Quiz Unlock] Final unlock status:', Object.fromEntries(
+          Object.entries(newUnlockStatus).map(([id, status]) => [
+            id, 
+            {
+              title: quizzes.find(q => q.id === id)?.title,
+              isUnlocked: status.isUnlocked,
+              progress: `${status.currentPercentage}%/${status.requiredPercentage}%`
+            }
+          ])
+        ));
 
         setUnlockStatus(newUnlockStatus);
         
       } catch (error) {
         console.error('❌ [Quiz Unlock] Error checking unlock status:', error);
         
-        // Fallback: unlock all quizzes for logged-in users, lock for guests
+        // Fallback: lock all quizzes - require actual progress
         const fallbackStatus: Record<string, QuizUnlockInfo> = {};
         const user = authManager.getCurrentUser();
         
         quizzes.forEach(quiz => {
           fallbackStatus[quiz.id] = {
-            isUnlocked: !!user, // Unlock for logged-in users
+            isUnlocked: false, // Lock all quizzes by default
             moduleId: quiz.moduleId,
             moduleTitle: quiz.title.replace('แบบทดสอบ', '').trim(),
             requiredPercentage: 60,
-            currentPercentage: user ? 100 : 0, // Full progress for logged-in, none for guests
+            currentPercentage: 0, // No progress by default
             progressFromAPI: null
           };
         });
