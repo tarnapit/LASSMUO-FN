@@ -98,12 +98,24 @@ export default function HomePage() {
     return unsubscribe;
   }, []);
 
-  // ระบบสลับดาวเคราะห์อัตโนมัติ
+  // ระบบสลับดาวเคราะห์อัตโนมัติ พร้อม fade animation
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentPlanetIndex((prevIndex) => 
-        (prevIndex + 1) % planets.length
-      );
+      setIsTransitioning(true);
+      
+      // หน่วงเวลาสำหรับ fade out
+      setTimeout(() => {
+        setCurrentPlanetIndex((prevIndex) => 
+          (prevIndex + 1) % planets.length
+        );
+        
+        // fade in หลังจากเปลี่ยนรูป
+        setTimeout(() => {
+          setIsTransitioning(false);
+        }, 100);
+      }, 500); // fade out ใช้เวลา 500ms
     }, 10000); // สลับทุก 10 วินาที
 
     return () => clearInterval(interval);
@@ -120,16 +132,20 @@ export default function HomePage() {
   return (
     <div className="min-h-screen relative overflow-hidden">
       {/* Full Screen Planet Background */}
-      <div className="fixed inset-0 z-0 transition-all duration-1000 ease-in-out">
+      <div className="fixed inset-0 z-0">
         <Image
           src={planets[currentPlanetIndex].image}
           alt={planets[currentPlanetIndex].name}
           fill
-          className="object-cover transition-opacity duration-1000"
+          className={`object-cover transition-opacity duration-700 ease-in-out ${
+            isTransitioning ? 'opacity-0' : 'opacity-100'
+          }`}
           priority
         />
         {/* Dark overlay for better text readability */}
-        <div className="absolute inset-0 bg-black/50"></div>
+        <div className={`absolute inset-0 bg-black/50 transition-opacity duration-500 ${
+          isTransitioning ? 'bg-black/70' : 'bg-black/50'
+        }`}></div>
       </div>
 
       {/* Navigation */}
@@ -198,7 +214,17 @@ export default function HomePage() {
             {planets.map((planet, index) => (
               <button
                 key={index}
-                onClick={() => setCurrentPlanetIndex(index)}
+                onClick={() => {
+                  if (index !== currentPlanetIndex) {
+                    setIsTransitioning(true);
+                    setTimeout(() => {
+                      setCurrentPlanetIndex(index);
+                      setTimeout(() => {
+                        setIsTransitioning(false);
+                      }, 100);
+                    }, 300);
+                  }
+                }}
                 title={`ดู${planet.name}`}
                 aria-label={`เปลี่ยนไปยังดาว${planet.name}`}
                 className={`transition-all duration-300 rounded-full group ${
