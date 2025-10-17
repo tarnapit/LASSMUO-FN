@@ -222,8 +222,9 @@ export default function HomePage() {
           const stagePoints = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0) : 0;
           const actualStageStars = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0) : 0;
           const actualCompletedStages = progress.stages ? Object.values(progress.stages).filter(s => s.isCompleted || s.stars > 0).length : 0;
-          // สำหรับ user ใหม่ที่ยังไม่มี progress จริง ๆ ให้ใช้ 0
-          const actualCoursePoints = 0; // ปิดการใช้ course points ชั่วคราวเพื่อแก้ปัญหา
+          // สำหรับ user ที่มี progress จริง ใช้ข้อมูลจาก learningStats
+          const actualCoursePoints = learningStats && learningStats.totalModulesCompleted > 0 
+            ? learningStats.totalModulesCompleted * 100 : 0;
           const totalActualPoints = stagePoints + actualCoursePoints;
           
           // แสดงเฉพาะเมื่อมี progress จริง ๆ
@@ -249,8 +250,9 @@ export default function HomePage() {
                   // ตรวจสอบให้แน่ใจว่า stage มี progress จริง ๆ (ไม่ใช่แค่ isUnlocked)
                   return sum + ((stage.isCompleted || stage.stars > 0) ? (stage.bestScore || 0) : 0);
                 }, 0) : 0;
-                // ใช้คะแนน course จาก API (ปิดชั่วคราวเพื่อแก้ปัญหา user ใหม่)
-                const coursePoints = 0; // learningStats && learningStats.totalModulesCompleted > 0 ? learningStats.totalModulesCompleted * 100 : 0;
+                // ใช้คะแนน course จาก API สำหรับ user ที่มี progress จริง
+                const coursePoints = learningStats && learningStats.totalModulesCompleted > 0 
+                  ? learningStats.totalModulesCompleted * 100 : 0;
                 const displayPoints = coursePoints + stagePoints;
                 
                 console.log('🏠 Score calculation:', {

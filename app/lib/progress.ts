@@ -783,7 +783,9 @@ class ProgressManager {
   async recalculateTotalStars(): Promise<void> {
     const progress = this.getProgress();
     const calculatedStars = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0);
-    const calculatedPoints = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0);
+    
+    // ไม่แก้ไข totalPoints เพราะ totalPoints รวมคะแนนจาก course และ mini-game ด้วย
+    // เฉพาะแก้ไข totalStars เท่านั้น
     
     let hasChanges = false;
     
@@ -800,19 +802,6 @@ class ProgressManager {
       console.log('✅ Total stars fixed to:', calculatedStars);
     }
 
-    if (progress.totalPoints !== calculatedPoints) {
-      console.log('⚠️ Total points mismatch detected! Fixing...', {
-        currentTotalPoints: progress.totalPoints,
-        calculatedPoints: calculatedPoints,
-        stages: Object.entries(progress.stages).map(([id, s]) => ({ id, bestScore: s.bestScore }))
-      });
-      
-      progress.totalPoints = calculatedPoints;
-      hasChanges = true;
-      
-      console.log('✅ Total points fixed to:', calculatedPoints);
-    }
-
     if (hasChanges) {
       this.saveProgress(progress);
     }
@@ -826,9 +815,9 @@ class ProgressManager {
         if (stageProgressResponse && stageProgressResponse.success && stageProgressResponse.data) {
           const apiStars = stageProgressResponse.data.reduce((sum: number, stageProgress: any) => sum + (stageProgress.starsEarned || 0), 0);
           
-          if (apiStars > calculatedStars) {
+          if (apiStars > progress.totalStars) {
             console.log('🌟 API has more recent star data, updating...', {
-              localStars: calculatedStars,
+              localStars: progress.totalStars,
               apiStars: apiStars
             });
             
