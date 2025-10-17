@@ -247,7 +247,7 @@ export default function HomePage() {
               {(() => {
                 // คำนวณคะแนนจาก stage progress + course progress
                 const stagePoints = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => {
-                  // ตรวจสอบให้แน่ใจว่า stage มี progress จริง ๆ (ไม่ใช่แค่ isUnlocked)
+                  // ตรวจสอบให้แน่ใจว่า stage ผ่านจริง ๆ (มีดาวหรือจบแล้ว)
                   return sum + ((stage.isCompleted || stage.stars > 0) ? (stage.bestScore || 0) : 0);
                 }, 0) : 0;
                 // ใช้คะแนน course จาก API สำหรับ user ที่มี progress จริง
@@ -285,10 +285,10 @@ export default function HomePage() {
 
               {/* Stage Stars Card - คำนวณดาวจาก stage progress ที่มีอยู่ */}
               {(() => {
-                // คำนวณดาวจาก stage progress เฉพาะที่มีจริง ๆ (ไม่รวม default stage ที่แค่ unlock)
+                // คำนวณดาวจาก stage progress เฉพาะที่ผ่านจริง ๆ (ได้ดาวหรือจบแล้ว)
                 const stageStars = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => {
                   // เฉพาะ stage ที่จบแล้วหรือได้ดาวจริง ๆ เท่านั้น
-                  return sum + ((stage.isCompleted || stage.attempts > 0) ? (stage.stars || 0) : 0);
+                  return sum + ((stage.isCompleted || stage.stars > 0) ? (stage.stars || 0) : 0);
                 }, 0) : 0;
                 const displayStars = stageStars; // ใช้เฉพาะดาวจาก stage จริง ๆ
                 
@@ -318,10 +318,10 @@ export default function HomePage() {
 
               {/* Completed Stages Card - แสดงด่านที่ผ่านแล้ว */}
               {(() => {
-                // คำนวณจำนวนด่านที่ผ่านจาก stage progress เฉพาะที่มีจริง ๆ (ไม่รวม default stage)
+                // คำนวณจำนวนด่านที่ผ่านจาก stage progress เฉพาะที่ผ่านจริง ๆ
                 const completedFromStages = progress.stages ? Object.values(progress.stages).filter(stage => 
-                  // ต้องจบจริง ๆ หรือได้ดาว หรือมี attempts (เล่นจริง)
-                  stage.isCompleted || stage.stars > 0 || stage.attempts > 0
+                  // ต้องจบจริง ๆ หรือได้ดาว (ไม่นับแค่ attempts)
+                  stage.isCompleted || stage.stars > 0
                 ).length : 0;
                 
                 console.log('🏠 Completed stages calculation:', {
