@@ -52,8 +52,9 @@ export class MiniGameProgressHelper {
     const stats = progressManager.getMiniGameStats();
     if (!stats) return 0;
     
-    const uniqueGameModes = new Set(stats.attempts.map(a => a.gameMode));
-    return uniqueGameModes.size;
+    // นับจาก gameId ที่ไม่ซ้ำกัน แทนที่จะเป็น gameMode
+    const uniqueGameIds = new Set(stats.attempts.map(a => a.gameId));
+    return uniqueGameIds.size;
   }
   
   // ดึงคะแนนรวม
@@ -68,9 +69,12 @@ export class MiniGameProgressHelper {
     return progress.currentStreak || 0;
   }
   
-  // ตรวจสอบว่าเคยเล่นโหมดนี้หรือยัง
-  static hasCompleted(gameMode: string): boolean {
-    return progressManager.hasPlayedGameMode(gameMode);
+  // ตรวจสอบว่าเคยเล่นเกมนี้หรือยัง (ใช้ gameId)
+  static hasCompleted(gameId: string): boolean {
+    const stats = progressManager.getMiniGameStats();
+    if (!stats) return false;
+    
+    return stats.attempts.some(a => a.gameId === gameId);
   }
   
   // ดึงคะแนนสูงสุดในโหมดที่ระบุ

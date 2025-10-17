@@ -1,8 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "../components/layout/Navbar";
 import { MiniGameProgressHelper } from "../lib/mini-game-progress";
 import { useMiniGameData } from "@/app/lib/hooks/useDataAdapter";
+import { progressManager } from "../lib/progress";
+import { authManager } from "../lib/auth";
 import {
   Gamepad2,
   Clock,
@@ -24,20 +27,19 @@ import { useState, useEffect } from "react";
 import "../styles/mini-game-animations.css";
 
 export default function MiniGamePage() {
+  const router = useRouter();
   const [hoveredGame, setHoveredGame] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
   // Use data adapter for mini games
   const { games: miniGames, questions, loading: gamesLoading, error: gamesError } = useMiniGameData();
   
-  // ใช้ real data แทน mock data
+  // ใช้ state สำหรับข้อมูลที่ต้องอัปเดต
   const [gameStats, setGameStats] = useState(MiniGameProgressHelper.getGameStats());
   const [achievements, setAchievements] = useState(MiniGameProgressHelper.getAchievementData());
-  
-  // คำนวณข้อมูลจริงจาก progress
-  const totalCompletedGames = MiniGameProgressHelper.getCompletedGamesCount();
-  const totalPoints = MiniGameProgressHelper.getTotalScore();
-  const streakDays = MiniGameProgressHelper.getStreakDays();
+  const [totalCompletedGames, setTotalCompletedGames] = useState(0);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [streakDays, setStreakDays] = useState(0);
 
   // Update progress data when component mounts and when progress changes
   useEffect(() => {
@@ -49,8 +51,27 @@ export default function MiniGamePage() {
     }
     
     const updateProgressData = () => {
-      setGameStats(MiniGameProgressHelper.getGameStats());
-      setAchievements(MiniGameProgressHelper.getAchievementData());
+      const gameStats = MiniGameProgressHelper.getGameStats();
+      const achievements = MiniGameProgressHelper.getAchievementData();
+      const completedGamesCount = MiniGameProgressHelper.getCompletedGamesCount();
+      const totalScore = MiniGameProgressHelper.getTotalScore();
+      const streakDays = MiniGameProgressHelper.getStreakDays();
+      
+      console.log('🎮 Mini-game: Progress data updated:', {
+        gameStats: gameStats ? {
+          attempts: gameStats.attempts?.length || 0,
+          totalScore: gameStats.totalScore || 0
+        } : null,
+        completedGamesCount,
+        totalScore,
+        achievementsCount: achievements?.length || 0
+      });
+      
+      setGameStats(gameStats);
+      setAchievements(achievements);
+      setTotalCompletedGames(completedGamesCount);
+      setTotalPoints(totalScore);
+      setStreakDays(streakDays);
     };
 
     updateProgressData();
@@ -58,25 +79,106 @@ export default function MiniGamePage() {
     // Listen for progress updates
     if (typeof window !== 'undefined') {
       window.addEventListener('progressUpdated', updateProgressData);
-      return () => window.removeEventListener('progressUpdated', updateProgressData);
+      
+      // Listen for page visibility changes (when user comes back from game)
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          console.log('🎮 Mini-game: Page visible - updating progress');
+          updateProgressData();
+        }
+      };
+      
+      // Listen for window focus (when user comes back from game)
+      const handleFocus = () => {
+        console.log('🎮 Mini-game: Window focused - updating progress');
+        updateProgressData();
+      };
+      
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('focus', handleFocus);
+      
+      return () => {
+        window.removeEventListener('progressUpdated', updateProgressData);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('focus', handleFocus);
+      };
     }
   }, [gamesLoading]);
 
+  // Router-based progress refresh
   useEffect(() => {
-    // Update progress bar width
-    const progressBar = document.querySelector(
-      ".progress-animated"
-    ) as HTMLElement;
-    if (progressBar) {
-      progressBar.style.setProperty(
-        "--progress-width",
-        `${(totalCompletedGames / miniGames.length) * 100}%`
-      );
-      progressBar.style.width = `${
-        (totalCompletedGames / miniGames.length) * 100
-      }%`;
+    const updateProgressData = () => {
+      setGameStats(MiniGameProgressHelper.getGameStats());
+      setAchievements(MiniGameProgressHelper.getAchievementData());
+      setTotalCompletedGames(MiniGameProgressHelper.getCompletedGamesCount());
+      setTotalPoints(MiniGameProgressHelper.getTotalScore());
+      setStreakDays(MiniGameProgressHelper.getStreakDays());
+    };
+
+    const handleRouteChange = () => {
+      console.log('🎮 Mini-game: Route changed - updating progress');
+      // Delay update to allow localStorage to be updated
+      setTimeout(updateProgressData, 100);
+    };
+
+    // Update on component mount (when navigating to this page)
+    updateProgressData();
+
+    // Store route change handler for potential future use
+    const pathName = window.location.pathname;
+    if (pathName === '/mini-game') {
+      console.log('🎮 Mini-game: Page loaded - refreshing progress');
+      updateProgressData();
     }
-  }, [totalCompletedGames]);
+
+  }, [router]);
+
+  useEffect(() => {
+    // โหลด progress data เมื่อ component mount
+    const loadProgressData = async () => {
+      console.log('🎮 Mini-game: Loading progress data...');
+      
+      // โหลดข้อมูลจาก API ถ้ามี user login
+      const user = authManager.getCurrentUser();
+      if (user) {
+        await progressManager.loadProgressFromAPI();
+        console.log('🎮 Mini-game: Progress loaded from API');
+      }
+      
+      // อัปเดต state ด้วยข้อมูลล่าสุด
+      setGameStats(MiniGameProgressHelper.getGameStats());
+      setAchievements(MiniGameProgressHelper.getAchievementData());
+      setTotalCompletedGames(MiniGameProgressHelper.getCompletedGamesCount());
+      setTotalPoints(MiniGameProgressHelper.getTotalScore());
+      setStreakDays(MiniGameProgressHelper.getStreakDays());
+      
+      console.log('🎮 Mini-game: Progress data loaded', {
+        completedGames: MiniGameProgressHelper.getCompletedGamesCount(),
+        totalScore: MiniGameProgressHelper.getTotalScore(),
+        streakDays: MiniGameProgressHelper.getStreakDays(),
+        user: user?.email || 'No user'
+      });
+    };
+
+    loadProgressData();
+
+    // เพิ่มการ listen focus event เพื่อ refresh เมื่อกลับมาจากเกม
+    const handleFocus = () => {
+      console.log('🎮 Mini-game: Window focused - refreshing progress');
+      loadProgressData();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', handleFocus);
+      return () => window.removeEventListener('focus', handleFocus);
+    }
+  }, []); // รันเฉพาะเมื่อ component mount
+
+  useEffect(() => {
+    // Update progress bar width - ลบออกเพราะเราใช้ inline style แล้ว
+    // แต่เก็บไว้สำหรับ debug หรือการใช้งานในอนาคต
+    console.log(`Progress: ${totalCompletedGames}/${miniGames.length} games completed`);
+  }, [totalCompletedGames, miniGames.length]);
 
   const text = {
     title: "แบบทดสอบดาราศาสตร์",
@@ -304,12 +406,13 @@ export default function MiniGamePage() {
                 <CheckCircle className="text-green-400" size={20} />
               </div>
               <div className="text-3xl sm:text-4xl font-bold text-white mb-2">
-                {totalCompletedGames}/3
+                {totalCompletedGames}/{miniGames.length}
               </div>
               <div className="w-full bg-gray-700 rounded-full h-2 sm:h-3 mt-3 sm:mt-4">
                 <div
                   className={`bg-gradient-to-r from-green-500 to-blue-500 h-2 sm:h-3 rounded-full transition-all duration-500 progress-animated`}
-                  data-progress={(totalCompletedGames / 3) * 100}
+                  style={{ width: `${Math.min((totalCompletedGames / miniGames.length) * 100, 100)}%` }}
+                  data-progress={(totalCompletedGames / miniGames.length) * 100}
                 ></div>
               </div>
             </div>

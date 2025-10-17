@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Volume2, Lightbulb, CheckCircle, XCircle, Send } from "lucide-react";
+import { Lightbulb, CheckCircle, XCircle, Send } from "lucide-react";
 
 interface FillBlankQuestionProps {
   question: string;
@@ -182,17 +182,6 @@ export default function FillBlankQuestion({
 
   return (
     <div className="w-full max-w-4xl mx-auto">
-      {/* Audio Button */}
-      <div className="flex justify-end mb-4">
-        <button
-          className="p-3 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors"
-          title="ฟังเสียงคำถาม"
-          aria-label="ฟังเสียงคำถาม"
-        >
-          <Volume2 className="w-6 h-6 text-white" />
-        </button>
-      </div>
-
       {/* Question with Input */}
       {renderQuestion()}
 
@@ -238,23 +227,6 @@ export default function FillBlankQuestion({
               )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Alternatives */}
-      {alternatives.length > 0 && !showResult && (
-        <div className="text-center">
-          <p className="text-gray-300 text-sm mb-2">คำตอบที่ยอมรับ:</p>
-          <div className="flex flex-wrap justify-center gap-2">
-            {alternatives.map((alt, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-gray-700 text-gray-300 rounded-full text-sm"
-              >
-                {alt}
-              </span>
-            ))}
-          </div>
         </div>
       )}
 

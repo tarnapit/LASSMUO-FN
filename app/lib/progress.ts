@@ -45,6 +45,27 @@ class ProgressManager {
 
       console.log(`Loading progress from API for user ${user.id}`);
 
+      // เก็บข้อมูล mini-game progress ก่อนลบ localStorage
+      let existingMiniGameStats = null;
+      if (typeof window !== 'undefined') {
+        // หา mini-game stats จาก user key ที่ถูกต้อง
+        const userKey = `${this.userProgressKey}_${user.id}`;
+        const existingProgress = localStorage.getItem(userKey);
+        if (existingProgress) {
+          const parsedProgress = JSON.parse(existingProgress);
+          existingMiniGameStats = parsedProgress.miniGameStats;
+          console.log('🎮 Preserved mini-game stats:', existingMiniGameStats);
+        } else {
+          // ถ้าไม่มี user key ลองหาจาก player-progress (กรณีที่ยังไม่เคยโหลดจาก API)
+          const tempProgress = localStorage.getItem('player-progress');
+          if (tempProgress) {
+            const parsedTempProgress = JSON.parse(tempProgress);
+            existingMiniGameStats = parsedTempProgress.miniGameStats;
+            console.log('🎮 Preserved mini-game stats from temp storage:', existingMiniGameStats);
+          }
+        }
+      }
+
       // ดึงข้อมูล course progress
       const userProgress = await userCourseProgressService.getUserCourseProgressByUserId(user.id);
       
@@ -56,14 +77,38 @@ class ProgressManager {
         stageProgress: stageProgressResponse
       });
       
-      // ล้าง localStorage เพื่อใช้ค่า default ใหม่
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('player-progress');
-        console.log('🗑️ Cleared old progress data to use fresh defaults');
+      // ตรวจสอบว่า API มีข้อมูลที่ถูกต้องสำหรับ user ปัจจุบันหรือไม่
+      let hasValidCourseData = false;
+      if (userProgress && Array.isArray(userProgress)) {
+        hasValidCourseData = userProgress.some((item: any) => !item.userId || item.userId === user.id);
+      } else if (userProgress?.success && Array.isArray(userProgress.data)) {
+        hasValidCourseData = userProgress.data.some((item: any) => !item.userId || item.userId === user.id);
       }
       
-      // เริ่มต้นด้วย default progress ใหม่
-      const localProgress = this.getDefaultProgress();
+      // เริ่มต้นด้วย current progress หรือ default progress
+      let localProgress = this.getProgress();
+      
+      // ถ้าไม่มีข้อมูล API ที่ถูกต้อง และยังไม่เคยมี progress ให้ใช้ default
+      if (!hasValidCourseData && (!localProgress || localProgress.totalPoints === 0)) {
+        console.log('🆕 No valid API data and no local progress, using fresh defaults');
+        localProgress = this.getDefaultProgress();
+      } else if (!hasValidCourseData) {
+        console.log('📱 No valid API data but keeping existing local progress');
+      } else {
+        console.log('🔄 Valid API data found, will merge with local progress');
+      }
+      
+      // คืนข้อมูล mini-game progress ที่เก็บไว้
+      if (existingMiniGameStats) {
+        localProgress.miniGameStats = existingMiniGameStats;
+        console.log('🎮 Restored mini-game stats to new progress:', {
+          attempts: existingMiniGameStats.attempts?.length || 0,
+          totalScore: existingMiniGameStats.totalScore || 0,
+          completedGames: existingMiniGameStats.attempts ? new Set(existingMiniGameStats.attempts.map((a: any) => a.gameId)).size : 0
+        });
+      } else {
+        console.log('🎮 No existing mini-game stats found - starting fresh');
+      }
       
       // ประมวลผล course progress
       await this.processCourseProgress(localProgress, userProgress);
@@ -74,7 +119,7 @@ class ProgressManager {
       // บันทึก merged progress
       this.saveProgress(localProgress);
       
-      console.log('✅ Progress merged and saved locally');
+      console.log('✅ Progress merged and saved locally with mini-game stats preserved');
     } catch (error) {
       console.error('Error loading progress from API:', error);
     }
@@ -104,48 +149,74 @@ class ProgressManager {
 
       progressData.forEach((apiProgress: any) => {
         const moduleId = apiProgress.courseId;
+        const currentUser = authManager.getCurrentUser();
         
-        // อัพเดท module progress จาก API
-        if (!localProgress.learningProgress!.modules[moduleId]) {
-          localProgress.learningProgress!.modules[moduleId] = {
-            moduleId,
-            isStarted: true,
-            isCompleted: apiProgress.completed || false,
-            completedChapters: [],
-            totalTimeSpent: 0,
-            chapters: {}
-          };
-        } else {
-          // Merge กับข้อมูลที่มีอยู่
-          localProgress.learningProgress!.modules[moduleId].isCompleted = 
-            localProgress.learningProgress!.modules[moduleId].isCompleted || apiProgress.completed;
-        }
+        // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบัน และมี progress จริง ๆ 
+        const isCorrectUser = !apiProgress.userId || apiProgress.userId === currentUser?.id;
+        const hasActualProgress = (apiProgress.progressPercent && apiProgress.progressPercent > 0) || 
+                                (apiProgress.completed === true);
+        
+        console.log(`🔍 Processing course progress for ${moduleId}:`, {
+          progressPercent: apiProgress.progressPercent,
+          completed: apiProgress.completed,
+          userId: apiProgress.userId,
+          currentUserId: currentUser?.id,
+          isCorrectUser,
+          hasActualProgress
+        });
+        
+        // เฉพาะกรณีที่เป็นข้อมูลของ user ปัจจุบันและมี progress จริง ๆ เท่านั้นที่จะอัพเดท
+        if (isCorrectUser && hasActualProgress) {
+          // อัพเดท module progress จาก API
+          if (!localProgress.learningProgress!.modules[moduleId]) {
+            localProgress.learningProgress!.modules[moduleId] = {
+              moduleId,
+              isStarted: true,
+              isCompleted: apiProgress.completed || false,
+              completedChapters: [],
+              totalTimeSpent: 0,
+              chapters: {}
+            };
+          } else {
+            // Merge กับข้อมูลที่มีอยู่
+            localProgress.learningProgress!.modules[moduleId].isCompleted = 
+              localProgress.learningProgress!.modules[moduleId].isCompleted || apiProgress.completed;
+          }
 
-        // ถ้ามี progressPercent จาก API ให้คำนวณ completedChapters
-        if (apiProgress.progressPercent && apiProgress.progressPercent > 0) {
-          const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
-          const completedChapterCount = Math.floor((apiProgress.progressPercent / 100) * expectedChapters.length);
-          
-          for (let i = 0; i < completedChapterCount; i++) {
-            const chapterId = expectedChapters[i];
-            if (chapterId && !localProgress.learningProgress!.modules[moduleId].completedChapters.includes(chapterId)) {
-              localProgress.learningProgress!.modules[moduleId].completedChapters.push(chapterId);
-              
-              localProgress.learningProgress!.modules[moduleId].chapters[chapterId] = {
-                moduleId,
-                chapterId,
-                completed: true,
-                readProgress: 100,
-                timeSpent: 5,
-                completedAt: new Date()
-              };
+          // ถ้ามี progressPercent จาก API ให้คำนวณ completedChapters
+          if (apiProgress.progressPercent && apiProgress.progressPercent > 0) {
+            const expectedChapters = this.getExpectedChaptersByModuleId(moduleId);
+            const completedChapterCount = Math.floor((apiProgress.progressPercent / 100) * expectedChapters.length);
+            
+            for (let i = 0; i < completedChapterCount; i++) {
+              const chapterId = expectedChapters[i];
+              if (chapterId && !localProgress.learningProgress!.modules[moduleId].completedChapters.includes(chapterId)) {
+                localProgress.learningProgress!.modules[moduleId].completedChapters.push(chapterId);
+                
+                localProgress.learningProgress!.modules[moduleId].chapters[chapterId] = {
+                  moduleId,
+                  chapterId,
+                  completed: true,
+                  readProgress: 100,
+                  timeSpent: 5,
+                  completedAt: new Date()
+                };
+              }
             }
           }
-        }
 
-        // เพิ่มใน completed modules ถ้าเสร็จแล้ว
-        if (apiProgress.completed && !localProgress.learningProgress!.completedModules.includes(moduleId)) {
-          localProgress.learningProgress!.completedModules.push(moduleId);
+          // เพิ่มใน completed modules ถ้าเสร็จแล้ว
+          if (apiProgress.completed && !localProgress.learningProgress!.completedModules.includes(moduleId)) {
+            localProgress.learningProgress!.completedModules.push(moduleId);
+          }
+          
+          console.log(`✅ Updated progress for ${moduleId}`);
+        } else {
+          if (!isCorrectUser) {
+            console.log(`⚠️ Skipped ${moduleId} - wrong user data (expected: ${currentUser?.id}, got: ${apiProgress.userId})`);
+          } else if (!hasActualProgress) {
+            console.log(`⚠️ Skipped ${moduleId} - no actual progress`);
+          }
         }
       });
 
@@ -275,19 +346,29 @@ class ProgressManager {
     let totalScoreFromAPI = 0;
     let completedModulesCount = 0;
     
-    // คำนวณคะแนนจาก API data โดยตรง
-    progressData.forEach((apiProgress: any) => {
-      if (apiProgress.totalScore) {
-        totalScoreFromAPI += apiProgress.totalScore;
-        console.log(`📊 Added ${apiProgress.totalScore} points from course ${apiProgress.courseId}`);
-      }
-      
-      if (apiProgress.progressPercent === 100 || apiProgress.completed) {
-        completedModulesCount++;
-      }
-    });
+  // คำนวณคะแนนจาก API data โดยตรง (แต่ตรวจสอบว่าเป็นข้อมูลของ user ปัจจุบันและมี progress จริงหรือไม่)
+  progressData.forEach((apiProgress: any) => {
+    const currentUser = authManager.getCurrentUser();
+    // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบัน และมี progress จริง ๆ
+    const isCorrectUser = !apiProgress.userId || apiProgress.userId === currentUser?.id;
+    const hasActualProgress = (apiProgress.progressPercent && apiProgress.progressPercent > 0) || 
+                            (apiProgress.completed === true);
     
-    // อัพเดทคะแนนจาก API (รวมคะแนนเดิมจาก stages และ mini-games)
+    if (apiProgress.totalScore && isCorrectUser && hasActualProgress) {
+      totalScoreFromAPI += apiProgress.totalScore;
+      console.log(`📊 Added ${apiProgress.totalScore} points from course ${apiProgress.courseId} (progress: ${apiProgress.progressPercent}%, user: ${apiProgress.userId})`);
+    } else if (apiProgress.totalScore) {
+      if (!isCorrectUser) {
+        console.log(`⚠️ Skipped ${apiProgress.totalScore} points from course ${apiProgress.courseId} - wrong user (expected: ${currentUser?.id}, got: ${apiProgress.userId})`);
+      } else if (!hasActualProgress) {
+        console.log(`⚠️ Skipped ${apiProgress.totalScore} points from course ${apiProgress.courseId} - no actual progress (progress: ${apiProgress.progressPercent}%, completed: ${apiProgress.completed})`);
+      }
+    }
+    
+    if ((apiProgress.progressPercent === 100 || apiProgress.completed) && isCorrectUser && hasActualProgress) {
+      completedModulesCount++;
+    }
+  });    // อัพเดทคะแนนจาก API (รวมคะแนนเดิมจาก stages และ mini-games)
     const existingNonLearningScore = this.getNonLearningScore(progress);
     progress.totalPoints = existingNonLearningScore + totalScoreFromAPI;
     
@@ -435,12 +516,24 @@ class ProgressManager {
       const response = await userCourseProgressService.getUserProgressForCourse(user.id, moduleId);
       
       if (response && response.success && response.data) {
-        console.log('✅ Module progress fetched from API:', response.data);
-        return response.data;
+        // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบัน
+        if (!response.data.userId || response.data.userId === user.id) {
+          console.log('✅ Module progress fetched from API:', response.data);
+          return response.data;
+        } else {
+          console.log(`❌ API returned data for different user. Expected: ${user.id}, Got: ${response.data.userId}`);
+          return null;
+        }
       } else if (response && Array.isArray(response) && response.length > 0) {
-        // บางครั้ง API ส่งกลับเป็น array โดยตรง
-        console.log('✅ Module progress fetched from API (array format):', response[0]);
-        return response[0];
+        // บางครั้ง API ส่งกลับเป็น array โดยตรง - ต้องหาข้อมูลของ user ปัจจุบัน
+        const userProgress = response.find((item: any) => !item.userId || item.userId === user.id);
+        if (userProgress) {
+          console.log('✅ Module progress fetched from API (array format):', userProgress);
+          return userProgress;
+        } else {
+          console.log(`❌ No progress found for current user in API array. User ID: ${user.id}`);
+          return null;
+        }
       } else {
         console.log('No progress found in API for this module');
         return null;
@@ -690,7 +783,9 @@ class ProgressManager {
   async recalculateTotalStars(): Promise<void> {
     const progress = this.getProgress();
     const calculatedStars = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0);
-    const calculatedPoints = Object.values(progress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0);
+    
+    // ไม่แก้ไข totalPoints เพราะ totalPoints รวมคะแนนจาก course และ mini-game ด้วย
+    // เฉพาะแก้ไข totalStars เท่านั้น
     
     let hasChanges = false;
     
@@ -707,19 +802,6 @@ class ProgressManager {
       console.log('✅ Total stars fixed to:', calculatedStars);
     }
 
-    if (progress.totalPoints !== calculatedPoints) {
-      console.log('⚠️ Total points mismatch detected! Fixing...', {
-        currentTotalPoints: progress.totalPoints,
-        calculatedPoints: calculatedPoints,
-        stages: Object.entries(progress.stages).map(([id, s]) => ({ id, bestScore: s.bestScore }))
-      });
-      
-      progress.totalPoints = calculatedPoints;
-      hasChanges = true;
-      
-      console.log('✅ Total points fixed to:', calculatedPoints);
-    }
-
     if (hasChanges) {
       this.saveProgress(progress);
     }
@@ -733,9 +815,9 @@ class ProgressManager {
         if (stageProgressResponse && stageProgressResponse.success && stageProgressResponse.data) {
           const apiStars = stageProgressResponse.data.reduce((sum: number, stageProgress: any) => sum + (stageProgress.starsEarned || 0), 0);
           
-          if (apiStars > calculatedStars) {
+          if (apiStars > progress.totalStars) {
             console.log('🌟 API has more recent star data, updating...', {
-              localStars: calculatedStars,
+              localStars: progress.totalStars,
               apiStars: apiStars
             });
             
@@ -1516,14 +1598,19 @@ class ProgressManager {
         const moduleProgressFromAPI = await this.getModuleProgressFromAPI(moduleId);
         console.log(`🌐 API response for ${moduleId}:`, moduleProgressFromAPI);
         
-        if (moduleProgressFromAPI && moduleProgressFromAPI.progressPercent) {
-          console.log(`📊 Using API progress for ${moduleId}: ${moduleProgressFromAPI.progressPercent}%`);
-          return moduleProgressFromAPI.progressPercent;
-        } else if (moduleProgressFromAPI && moduleProgressFromAPI.completed) {
-          console.log(`📊 Module ${moduleId} is completed via API, returning 100%`);
-          return 100;
+        // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบันและมี progress จริง ๆ
+        if (moduleProgressFromAPI && moduleProgressFromAPI.userId === user.id) {
+          if (moduleProgressFromAPI.progressPercent && moduleProgressFromAPI.progressPercent > 0) {
+            console.log(`📊 Using API progress for ${moduleId}: ${moduleProgressFromAPI.progressPercent}%`);
+            return moduleProgressFromAPI.progressPercent;
+          } else if (moduleProgressFromAPI.completed === true && moduleProgressFromAPI.progressPercent === 100) {
+            console.log(`📊 Module ${moduleId} is completed via API, returning 100%`);
+            return 100;
+          } else {
+            console.log(`❌ No valid progress in API response for ${moduleId} (progressPercent: ${moduleProgressFromAPI?.progressPercent}, completed: ${moduleProgressFromAPI?.completed})`);
+          }
         } else {
-          console.log(`❌ No progressPercent in API response for ${moduleId}`);
+          console.log(`❌ API returned data for different user or no data for ${moduleId}. Expected userId: ${user.id}, Got userId: ${moduleProgressFromAPI?.userId}`);
         }
       } catch (error) {
         console.log(`❌ Failed to get API progress for ${moduleId}:`, error);
@@ -1536,10 +1623,19 @@ class ProgressManager {
           const moduleData = allUserProgress.data.find((p: any) => p.courseId === moduleId);
           if (moduleData) {
             console.log(`📊 Found progress in user data for ${moduleId}:`, moduleData);
-            if ((moduleData as any).progressPercent) {
-              return (moduleData as any).progressPercent;
-            } else if (moduleData.completed) {
-              return 100;
+            // ตรวจสอบว่าข้อมูลเป็นของ user ปัจจุบันและมี progress จริง ๆ
+            if (moduleData.userId === user.id) {
+              if ((moduleData as any).progressPercent && (moduleData as any).progressPercent > 0) {
+                console.log(`📊 Using fallback progress for ${moduleId}: ${(moduleData as any).progressPercent}%`);
+                return (moduleData as any).progressPercent;
+              } else if (moduleData.completed === true && (moduleData as any).progressPercent === 100) {
+                console.log(`📊 Using fallback completed for ${moduleId}: 100%`);
+                return 100;
+              } else {
+                console.log(`❌ No valid fallback progress for ${moduleId} (progressPercent: ${(moduleData as any).progressPercent}, completed: ${moduleData.completed})`);
+              }
+            } else {
+              console.log(`❌ Fallback data is for different user. Expected userId: ${user.id}, Got userId: ${moduleData.userId}`);
             }
           }
         }
@@ -1553,20 +1649,6 @@ class ProgressManager {
     // ถ้าไม่มีข้อมูลจาก API ใช้ local progress
     const localProgress = this.getModuleCompletionPercentage(moduleId, totalChapters);
     console.log(`📱 Using local progress for ${moduleId}: ${localProgress}%`);
-    
-    // ชั่วคราว: สำหรับการทดสอบ ถ้าเป็น user ที่ login แล้วให้แสดง progress จำลอง
-    if (user && user.id) {
-      if (moduleId === 'solar-system-intro') {
-        console.log(`🧪 TEST: Returning 60% for ${moduleId}`);
-        return 60;
-      } else if (moduleId === 'planets-exploration') {
-        console.log(`🧪 TEST: Returning 100% for ${moduleId}`);
-        return 100;
-      } else if (moduleId === 'space-missions') {
-        console.log(`🧪 TEST: Returning 30% for ${moduleId}`);
-        return 30;
-      }
-    }
     
     return localProgress;
   }
@@ -1877,19 +1959,32 @@ class ProgressManager {
         }
         
         if (progressData && progressData.length > 0) {
-          // นับจาก API data
-          apiStartedCount = progressData.length;
-          apiCompletedCount = progressData.filter((p: any) => 
+          // กรองเฉพาะข้อมูลของ user ปัจจุบัน
+          const userProgressData = progressData.filter((p: any) => 
+            !p.userId || p.userId === user.id
+          );
+          
+          console.log('🔍 Filtered learning stats:', {
+            totalData: progressData.length,
+            userProgressData: userProgressData.length,
+            currentUserId: user.id,
+            allUserIds: progressData.map((p: any) => p.userId)
+          });
+          
+          // นับจาก API data ที่ถูกต้อง
+          apiStartedCount = userProgressData.length;
+          apiCompletedCount = userProgressData.filter((p: any) => 
             p.progressPercent === 100 || p.completed
           ).length;
           
           console.log('📊 Learning stats from API:', {
             started: apiStartedCount,
             completed: apiCompletedCount,
-            progressData: progressData.map((p: any) => ({
+            progressData: userProgressData.map((p: any) => ({
               courseId: p.courseId,
               progressPercent: p.progressPercent,
-              completed: p.completed
+              completed: p.completed,
+              userId: p.userId
             }))
           });
           
@@ -1932,32 +2027,86 @@ class ProgressManager {
     };
   }
 
-  // Migrate progress เมื่อ login - ย้ายข้อมูลจาก temp storage ไป user storage
-  migrateProgressOnLogin(): void {
+  // Migrate progress เมื่อ login - ย้ายข้อมูลจาก temp storage ไป user storage และ sync กับ API
+  async migrateProgressOnLogin(): Promise<void> {
     if (typeof window === 'undefined') return;
 
     const user = authManager.getCurrentUser();
     if (!user) return;
 
-    // ดึง temp progress
-    const tempProgress = this.getTempProgress();
-    
-    // ดึง user progress ที่มีอยู่แล้ว (ถ้ามี)
-    const existingUserProgress = this.getUserProgress();
-    
-    // เปรียบเทียบและรวม progress
-    const mergedProgress = this.mergeProgress(existingUserProgress, tempProgress);
-    
-    // บันทึกเป็น user progress
-    this.saveUserProgress(mergedProgress);
-    
-    // ลบ temp progress
-    this.clearTempProgress();
-    
-    console.log('Progress migrated successfully on login');
+    console.log('🔄 Starting progress migration for user:', user.id);
+
+    try {
+      // 1. ดึง temp progress ที่มีอยู่
+      const tempProgress = this.getTempProgress();
+      
+      // 2. ดึง existing user progress จาก localStorage
+      const existingUserProgress = this.getUserProgress();
+      
+      // 3. โหลด progress จาก API
+      let apiProgress = null;
+      try {
+        await this.loadProgressFromAPI();
+        apiProgress = this.getProgress(); // ข้อมูลหลังจากโหลดจาก API แล้ว
+      } catch (error) {
+        console.log('⚠️ Could not load API progress, using local data only');
+        apiProgress = existingUserProgress;
+      }
+
+      // 4. ตรวจสอบว่ามี temp progress ที่มีค่าหรือไม่
+      const hasTempProgress = tempProgress.totalStars > 0 || 
+                            tempProgress.completedStages.length > 0 || 
+                            tempProgress.totalPoints > 0 ||
+                            (tempProgress.learningProgress && Object.keys(tempProgress.learningProgress.modules).length > 0) ||
+                            (tempProgress.quizProgress && Object.keys(tempProgress.quizProgress.quizzes).length > 0) ||
+                            (tempProgress.miniGameStats && tempProgress.miniGameStats.gamesPlayed > 0);
+
+      if (hasTempProgress) {
+        console.log('📦 Found temp progress to migrate:', {
+          tempStars: tempProgress.totalStars,
+          tempPoints: tempProgress.totalPoints,
+          tempStages: tempProgress.completedStages.length,
+          tempModules: tempProgress.learningProgress ? Object.keys(tempProgress.learningProgress.modules).length : 0,
+          tempQuizzes: tempProgress.quizProgress ? Object.keys(tempProgress.quizProgress.quizzes).length : 0,
+          tempGames: tempProgress.miniGameStats ? tempProgress.miniGameStats.gamesPlayed : 0
+        });
+
+        // 5. Merge temp progress กับ API progress
+        const finalProgress = this.mergeProgressWithAPI(apiProgress, tempProgress);
+        
+        // 6. บันทึก merged progress
+        this.saveUserProgress(finalProgress);
+        
+        // 7. ส่ง progress ที่ merge แล้วกลับไปยัง API
+        await this.syncMergedProgressToAPI(finalProgress, tempProgress);
+        
+        // 8. ลบ temp progress
+        this.clearTempProgress();
+        
+        console.log('✅ Migration completed successfully:', {
+          user: user.id,
+          finalStats: {
+            totalStars: finalProgress.totalStars,
+            totalPoints: finalProgress.totalPoints,
+            completedStages: finalProgress.completedStages.length,
+            completedModules: finalProgress.learningProgress?.completedModules.length || 0
+          }
+        });
+      } else {
+        console.log('📝 No temp progress to migrate, using API progress only');
+      }
+    } catch (error) {
+      console.error('❌ Error during progress migration:', error);
+      // ในกรณีที่เกิดข้อผิดพลาด ให้ใช้ข้อมูล temp progress เป็นหลัก
+      const tempProgress = this.getTempProgress();
+      const existingUserProgress = this.getUserProgress();
+      const fallbackProgress = this.mergeProgress(existingUserProgress, tempProgress);
+      this.saveUserProgress(fallbackProgress);
+      this.clearTempProgress();
+    }
   }
 
-  // รวม progress 2 อัน โดยเอาค่าที่ดีกว่า
+  // รวม progress 2 อัน โดยเอาค่าที่ดีกว่า (ปรับปรุงแล้ว)
   private mergeProgress(existing: PlayerProgress, temp: PlayerProgress): PlayerProgress {
     const merged: PlayerProgress = { ...existing };
 
@@ -1966,6 +2115,10 @@ class ProgressManager {
     merged.totalPoints = Math.max(existing.totalPoints, temp.totalPoints);
     merged.totalXp = Math.max(existing.totalXp || 0, temp.totalXp || 0);
     merged.gems = Math.max(existing.gems || 0, temp.gems || 0);
+    
+    // รวม streaks
+    merged.currentStreak = Math.max(existing.currentStreak || 0, temp.currentStreak || 0);
+    merged.longestStreak = Math.max(existing.longestStreak || 0, temp.longestStreak || 0);
     
     // รวม completed stages
     const allCompletedStages = [...new Set([...existing.completedStages, ...temp.completedStages])];
@@ -1993,64 +2146,468 @@ class ProgressManager {
           perfectRuns: Math.max(existingStage.perfectRuns || 0, tempStage.perfectRuns || 0),
           averageTime: Math.max(existingStage.averageTime || 0, tempStage.averageTime || 0),
           mistakeCount: Math.min(existingStage.mistakeCount || 0, tempStage.mistakeCount || 0),
-          hintsUsed: Math.min(existingStage.hintsUsed || 0, tempStage.hintsUsed || 0)
+          hintsUsed: Math.min(existingStage.hintsUsed || 0, tempStage.hintsUsed || 0),
+          lastAttempt: tempStage.lastAttempt || existingStage.lastAttempt,
+          achievements: [...new Set([...(existingStage.achievements || []), ...(tempStage.achievements || [])])]
         };
       }
     }
 
+    // รวม achievements และ badges
+    merged.achievements = [...new Set([...existing.achievements, ...temp.achievements])];
+    merged.badges = [...new Set([...existing.badges, ...temp.badges])];
+
     // รวม learning progress
-    if (temp.learningProgress && merged.learningProgress) {
-      // รวม completed modules
-      const allCompletedModules = [...new Set([
-        ...merged.learningProgress.completedModules,
-        ...temp.learningProgress.completedModules
-      ])];
-      merged.learningProgress.completedModules = allCompletedModules;
+    if (temp.learningProgress) {
+      if (!merged.learningProgress) {
+        merged.learningProgress = temp.learningProgress;
+      } else {
+        // รวม completed modules
+        const allCompletedModules = [...new Set([
+          ...merged.learningProgress.completedModules,
+          ...temp.learningProgress.completedModules
+        ])];
+        merged.learningProgress.completedModules = allCompletedModules;
 
-      // รวม learning time
-      merged.learningProgress.totalLearningTime += temp.learningProgress.totalLearningTime;
+        // รวม learning time
+        merged.learningProgress.totalLearningTime += temp.learningProgress.totalLearningTime;
 
-      // รวม module progress
-      for (const moduleId in temp.learningProgress.modules) {
-        const tempModule = temp.learningProgress.modules[moduleId];
-        const existingModule = merged.learningProgress.modules[moduleId];
+        // รวม module progress
+        for (const moduleId in temp.learningProgress.modules) {
+          const tempModule = temp.learningProgress.modules[moduleId];
+          const existingModule = merged.learningProgress.modules[moduleId];
 
-        if (!existingModule) {
-          merged.learningProgress.modules[moduleId] = tempModule;
-        } else {
-          merged.learningProgress.modules[moduleId] = {
-            ...existingModule,
-            isCompleted: existingModule.isCompleted || tempModule.isCompleted,
-            completedAt: existingModule.completedAt || tempModule.completedAt,
-            totalTimeSpent: Math.max(existingModule.totalTimeSpent, tempModule.totalTimeSpent)
-          };
+          if (!existingModule) {
+            merged.learningProgress.modules[moduleId] = tempModule;
+          } else {
+            // Merge completed chapters
+            const allCompletedChapters = [...new Set([
+              ...existingModule.completedChapters,
+              ...tempModule.completedChapters
+            ])];
+
+            // Merge chapter progress
+            const mergedChapters = { ...existingModule.chapters };
+            for (const chapterId in tempModule.chapters) {
+              const tempChapter = tempModule.chapters[chapterId];
+              const existingChapter = mergedChapters[chapterId];
+
+              if (!existingChapter) {
+                mergedChapters[chapterId] = tempChapter;
+              } else {
+                mergedChapters[chapterId] = {
+                  ...existingChapter,
+                  completed: existingChapter.completed || tempChapter.completed,
+                  readProgress: Math.max(existingChapter.readProgress, tempChapter.readProgress),
+                  timeSpent: Math.max(existingChapter.timeSpent, tempChapter.timeSpent),
+                  completedAt: tempChapter.completedAt || existingChapter.completedAt
+                };
+              }
+            }
+
+            merged.learningProgress.modules[moduleId] = {
+              ...existingModule,
+              isCompleted: existingModule.isCompleted || tempModule.isCompleted,
+              completedAt: tempModule.completedAt || existingModule.completedAt,
+              totalTimeSpent: Math.max(existingModule.totalTimeSpent, tempModule.totalTimeSpent),
+              completedChapters: allCompletedChapters,
+              chapters: mergedChapters
+            };
+          }
         }
       }
     }
 
     // รวม quiz progress
-    if (temp.quizProgress && merged.quizProgress) {
-      for (const quizId in temp.quizProgress.quizzes) {
-        const tempQuiz = temp.quizProgress.quizzes[quizId];
-        const existingQuiz = merged.quizProgress.quizzes[quizId];
+    if (temp.quizProgress) {
+      if (!merged.quizProgress) {
+        merged.quizProgress = temp.quizProgress;
+      } else {
+        for (const quizId in temp.quizProgress.quizzes) {
+          const tempQuiz = temp.quizProgress.quizzes[quizId];
+          const existingQuiz = merged.quizProgress.quizzes[quizId];
 
-        if (!existingQuiz) {
-          merged.quizProgress.quizzes[quizId] = tempQuiz;
-        } else {
-          merged.quizProgress.quizzes[quizId] = {
-            ...existingQuiz,
-            attempts: [...existingQuiz.attempts, ...tempQuiz.attempts],
-            totalAttempts: existingQuiz.totalAttempts + tempQuiz.totalAttempts,
-            bestScore: Math.max(existingQuiz.bestScore, tempQuiz.bestScore),
-            bestPercentage: Math.max(existingQuiz.bestPercentage, tempQuiz.bestPercentage),
-            passed: existingQuiz.passed || tempQuiz.passed,
-            lastAttemptAt: tempQuiz.lastAttemptAt || existingQuiz.lastAttemptAt
-          };
+          if (!existingQuiz) {
+            merged.quizProgress.quizzes[quizId] = tempQuiz;
+          } else {
+            // รวม attempts แต่ไม่ซ้ำกัน (เช็คจาก timestamp)
+            const existingAttemptTimes = existingQuiz.attempts.map(a => a.completedAt?.getTime());
+            const newAttempts = tempQuiz.attempts.filter(a => 
+              !existingAttemptTimes.includes(a.completedAt?.getTime())
+            );
+
+            merged.quizProgress.quizzes[quizId] = {
+              ...existingQuiz,
+              attempts: [...existingQuiz.attempts, ...newAttempts],
+              totalAttempts: existingQuiz.totalAttempts + newAttempts.length,
+              bestScore: Math.max(existingQuiz.bestScore, tempQuiz.bestScore),
+              bestPercentage: Math.max(existingQuiz.bestPercentage, tempQuiz.bestPercentage),
+              passed: existingQuiz.passed || tempQuiz.passed,
+              lastAttemptAt: (tempQuiz.lastAttemptAt && existingQuiz.lastAttemptAt) 
+                ? (tempQuiz.lastAttemptAt > existingQuiz.lastAttemptAt ? tempQuiz.lastAttemptAt : existingQuiz.lastAttemptAt)
+                : (tempQuiz.lastAttemptAt || existingQuiz.lastAttemptAt)
+            };
+          }
         }
       }
     }
 
+    // รวม mini game stats
+    if (temp.miniGameStats) {
+      if (!merged.miniGameStats) {
+        merged.miniGameStats = temp.miniGameStats;
+      } else {
+        // รวม attempts แต่ไม่ซ้ำกัน
+        const existingAttemptTimes = merged.miniGameStats.attempts.map(a => a.completedAt?.getTime());
+        const newAttempts = temp.miniGameStats.attempts.filter(a => 
+          !existingAttemptTimes.includes(a.completedAt?.getTime())
+        );
+
+        merged.miniGameStats = {
+          gamesPlayed: merged.miniGameStats.gamesPlayed + newAttempts.length,
+          totalScore: merged.miniGameStats.totalScore + temp.miniGameStats.totalScore,
+          averageScore: Math.round((merged.miniGameStats.totalScore + temp.miniGameStats.totalScore) / 
+                                  (merged.miniGameStats.gamesPlayed + newAttempts.length)),
+          bestScore: Math.max(merged.miniGameStats.bestScore, temp.miniGameStats.bestScore),
+          totalTimeSpent: merged.miniGameStats.totalTimeSpent + temp.miniGameStats.totalTimeSpent,
+          streakDays: Math.max(merged.miniGameStats.streakDays, temp.miniGameStats.streakDays),
+          achievements: [...new Set([...merged.miniGameStats.achievements, ...temp.miniGameStats.achievements])],
+          attempts: [...merged.miniGameStats.attempts, ...newAttempts],
+          scoreChallengeBest: Math.max(merged.miniGameStats.scoreChallengeBest, temp.miniGameStats.scoreChallengeBest),
+          timeRushBest: Math.max(merged.miniGameStats.timeRushBest, temp.miniGameStats.timeRushBest),
+          randomQuizBest: Math.max(merged.miniGameStats.randomQuizBest, temp.miniGameStats.randomQuizBest),
+          lastPlayedAt: (temp.miniGameStats.lastPlayedAt && merged.miniGameStats.lastPlayedAt)
+            ? (temp.miniGameStats.lastPlayedAt > merged.miniGameStats.lastPlayedAt 
+                ? temp.miniGameStats.lastPlayedAt : merged.miniGameStats.lastPlayedAt)
+            : (temp.miniGameStats.lastPlayedAt || merged.miniGameStats.lastPlayedAt)
+        };
+      }
+    }
+
+    // รวม daily goal
+    if (temp.dailyGoal) {
+      merged.dailyGoal = {
+        xpTarget: Math.max(merged.dailyGoal.xpTarget, temp.dailyGoal.xpTarget),
+        currentXp: Math.max(merged.dailyGoal.currentXp, temp.dailyGoal.currentXp),
+        isCompleted: merged.dailyGoal.isCompleted || temp.dailyGoal.isCompleted,
+        streak: Math.max(merged.dailyGoal.streak, temp.dailyGoal.streak)
+      };
+    }
+
+    console.log('🔄 Progress merged successfully:', {
+      existingStars: existing.totalStars,
+      tempStars: temp.totalStars,
+      mergedStars: merged.totalStars,
+      existingPoints: existing.totalPoints,
+      tempPoints: temp.totalPoints,
+      mergedPoints: merged.totalPoints,
+      existingStages: existing.completedStages.length,
+      tempStages: temp.completedStages.length,
+      mergedStages: merged.completedStages.length
+    });
+
     return merged;
+  }
+
+  // Merge progress with API data (ใหม่)
+  private mergeProgressWithAPI(apiProgress: PlayerProgress, tempProgress: PlayerProgress): PlayerProgress {
+    console.log('🔄 Merging temp progress with API progress...');
+    
+    // เริ่มจาก API progress เป็นฐาน
+    const merged = this.mergeProgress(apiProgress, tempProgress);
+    
+    console.log('📊 API + Temp merge result:', {
+      apiStars: apiProgress.totalStars,
+      tempStars: tempProgress.totalStars,
+      finalStars: merged.totalStars,
+      apiPoints: apiProgress.totalPoints,
+      tempPoints: tempProgress.totalPoints,
+      finalPoints: merged.totalPoints
+    });
+    
+    return merged;
+  }
+
+  // Sync merged progress back to API (ใหม่)
+  private async syncMergedProgressToAPI(finalProgress: PlayerProgress, tempProgress: PlayerProgress): Promise<void> {
+    const user = authManager.getCurrentUser();
+    if (!user || !user.id) return;
+
+    console.log('🔄 Syncing merged progress back to API...');
+
+    try {
+      // Sync stage progress ที่มาจาก temp
+      for (const stageId in tempProgress.stages) {
+        const tempStage = tempProgress.stages[stageId];
+        if (tempStage.isCompleted && tempStage.bestScore > 0) {
+          await this.saveStageProgressToAPI(
+            parseInt(stageId),
+            tempStage.bestScore,
+            tempStage.stars,
+            tempStage.isCompleted,
+            tempStage.attempts
+          );
+        }
+      }
+
+      // Sync learning progress ที่มาจาก temp
+      if (tempProgress.learningProgress) {
+        for (const moduleId in tempProgress.learningProgress.modules) {
+          const tempModule = tempProgress.learningProgress.modules[moduleId];
+          
+          // Sync chapter progress
+          for (const chapterId in tempModule.chapters) {
+            const tempChapter = tempModule.chapters[chapterId];
+            if (tempChapter.completed) {
+              await this.saveChapterProgressToAPI(
+                moduleId,
+                chapterId,
+                chapterId, // contentId
+                100, // score
+                true // isCompleted
+              );
+            }
+          }
+          
+          // Sync module completion
+          if (tempModule.isCompleted) {
+            await this.markModuleCompletedInAPI(moduleId, 100);
+          }
+        }
+      }
+
+      console.log('✅ Successfully synced merged progress to API');
+    } catch (error) {
+      console.error('❌ Error syncing progress to API:', error);
+      // ไม่ throw error เพราะไม่ต้องการให้ migration fail
+    }
+  }
+
+  // ฟังก์ชันสำหรับจัดการข้อมูลที่ API ไม่มี - เก็บใน localStorage
+  async preserveLocalOnlyData(): Promise<void> {
+    const user = authManager.getCurrentUser();
+    if (!user || !user.id) return;
+
+    console.log('💾 Preserving local-only data...');
+
+    try {
+      const currentProgress = this.getProgress();
+      const localOnlyData = {
+        // ข้อมูลที่ API ไม่รองรับ
+        achievements: currentProgress.achievements || [],
+        badges: currentProgress.badges || [],
+        hearts: currentProgress.hearts || 5,
+        maxHearts: currentProgress.maxHearts || 5,
+        gems: currentProgress.gems || 0,
+        currentStreak: currentProgress.currentStreak || 0,
+        longestStreak: currentProgress.longestStreak || 0,
+        
+        // Mini-game stats (ถ้า API ไม่รองรับ)
+        miniGameStats: currentProgress.miniGameStats || null,
+        
+        // Daily goal และ weekly progress
+        dailyGoal: currentProgress.dailyGoal || null,
+        weeklyProgress: currentProgress.weeklyProgress || null,
+        league: currentProgress.league || null,
+        
+        // Stage progress ที่ไม่ได้ sync กับ API
+        localStageData: {} as Record<string, any>,
+        
+        // Quiz attempts ที่ไม่ได้ sync
+        localQuizAttempts: {} as Record<string, any>,
+        
+        timestamp: new Date().toISOString()
+      };
+
+      // เก็บ stage data ที่ไม่ได้ sync
+      for (const stageId in currentProgress.stages) {
+        const stage = currentProgress.stages[stageId];
+        localOnlyData.localStageData[stageId] = {
+          achievements: stage.achievements || [],
+          averageTime: stage.averageTime || 0,
+          mistakeCount: stage.mistakeCount || 0,
+          hintsUsed: stage.hintsUsed || 0,
+          perfectRuns: stage.perfectRuns || 0,
+          lastAttempt: stage.lastAttempt || null
+        };
+      }
+
+      // เก็บ quiz attempts ที่ไม่ได้ sync
+      if (currentProgress.quizProgress) {
+        for (const quizId in currentProgress.quizProgress.quizzes) {
+          const quiz = currentProgress.quizProgress.quizzes[quizId];
+          localOnlyData.localQuizAttempts[quizId] = {
+            detailedAttempts: quiz.attempts || [],
+            additionalStats: {
+              averageTime: quiz.attempts.reduce((sum, a) => sum + (a.timeSpent || 0), 0) / quiz.attempts.length || 0,
+              improvementRate: this.calculateImprovementRate(quiz.attempts),
+            }
+          };
+        }
+      }
+
+      // บันทึกใน localStorage แยกต่างหาก
+      const localDataKey = `astronomy_local_only_${user.id}`;
+      localStorage.setItem(localDataKey, JSON.stringify(localOnlyData));
+
+      console.log('✅ Local-only data preserved successfully');
+    } catch (error) {
+      console.error('❌ Error preserving local-only data:', error);
+    }
+  }
+
+  // คืนค่า improvement rate จาก quiz attempts
+  private calculateImprovementRate(attempts: any[]): number {
+    if (attempts.length < 2) return 0;
+    
+    const firstAttempt = attempts[0];
+    const lastAttempt = attempts[attempts.length - 1];
+    
+    return ((lastAttempt.percentage - firstAttempt.percentage) / firstAttempt.percentage) * 100;
+  }
+
+  // โหลดข้อมูลที่เก็บใน localStorage กลับมา
+  async restoreLocalOnlyData(): Promise<void> {
+    const user = authManager.getCurrentUser();
+    if (!user || !user.id) return;
+
+    console.log('📂 Restoring local-only data...');
+
+    try {
+      const localDataKey = `astronomy_local_only_${user.id}`;
+      const savedData = localStorage.getItem(localDataKey);
+      
+      if (!savedData) {
+        console.log('📝 No local-only data found');
+        return;
+      }
+
+      const localOnlyData = JSON.parse(savedData);
+      const currentProgress = this.getProgress();
+
+      // คืนค่าข้อมูลที่ API ไม่รองรับ
+      currentProgress.achievements = localOnlyData.achievements || [];
+      currentProgress.badges = localOnlyData.badges || [];
+      currentProgress.hearts = localOnlyData.hearts || 5;
+      currentProgress.maxHearts = localOnlyData.maxHearts || 5;
+      currentProgress.gems = localOnlyData.gems || 0;
+      currentProgress.currentStreak = localOnlyData.currentStreak || 0;
+      currentProgress.longestStreak = localOnlyData.longestStreak || 0;
+
+      // คืนค่า mini-game stats (ถ้า API ไม่รองรับ)
+      if (localOnlyData.miniGameStats && !currentProgress.miniGameStats) {
+        currentProgress.miniGameStats = localOnlyData.miniGameStats;
+      }
+
+      // คืนค่า daily goal และ weekly progress
+      if (localOnlyData.dailyGoal) {
+        currentProgress.dailyGoal = localOnlyData.dailyGoal;
+      }
+      if (localOnlyData.weeklyProgress) {
+        currentProgress.weeklyProgress = localOnlyData.weeklyProgress;
+      }
+      if (localOnlyData.league) {
+        currentProgress.league = localOnlyData.league;
+      }
+
+      // คืนค่า stage data ที่ไม่ได้ sync
+      if (localOnlyData.localStageData) {
+        for (const stageId in localOnlyData.localStageData) {
+          const stageNum = parseInt(stageId);
+          if (currentProgress.stages[stageNum]) {
+            const localStageData = localOnlyData.localStageData[stageId];
+            currentProgress.stages[stageNum].achievements = localStageData.achievements || [];
+            currentProgress.stages[stageNum].averageTime = localStageData.averageTime || 0;
+            currentProgress.stages[stageNum].mistakeCount = localStageData.mistakeCount || 0;
+            currentProgress.stages[stageNum].hintsUsed = localStageData.hintsUsed || 0;
+            currentProgress.stages[stageNum].perfectRuns = localStageData.perfectRuns || 0;
+            currentProgress.stages[stageNum].lastAttempt = localStageData.lastAttempt ? new Date(localStageData.lastAttempt) : undefined;
+          }
+        }
+      }
+
+      this.saveProgress(currentProgress);
+      console.log('✅ Local-only data restored successfully');
+    } catch (error) {
+      console.error('❌ Error restoring local-only data:', error);
+    }
+  }
+
+  // ทำความสะอาดข้อมูล local-only data เก่า
+  cleanupOldLocalData(): void {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const keys = Object.keys(localStorage);
+      const localDataKeys = keys.filter(key => key.startsWith('astronomy_local_only_'));
+      
+      // เก็บเฉพาะข้อมูลของ user ปัจจุบันและข้อมูลที่ไม่เก่าเกินไป (30 วัน)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      localDataKeys.forEach(key => {
+        try {
+          const data = JSON.parse(localStorage.getItem(key) || '{}');
+          const timestamp = data.timestamp ? new Date(data.timestamp) : new Date(0);
+          
+          if (timestamp < thirtyDaysAgo) {
+            localStorage.removeItem(key);
+            console.log('🗑️ Cleaned up old local data:', key);
+          }
+        } catch (error) {
+          // ถ้า parse ไม่ได้ ให้ลบทิ้ง
+          localStorage.removeItem(key);
+          console.log('🗑️ Removed corrupted local data:', key);
+        }
+      });
+    } catch (error) {
+      console.error('❌ Error cleaning up local data:', error);
+    }
+  }
+
+  // ================== Enhanced Migration System ==================
+  
+  // ฟังก์ชันหลักสำหรับจัดการการ sync เมื่อ login
+  async handleLoginSync(): Promise<void> {
+    console.log('🔄 Starting comprehensive login sync...');
+    
+    try {
+      // 1. Preserve ข้อมูลที่ API ไม่รองรับ
+      await this.preserveLocalOnlyData();
+      
+      // 2. ทำการ migrate progress
+      await this.migrateProgressOnLogin();
+      
+      // 3. คืนค่าข้อมูลที่ API ไม่รองรับ
+      await this.restoreLocalOnlyData();
+      
+      // 4. ทำความสะอาดข้อมูลเก่า
+      this.cleanupOldLocalData();
+      
+      console.log('✅ Complete login sync finished');
+    } catch (error) {
+      console.error('❌ Error during login sync:', error);
+    }
+  }
+
+  // ฟังก์ชันสำหรับจัดการเมื่อ logout
+  handleLogoutCleanup(): void {
+    console.log('🔄 Handling logout cleanup...');
+    
+    try {
+      // บันทึกข้อมูลปัจจุบันก่อน logout
+      const user = authManager.getCurrentUser();
+      if (user && user.id) {
+        this.preserveLocalOnlyData();
+      }
+      
+      // ไม่ลบข้อมูล user progress แต่ล้างเฉพาะ temp progress
+      this.clearTempProgress();
+      
+      console.log('✅ Logout cleanup completed');
+    } catch (error) {
+      console.error('❌ Error during logout cleanup:', error);
+    }
   }
 }
 

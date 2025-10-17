@@ -127,6 +127,9 @@ class AuthManager {
       localStorage.removeItem(this.lastActivityKey);
     }
 
+    // จัดการ progress cleanup
+    this.handleLogoutActions();
+    
     // แจ้งเตือน listeners
     this.notifyAuthStateChange();
     
@@ -358,7 +361,12 @@ class AuthManager {
               
               // เริ่มต้น token monitoring
               this.startTokenMonitoring();
-            }          console.log('Login successful via login endpoint, user:', user);
+            }
+            
+            // เรียกใช้ progress migration หลังจาก login สำเร็จ
+            this.handlePostLoginActions();
+            
+            console.log('Login successful via login endpoint, user:', user);
           return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
         } else {
           console.log('No valid user data found in response');
@@ -407,6 +415,9 @@ class AuthManager {
               this.startTokenMonitoring();
             }
 
+            // เรียกใช้ progress migration หลังจาก login สำเร็จ
+            this.handlePostLoginActions();
+
             console.log('Login successful via public user list, user:', user);
             return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
           }
@@ -453,6 +464,9 @@ class AuthManager {
               this.startTokenMonitoring();
             }
 
+            // เรียกใช้ progress migration หลังจาก login สำเร็จ
+            this.handlePostLoginActions();
+
             console.log('Login successful via regular user list, user:', user);
             return { success: true, message: 'เข้าสู่ระบบสำเร็จ', user };
           }
@@ -490,6 +504,9 @@ class AuthManager {
               
               // เริ่มต้น token monitoring
               this.startTokenMonitoring();
+
+              // เรียกใช้ progress migration หลังจาก login สำเร็จ
+              this.handlePostLoginActions();
 
               console.log('Login successful via localStorage fallback, user:', user);
               return { success: true, message: 'เข้าสู่ระบบสำเร็จ (โหมดออฟไลน์)', user };
@@ -547,6 +564,9 @@ class AuthManager {
         localStorage.removeItem(this.lastActivityKey);
       }
       
+      // จัดการ progress cleanup
+      this.handleLogoutActions();
+      
       // แจ้งเตือน listeners
       this.notifyAuthStateChange();
     }
@@ -601,6 +621,36 @@ class AuthManager {
         this.authStateListeners.splice(index, 1);
       }
     };
+  }
+
+  // จัดการ actions หลังจาก login สำเร็จ
+  private async handlePostLoginActions(): Promise<void> {
+    try {
+      // Import ProgressManager dynamically เพื่อป้องกัน circular dependency
+      const { progressManager } = await import('./progress');
+      
+      // เรียกใช้ comprehensive login sync
+      await progressManager.handleLoginSync();
+      
+      console.log('✅ Post-login actions completed successfully');
+    } catch (error) {
+      console.error('❌ Error in post-login actions:', error);
+      // ไม่ throw error เพื่อไม่ให้ login fail
+    }
+  }
+
+  // จัดการ actions หลังจาก logout
+  handleLogoutActions(): void {
+    try {
+      // Import ProgressManager dynamically
+      import('./progress').then(({ progressManager }) => {
+        progressManager.handleLogoutCleanup();
+      });
+      
+      console.log('✅ Post-logout actions completed successfully');
+    } catch (error) {
+      console.error('❌ Error in post-logout actions:', error);
+    }
   }
 }
 

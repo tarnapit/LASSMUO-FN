@@ -7,6 +7,7 @@ import { MiniGameQuestion, GameSession, type GameResult } from "../../types/mini
 import { MiniGameProgressHelper } from "../../lib/mini-game-progress";
 import Navbar from "../../components/layout/Navbar";
 import QuestionRenderer from "./components/QuestionRenderer";
+import GameResultComponent from "./components/GameResult";
 import { checkAnswer, getCategoryName, getDifficultyName } from "./utils/gameUtils";
 import { 
   ArrowLeft, 
@@ -23,6 +24,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import "../../styles/mini-game-specific.css";
+import "../../styles/enhanced-mini-game.css";
 
 // Score Challenge Game - โหมดสะสมคะแนน
 function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResult, answers: Record<string, any>, questionTimes: Record<string, number>) => void }) {
@@ -105,28 +107,33 @@ function ScoreChallengeGame({ onGameFinish }: { onGameFinish: (result: GameResul
       setQuestionStartTime(Date.now());
       setQuestionTimeLeft(30);
     } else {
-      // Game finished
-      const correctAnswers = Object.keys(answers).filter(questionId => {
-        const q = questions.find(q => q.id === questionId);
-        return q && checkAnswer(q, answers[questionId]);
-      }).length + (checkAnswer(currentQuestion, answers[currentQuestion.id]) ? 1 : 0);
+      // Game finished - calculate final scores properly
+      const currentAnswer = answers[currentQuestion.id];
+      const currentTimeSpent = (Date.now() - questionStartTime) / 1000;
+      const allAnswers = { ...answers, [currentQuestion.id]: currentAnswer };
+      const allQuestionTimes = { ...questionTimes, [currentQuestion.id]: currentTimeSpent };
       
-      const totalTimeSpent = Object.keys(answers).reduce((total, questionId) => {
-        return total + 10;
-      }, 0) + ((Date.now() - questionStartTime) / 1000);
+      // Count correct answers from all questions including current one
+      const finalCorrectAnswers = questions.filter(q => {
+        const userAnswer = allAnswers[q.id];
+        return userAnswer !== null && userAnswer !== undefined && checkAnswer(q, userAnswer);
+      }).length;
+      
+      // Calculate total time from all questions
+      const totalTimeSpent = Object.values(allQuestionTimes).reduce((total, time) => total + time, 0);
       
       const result: GameResult = {
         score,
-        correctAnswers,
+        correctAnswers: finalCorrectAnswers,
         totalQuestions: questions.length,
-        percentage: Math.round((correctAnswers / questions.length) * 100),
+        percentage: Math.round((finalCorrectAnswers / questions.length) * 100),
         timeSpent: totalTimeSpent,
         bonusPoints,
         gameMode: 'score-challenge',
         breakdown: []
       };
       
-      onGameFinish(result, answers, questionTimes);
+      onGameFinish(result, allAnswers, allQuestionTimes);
     }
   };
 
@@ -1254,7 +1261,7 @@ export default function MiniGamePlayPage() {
   // Show game result
   if (gameState === 'finished' && gameResult) {
     return (
-      <GameResult 
+      <GameResultComponent 
         result={gameResult} 
         gameId={gameId}
         onRestart={handleRestart}

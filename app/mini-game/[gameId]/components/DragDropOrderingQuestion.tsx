@@ -1,78 +1,59 @@
 "use client";
-import { useState, useEffect } from "react";
-import { CheckCircle, XCircle, RotateCcw, GripVertical } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle, XCircle, GripVertical, RotateCcw } from "lucide-react";
 
-interface SentenceReorderingQuestionProps {
+interface DragDropOrderingQuestionProps {
   question: string;
-  sentences: string[];
-  correctOrder: number[];
+  items: string[];
+  correctOrder: string[];
   instruction?: string;
-  onAnswer: (isCorrect: boolean, userAnswer: number[]) => void;
+  onAnswer: (answer: string[]) => void;
   showResult: boolean;
-  userAnswer?: number[] | null;
+  userAnswer?: string[] | null;
   disabled?: boolean;
 }
 
-export default function SentenceReorderingQuestion({
+export default function DragDropOrderingQuestion({
   question,
-  sentences,
+  items,
   correctOrder,
-  instruction = "ลากและวางเพื่อเรียงลำดับประโยคให้ถูกต้อง",
+  instruction = "ลากและวางเพื่อเรียงลำดับให้ถูกต้อง",
   onAnswer,
   showResult,
   userAnswer,
   disabled = false
-}: SentenceReorderingQuestionProps) {
-  const [orderedSentences, setOrderedSentences] = useState<number[]>([]);
-  const [draggedItem, setDraggedItem] = useState<number | null>(null);
+}: DragDropOrderingQuestionProps) {
+  const [orderedItems, setOrderedItems] = useState<string[]>([]);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
-  // Effect to clear state when question changes
+  // Initialize order
   useEffect(() => {
-    // Reset all states first to ensure clean start for new question
-    setDraggedItem(null);
-    setDragOverIndex(null);
-    
-    // Initialize with shuffled order if no user answer
     if (userAnswer && userAnswer.length > 0) {
-      setOrderedSentences(userAnswer);
+      setOrderedItems(userAnswer);
+      setIsSubmitted(true); // ถ้ามี userAnswer แสดงว่าส่งแล้ว
     } else {
-      // Shuffle the sentences initially
-      const indices = Array.from({ length: sentences.length }, (_, i) => i);
-      const shuffled = indices.sort(() => Math.random() - 0.5);
-      setOrderedSentences(shuffled);
+      // Shuffle items initially
+      const shuffled = [...items].sort(() => Math.random() - 0.5);
+      setOrderedItems(shuffled);
+      setIsSubmitted(false); // รีเซ็ต isSubmitted เมื่อเริ่มข้อใหม่
     }
-  }, [sentences, correctOrder]); // Trigger when sentences or correctOrder changes
+  }, [items, userAnswer]);
 
-  // Separate effect for handling userAnswer updates
-  useEffect(() => {
-    if (userAnswer && userAnswer.length > 0) {
-      setOrderedSentences(userAnswer);
-    }
-  }, [userAnswer]);
-
-  useEffect(() => {
-    // Check answer when order is complete
-    if (orderedSentences.length === sentences.length && !showResult && !disabled) {
-      const isCorrect = JSON.stringify(orderedSentences) === JSON.stringify(correctOrder);
-      onAnswer(isCorrect, orderedSentences);
-    }
-  }, [orderedSentences, correctOrder, sentences.length, showResult, disabled, onAnswer]);
-
-  const handleDragStart = (e: React.DragEvent, orderIndex: number) => {
+  const handleDragStart = (e: React.DragEvent, item: string) => {
     if (disabled || showResult) return;
-    setDraggedItem(orderIndex);
+    setDraggedItem(item);
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+    e.dataTransfer.setData('text/plain', '');
     
-    // Add visual feedback
     if (e.target instanceof HTMLElement) {
       e.target.style.opacity = '0.5';
     }
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
-    if (disabled || showResult || draggedItem === null) return;
+    if (disabled || showResult || !draggedItem) return;
     e.preventDefault();
     setDragOverIndex(index);
     e.dataTransfer.dropEffect = 'move';
@@ -80,7 +61,6 @@ export default function SentenceReorderingQuestion({
 
   const handleDragLeave = (e: React.DragEvent) => {
     if (disabled || showResult) return;
-    // Only clear drag over if we're actually leaving the element
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const { clientX, clientY } = e;
     
@@ -91,25 +71,23 @@ export default function SentenceReorderingQuestion({
   };
 
   const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-    if (disabled || showResult || draggedItem === null || draggedItem === dropIndex) {
+    if (disabled || showResult || !draggedItem) return;
+    e.preventDefault();
+    
+    const currentIndex = orderedItems.indexOf(draggedItem);
+    if (currentIndex === dropIndex) {
       setDraggedItem(null);
       setDragOverIndex(null);
       return;
     }
     
-    e.preventDefault();
+    const newOrder = [...orderedItems];
+    newOrder.splice(currentIndex, 1);
     
-    const newOrder = [...orderedSentences];
-    const draggedSentenceIndex = newOrder[draggedItem];
+    const adjustedDropIndex = currentIndex < dropIndex ? dropIndex - 1 : dropIndex;
+    newOrder.splice(adjustedDropIndex, 0, draggedItem);
     
-    // Remove from old position
-    newOrder.splice(draggedItem, 1);
-    
-    // Insert at new position (adjust index if we're moving forward)
-    const adjustedDropIndex = draggedItem < dropIndex ? dropIndex - 1 : dropIndex;
-    newOrder.splice(adjustedDropIndex, 0, draggedSentenceIndex);
-    
-    setOrderedSentences(newOrder);
+    setOrderedItems(newOrder);
     setDraggedItem(null);
     setDragOverIndex(null);
   };
@@ -122,25 +100,31 @@ export default function SentenceReorderingQuestion({
     setDragOverIndex(null);
   };
 
-  const resetOrder = () => {
+  const handleSubmit = () => {
     if (disabled || showResult) return;
-    const indices = Array.from({ length: sentences.length }, (_, i) => i);
-    const shuffled = indices.sort(() => Math.random() - 0.5);
-    setOrderedSentences(shuffled);
+    setIsSubmitted(true);
+    onAnswer(orderedItems);
   };
 
-  const isCorrect = showResult && JSON.stringify(orderedSentences) === JSON.stringify(correctOrder);
+  const resetOrder = () => {
+    if (disabled || showResult) return;
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+    setOrderedItems(shuffled);
+    setIsSubmitted(false);
+  };
+
+  const isCorrect = showResult && JSON.stringify(orderedItems) === JSON.stringify(correctOrder);
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      {/* Question */}
+    <div className="space-y-6 max-w-4xl mx-auto">
+      {/* Question Header */}
       <div className="text-center">
         <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
           {question}
         </h2>
         <p className="text-gray-300 text-lg mb-4">{instruction}</p>
         
-        {!showResult && (
+        {!showResult && !isSubmitted && (
           <button
             onClick={resetOrder}
             disabled={disabled}
@@ -152,48 +136,52 @@ export default function SentenceReorderingQuestion({
         )}
       </div>
 
-      {/* Sentences */}
+      {/* Drag and Drop Area */}
       <div className="space-y-3">
-        {orderedSentences.map((sentenceIndex, orderIndex) => {
+        {orderedItems.map((item, index) => {
+          const isDragged = draggedItem === item;
+          const isDropTarget = dragOverIndex === index;
+          const isCorrectPosition = showResult && correctOrder[index] === item;
+          const isIncorrectPosition = showResult && correctOrder[index] !== item;
+
           let cardStyle = "relative p-6 rounded-xl border-2 transition-all duration-300 select-none group ";
           
           if (showResult) {
-            if (correctOrder[orderIndex] === sentenceIndex) {
+            if (isCorrectPosition) {
               cardStyle += "bg-green-500/20 border-green-500 text-green-300 shadow-green-500/20 shadow-lg";
             } else {
               cardStyle += "bg-red-500/20 border-red-500 text-red-300 shadow-red-500/20 shadow-lg";
             }
           } else {
-            if (draggedItem === orderIndex) {
+            if (isDragged) {
               cardStyle += "bg-blue-500/30 border-blue-500 text-blue-300 shadow-blue-500/30 shadow-lg transform scale-105 opacity-50";
-            } else if (dragOverIndex === orderIndex) {
+            } else if (isDropTarget) {
               cardStyle += "bg-yellow-500/20 border-yellow-500 text-yellow-300 shadow-yellow-500/20 shadow-lg transform scale-102";
             } else {
               cardStyle += "bg-white/10 border-gray-600 text-white hover:border-blue-400 hover:bg-blue-500/10 cursor-grab active:cursor-grabbing";
             }
           }
 
-          // Add drag over effect styling
-          if (dragOverIndex === orderIndex && draggedItem !== orderIndex) {
+          if (isDropTarget && !isDragged) {
             cardStyle += " ring-2 ring-yellow-400 ring-opacity-50";
           }
 
           return (
             <div
-              key={`${sentenceIndex}-${orderIndex}`}
+              key={item}
               className={cardStyle}
               draggable={!disabled && !showResult}
-              onDragStart={(e) => handleDragStart(e, orderIndex)}
-              onDragOver={(e) => handleDragOver(e, orderIndex)}
+              onDragStart={(e) => handleDragStart(e, item)}
+              onDragOver={(e) => handleDragOver(e, index)}
               onDragLeave={handleDragLeave}
-              onDrop={(e) => handleDrop(e, orderIndex)}
+              onDrop={(e) => handleDrop(e, index)}
               onDragEnd={handleDragEnd}
             >
               <div className="flex items-center gap-4">
-                {/* Number and Drag Handle */}
+                {/* Position Number */}
                 <div className="flex items-center gap-3">
                   <span className="text-2xl font-bold text-blue-400 bg-blue-400/10 rounded-full w-10 h-10 flex items-center justify-center">
-                    {orderIndex + 1}
+                    {index + 1}
                   </span>
                   {!disabled && !showResult && (
                     <div className="text-gray-400 group-hover:text-blue-400 transition-colors">
@@ -202,17 +190,17 @@ export default function SentenceReorderingQuestion({
                   )}
                 </div>
                 
-                {/* Sentence Content */}
+                {/* Item Content */}
                 <div className="flex-1">
-                  <p className="text-lg leading-relaxed">
-                    {sentences[sentenceIndex]}
+                  <p className="text-lg leading-relaxed font-medium">
+                    {item}
                   </p>
                 </div>
 
                 {/* Result Icon */}
                 {showResult && (
                   <div className="ml-4">
-                    {correctOrder[orderIndex] === sentenceIndex ? (
+                    {isCorrectPosition ? (
                       <CheckCircle className="w-6 h-6 text-green-500" />
                     ) : (
                       <XCircle className="w-6 h-6 text-red-500" />
@@ -222,7 +210,7 @@ export default function SentenceReorderingQuestion({
               </div>
 
               {/* Drop Zone Indicator */}
-              {dragOverIndex === orderIndex && draggedItem !== orderIndex && (
+              {isDropTarget && !isDragged && (
                 <div className="absolute inset-0 border-2 border-dashed border-yellow-400 rounded-xl pointer-events-none animate-pulse" />
               )}
             </div>
@@ -230,28 +218,43 @@ export default function SentenceReorderingQuestion({
         })}
       </div>
 
-      {/* Result feedback */}
-      {showResult && (
+      {/* Submit Button */}
+      {!showResult && !isSubmitted && (
         <div className="text-center">
+          <button
+            onClick={handleSubmit}
+            disabled={disabled}
+            className="px-8 py-3 bg-green-500 hover:bg-green-600 disabled:bg-gray-600 text-white font-bold text-lg rounded-xl transition-all duration-300 transform hover:scale-105 disabled:hover:scale-100"
+          >
+            ยืนยันลำดับ
+          </button>
+        </div>
+      )}
+
+      {/* Result Feedback */}
+      {showResult && (
+        <div className="text-center space-y-4">
           {isCorrect ? (
             <div className="flex items-center justify-center gap-2 text-green-400 text-xl font-bold">
               <CheckCircle className="w-8 h-8" />
-              <span>🎉 เรียบร้อย! คุณเรียงลำดับถูกต้อง!</span>
+              <span>🎉 ยอดเยี่ยม! เรียงลำดับถูกต้อง!</span>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-2 text-red-400 text-xl font-bold">
                 <XCircle className="w-8 h-8" />
-                <span>💪 ลำดับยังไม่ถูกต้อง ลองใหม่นะ!</span>
+                <span>💪 ลำดับยังไม่ถูกต้อง ลองอีกครั้ง!</span>
               </div>
               
-              <div className="bg-green-500/20 border border-green-500/40 rounded-xl p-4">
-                <h4 className="text-green-300 font-semibold mb-3">🎯 ลำดับที่ถูกต้อง:</h4>
-                <div className="space-y-2">
-                  {correctOrder.map((sentenceIndex, orderIndex) => (
-                    <div key={orderIndex} className="flex items-center gap-3 text-green-300">
-                      <span className="text-xl font-bold text-blue-400">{orderIndex + 1}.</span>
-                      <span>{sentences[sentenceIndex]}</span>
+              <div className="bg-green-500/20 border border-green-500/40 rounded-xl p-6">
+                <h4 className="text-green-300 font-semibold mb-4 text-lg">🎯 ลำดับที่ถูกต้อง:</h4>
+                <div className="space-y-3">
+                  {correctOrder.map((item, index) => (
+                    <div key={index} className="flex items-center gap-3 p-3 bg-green-500/10 rounded-lg">
+                      <span className="text-xl font-bold text-blue-400 bg-blue-400/20 rounded-full w-8 h-8 flex items-center justify-center">
+                        {index + 1}
+                      </span>
+                      <span className="text-green-300 font-medium">{item}</span>
                     </div>
                   ))}
                 </div>

@@ -2,187 +2,156 @@
 import { useState, useRef, useEffect } from "react";
 import { CheckCircle, XCircle, RotateCcw, Zap, MousePointer, Trash2 } from "lucide-react";
 
-interface PairItem {
-  id: string;
-  text: string;
-  emoji?: string;
+interface MatchingPair {
+  left: { id: string; text: string; emoji?: string };
+  right: { id: string; text: string; emoji?: string };
 }
 
-interface Pair {
-  left: PairItem;
-  right: PairItem;
-}
-
-interface EnhancedMatchPairsQuestionProps {
-  pairs: Pair[];
-  onAnswer: (isCorrect: boolean, userAnswer: Record<string, string>) => void;
+interface EnhancedMatchingQuestionProps {
+  question: string;
+  pairs: MatchingPair[];
+  onAnswer: (answer: Record<string, string>) => void;
   showResult: boolean;
-  userAnswer?: Record<string, string>;
-  question?: string;
+  userAnswer?: Record<string, string> | null;
+  disabled?: boolean;
 }
 
-export default function EnhancedMatchPairsQuestion({
+export default function EnhancedMatchingQuestion({
+  question,
   pairs,
   onAnswer,
   showResult,
   userAnswer,
-  question = "จับคู่รายการให้ถูกต้อง"
-}: EnhancedMatchPairsQuestionProps) {
+  disabled = false
+}: EnhancedMatchingQuestionProps) {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
   const [matches, setMatches] = useState<Record<string, string>>({});
   const [connections, setConnections] = useState<Array<{from: string, to: string, isCorrect?: boolean}>>([]);
-  const [animatingPair, setAnimatingPair] = useState<{left: string, right: string} | null>(null);
   const [hoveredConnection, setHoveredConnection] = useState<string | null>(null);
   const leftRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const rightRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Shuffle items
-  const [rightItems] = useState(() => 
-    [...pairs.map(p => p.right)].sort(() => Math.random() - 0.5)
-  );
+  // Shuffle right items - อัปเดตเมื่อ pairs เปลี่ยน
+  const [rightItems, setRightItems] = useState<Array<{ id: string; text: string; emoji?: string }>>([]);
+  const [currentPairsKey, setCurrentPairsKey] = useState<string>('');
   const leftItems = pairs.map(p => p.left);
 
-  // Effect to clear state when question/pairs change
+  // Reset และ shuffle right items เมื่อ pairs เปลี่ยนจริงๆ
   useEffect(() => {
-    // Reset all states first to ensure clean start for new question
-    setSelectedLeft(null);
-    setSelectedRight(null);
-    setMatches({});
-    setConnections([]);
-    setAnimatingPair(null);
+    // สร้าง key ที่ unique สำหรับ pairs ปัจจุบัน
+    const pairsKey = pairs.map(p => `${p.left.id}-${p.right.id}`).join('|');
     
-    // Then restore user answer if exists
-    if (userAnswer) {
-      setMatches(userAnswer);
-      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
-        const correctPair = pairs.find(p => p.left.id === leftId);
-        return {
-          from: leftId,
-          to: rightId,
-          isCorrect: correctPair?.right.id === rightId
-        };
-      });
-      setConnections(newConnections);
+    // ตรวจสอบว่า pairs เปลี่ยนจริงหรือไม่
+    if (pairsKey !== currentPairsKey) {
+      const shuffledRightItems = [...pairs.map(p => p.right)].sort(() => Math.random() - 0.5);
+      setRightItems(shuffledRightItems);
+      setCurrentPairsKey(pairsKey);
+      
+      // รีเซ็ต state ทั้งหมดเฉพาะเมื่อ pairs เปลี่ยนจริง
+      setMatches({});
+      setConnections([]);
+      setSelectedLeft(null);
+      setSelectedRight(null);
     }
-  }, [pairs]); // Trigger when pairs prop changes
+  }, [pairs, currentPairsKey]);
 
-  // Separate effect for handling userAnswer updates
+  // Initialize matches from userAnswer
   useEffect(() => {
     if (userAnswer) {
       setMatches(userAnswer);
-      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
-        const correctPair = pairs.find(p => p.left.id === leftId);
-        return {
-          from: leftId,
-          to: rightId,
-          isCorrect: correctPair?.right.id === rightId
-        };
-      });
-      setConnections(newConnections);
+      updateConnections(userAnswer);
     }
-  }, [userAnswer, pairs]);
+  }, [userAnswer]);
 
-  const handleLeftClick = (leftId: string) => {
-    if (showResult || matches[leftId]) return;
-    
-    if (selectedLeft === leftId) {
-      setSelectedLeft(null);
-    } else {
-      setSelectedLeft(leftId);
-      setSelectedRight(null);
-    }
-  };
-
-  const handleRightClick = (rightId: string) => {
-    if (showResult) return;
-    
-    // Check if this right item is already matched
-    const alreadyMatched = Object.values(matches).includes(rightId);
-    if (alreadyMatched) return;
-    
-    if (selectedRight === rightId) {
-      setSelectedRight(null);
-    } else {
-      setSelectedRight(rightId);
+  // Update connections based on current matches
+  const updateConnections = (currentMatches: Record<string, string>) => {
+    const newConnections = Object.entries(currentMatches).map(([leftId, rightId]) => {
+      const correctPair = pairs.find(p => p.left.id === leftId);
+      const isCorrect = correctPair?.right.id === rightId;
       
-      // If we have a left item selected, create a match
-      if (selectedLeft) {
-        createMatch(selectedLeft, rightId);
-      }
-    }
-  };
-
-  const createMatch = (leftId: string, rightId: string) => {
-    const correctPair = pairs.find(p => p.left.id === leftId && p.right.id === rightId);
-    const isCorrectMatch = !!correctPair;
-    
-    // Animate the connection with immediate feedback
-    setAnimatingPair({ left: leftId, right: rightId });
-    
-    setTimeout(() => {
-      const newMatches = { ...matches, [leftId]: rightId };
-      setMatches(newMatches);
-      
-      // Update connections with correctness info
-      const newConnections = Object.entries(newMatches).map(([left, right]) => {
-        const correctPair = pairs.find(p => p.left.id === left && p.right.id === right);
-        return {
-          from: left,
-          to: right,
-          isCorrect: !!correctPair
-        };
-      });
-      setConnections(newConnections);
-      
-      setSelectedLeft(null);
-      setSelectedRight(null);
-      setAnimatingPair(null);
-
-      // Check if all pairs are matched
-      if (Object.keys(newMatches).length === pairs.length) {
-        const allCorrect = pairs.every(pair => newMatches[pair.left.id] === pair.right.id);
-        setTimeout(() => {
-          onAnswer(allCorrect, newMatches);
-        }, 500);
-      }
-    }, 300);
-  };
-
-  const handleReset = () => {
-    if (showResult) return;
-    setMatches({});
-    setConnections([]);
-    setSelectedLeft(null);
-    setSelectedRight(null);
-  };
-
-  const handleRemoveMatch = (leftId: string) => {
-    if (showResult) return;
-    
-    const newMatches = { ...matches };
-    delete newMatches[leftId];
-    setMatches(newMatches);
-    
-    // Update connections
-    const newConnections = Object.entries(newMatches).map(([left, right]) => {
-      const correctPair = pairs.find(p => p.left.id === left && p.right.id === right);
       return {
-        from: left,
-        to: right,
-        isCorrect: !!correctPair
+        from: leftId,
+        to: rightId,
+        isCorrect: isCorrect
       };
     });
     setConnections(newConnections);
   };
 
+  const handleLeftClick = (leftId: string) => {
+    if (showResult || disabled) return;
+    
+    // ถ้ามีการจับคู่แล้ว ให้ลบออก
+    if (matches[leftId]) {
+      const newMatches = { ...matches };
+      delete newMatches[leftId];
+      setMatches(newMatches);
+      updateConnections(newMatches);
+      return;
+    }
+    
+    // เลือก/ยกเลิกการเลือก left item
+    if (selectedLeft === leftId) {
+      setSelectedLeft(null);
+    } else {
+      setSelectedLeft(leftId);
+      setSelectedRight(null); // ยกเลิกการเลือก right
+    }
+  };
+
+  const handleRightClick = (rightId: string) => {
+    if (showResult || disabled) return;
+    
+    // ตรวจสอบว่า right item นี้ถูกจับคู่แล้วหรือยัง
+    const alreadyMatched = Object.values(matches).includes(rightId);
+    if (alreadyMatched) return;
+    
+    // ถ้ามี left item ที่เลือกอยู่ ให้ทำการจับคู่
+    if (selectedLeft) {
+      const newMatches = { ...matches, [selectedLeft]: rightId };
+      setMatches(newMatches);
+      updateConnections(newMatches);
+      
+      // ล้างการเลือก
+      setSelectedLeft(null);
+      setSelectedRight(null);
+      
+      // ถ้าจับคู่ครบแล้ว ส่งผลลัพธ์
+      if (Object.keys(newMatches).length === pairs.length) {
+        setTimeout(() => onAnswer(newMatches), 500);
+      }
+    } else {
+      // ถ้าไม่มี left item ที่เลือก ให้เลือก right item นี้
+      setSelectedRight(rightId);
+    }
+  };
+
+  const handleRemoveMatch = (leftId: string) => {
+    if (showResult || disabled) return;
+    
+    const newMatches = { ...matches };
+    delete newMatches[leftId];
+    setMatches(newMatches);
+    updateConnections(newMatches);
+    
+    // ล้างการเลือก
+    setSelectedLeft(null);
+    setSelectedRight(null);
+  };
+
+  const handleReset = () => {
+    if (showResult || disabled) return;
+    setMatches({});
+    setConnections([]);
+    setSelectedLeft(null);
+    setSelectedRight(null);
+  };
+
   const getItemStyle = (itemId: string, side: 'left' | 'right', isMatched: boolean) => {
     const isSelected = (side === 'left' && selectedLeft === itemId) || 
                      (side === 'right' && selectedRight === itemId);
-    const isAnimating = animatingPair && 
-                       ((side === 'left' && animatingPair.left === itemId) ||
-                        (side === 'right' && animatingPair.right === itemId));
     
     if (showResult && isMatched) {
       const connection = connections.find(c => 
@@ -192,7 +161,7 @@ export default function EnhancedMatchPairsQuestion({
       
       return `
         relative p-4 rounded-xl font-semibold text-center cursor-pointer
-        transition-all duration-300 border-2 group
+        transition-all duration-300 border-2 group min-h-[80px] flex flex-col justify-center
         ${connection?.isCorrect 
           ? 'bg-green-500/20 text-green-300 border-green-500 shadow-lg shadow-green-500/25' 
           : 'bg-red-500/20 text-red-300 border-red-500 shadow-lg shadow-red-500/25'
@@ -202,14 +171,13 @@ export default function EnhancedMatchPairsQuestion({
     
     return `
       relative p-4 rounded-xl font-semibold text-center cursor-pointer
-      transition-all duration-300 border-2 group
+      transition-all duration-300 border-2 group min-h-[80px] flex flex-col justify-center
       ${isMatched 
         ? 'bg-blue-500/20 text-blue-300 border-blue-500 shadow-lg shadow-blue-500/25' 
         : isSelected 
-          ? 'bg-yellow-400/20 text-yellow-300 border-yellow-400 shadow-lg shadow-yellow-400/25 scale-105' 
-          : 'bg-white/10 text-white border-gray-300/30 hover:border-blue-400 hover:bg-blue-500/10 shadow-md hover:shadow-lg'
+          ? 'bg-yellow-400/20 text-yellow-300 border-yellow-400 shadow-lg shadow-yellow-400/25 scale-105 ring-2 ring-yellow-400/50' 
+          : 'bg-white/10 text-white border-gray-300/30 hover:border-blue-400 hover:bg-blue-500/10 shadow-md hover:shadow-lg hover:scale-102'
       }
-      ${isAnimating ? 'animate-pulse scale-105' : ''}
     `;
   };
 
@@ -292,9 +260,6 @@ export default function EnhancedMatchPairsQuestion({
               zIndex: isHovered ? 21 : 11
             }}
           />
-          
-          {/* Remove button for existing connections (when not in result mode) - Show only on left side */}
-          {/* Removed - use the button on the card instead */}
         </div>
       );
     });
@@ -303,36 +268,36 @@ export default function EnhancedMatchPairsQuestion({
   const allMatched = Object.keys(matches).length === pairs.length;
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="w-full max-w-6xl mx-auto space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-white">
+      <div className="text-center">
+        <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">
           {question}
-        </h1>
+        </h2>
         
-        <div className="flex items-center justify-end space-x-4">          
-          {!showResult && (
+        <div className="flex justify-center items-center gap-4 mb-6">
+          {!showResult && !disabled && (
             <button
               onClick={handleReset}
-              className="p-3 bg-gray-500 hover:bg-gray-600 rounded-full transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 rounded-lg text-red-300 transition-all"
               title="รีเซ็ตการจับคู่"
-              aria-label="รีเซ็ตการจับคู่"
             >
-              <RotateCcw className="w-6 h-6 text-white" />
+              <RotateCcw className="w-4 h-4" />
+              รีเซ็ต
             </button>
           )}
         </div>
       </div>
 
       {/* Instructions */}
-      <div className="mb-8 text-center">
+      <div className="text-center space-y-3">
         <p className="text-gray-300 text-lg">
           คลิกที่รายการฝั่งซ้าย แล้วคลิกที่รายการฝั่งขวาที่ตรงกัน
         </p>
-        {selectedLeft && (
-          <div className="mt-4 p-3 bg-yellow-900/30 rounded-lg inline-block">
-            <p className="text-yellow-400">
-              <Zap className="inline w-4 h-4 mr-1" />
+        {selectedLeft && !disabled && !showResult && (
+          <div className="inline-block p-3 bg-yellow-900/30 rounded-lg">
+            <p className="text-yellow-400 flex items-center gap-2">
+              <Zap className="w-4 h-4" />
               เลือกคู่ที่ตรงกับรายการที่เลือกไว้
             </p>
           </div>
@@ -340,10 +305,10 @@ export default function EnhancedMatchPairsQuestion({
       </div>
 
       {/* Matching Area */}
-      <div ref={containerRef} className="relative mb-12">
+      <div ref={containerRef} className="relative">
         {renderConnections()}
         
-        <div className="grid grid-cols-2 gap-12">
+        <div className="grid grid-cols-2 gap-8 lg:gap-12">
           {/* Left Column */}
           <div className="space-y-4">
             <h3 className="text-xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2">
@@ -353,6 +318,7 @@ export default function EnhancedMatchPairsQuestion({
             {leftItems.map((item) => {
               const isMatched = !!matches[item.id];
               const matchedRight = matches[item.id];
+              const rightItem = rightItems.find(r => r.id === matchedRight);
               
               return (
                 <div key={item.id} className="relative">
@@ -365,29 +331,27 @@ export default function EnhancedMatchPairsQuestion({
                     <div className="font-medium">{item.text}</div>
                     
                     {/* Show matched item */}
-                    {isMatched && matchedRight && (
+                    {isMatched && rightItem && (
                       <div className="mt-2 pt-2 border-t border-current/20">
-                        <div className="text-sm opacity-75">จับคู่กับ:</div>
-                        <div className="text-sm font-bold">
-                          {rightItems.find(r => r.id === matchedRight)?.text}
-                        </div>
+                        <div className="text-xs opacity-75">จับคู่กับ:</div>
+                        <div className="text-sm font-bold">{rightItem.text}</div>
                       </div>
                     )}
-                    
-                    {/* Remove button */}
-                    {isMatched && !showResult && (
-                      <button
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveMatch(item.id);
-                        }}
-                        title="ลบการจับคู่"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    )}
                   </div>
+                  
+                  {/* Remove button */}
+                  {isMatched && !showResult && !disabled && (
+                    <button
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full text-xs transition-all duration-200 hover:scale-110 flex items-center justify-center"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveMatch(item.id);
+                      }}
+                      title="ลบการจับคู่"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -412,7 +376,7 @@ export default function EnhancedMatchPairsQuestion({
                   <div className="font-medium">{item.text}</div>
                   
                   {/* Availability indicator */}
-                  {!isMatched && selectedLeft && (
+                  {!isMatched && selectedLeft && !disabled && !showResult && (
                     <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
                   )}
                 </div>
@@ -422,8 +386,8 @@ export default function EnhancedMatchPairsQuestion({
         </div>
       </div>
 
-      {/* Progress Indicator */}
-      <div className="text-center mt-6">
+      {/* Progress and Status */}
+      <div className="text-center space-y-4">
         <div className="inline-flex items-center space-x-2 text-gray-300">
           <span>ความคืบหน้า:</span>
           <span className="font-semibold text-white">
@@ -433,6 +397,44 @@ export default function EnhancedMatchPairsQuestion({
             <CheckCircle className="w-5 h-5 text-green-400 ml-2" />
           )}
         </div>
+
+        {/* Show result when answered */}
+        {showResult && (
+          <div className="space-y-4">
+            {pairs.every(pair => matches[pair.left.id] === pair.right.id) ? (
+              <div className="flex items-center justify-center gap-2 text-green-400 text-xl font-bold">
+                <CheckCircle className="w-8 h-8" />
+                <span>🎉 ยอดเยี่ยม! จับคู่ถูกต้องทั้งหมด!</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-2 text-red-400 text-xl font-bold">
+                  <XCircle className="w-8 h-8" />
+                  <span>💪 มีบางคู่ที่ยังไม่ถูกต้อง ลองใหม่นะ!</span>
+                </div>
+                
+                <div className="bg-green-500/20 border border-green-500/40 rounded-xl p-6">
+                  <h4 className="text-green-300 font-semibold mb-4 text-lg">🎯 การจับคู่ที่ถูกต้อง:</h4>
+                  <div className="grid gap-3">
+                    {pairs.map((pair, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-green-500/10 rounded-lg">
+                        <div className="text-green-300 font-medium">
+                          {pair.left.emoji && <span className="mr-2">{pair.left.emoji}</span>}
+                          {pair.left.text}
+                        </div>
+                        <div className="text-green-400 text-xl">→</div>
+                        <div className="text-green-300 font-medium">
+                          {pair.right.emoji && <span className="mr-2">{pair.right.emoji}</span>}
+                          {pair.right.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

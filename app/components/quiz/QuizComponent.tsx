@@ -182,6 +182,9 @@ export default function EnhancedQuizComponent({
                 handleAnswer(answerId, isAnswerCorrect);
               }}
               selectedAnswer={selectedAnswer as number}
+              hints={mcQuestion.hints || []}
+              currentQuestionData={mcQuestion}
+              image={mcQuestion.image} // เพิ่ม image prop
               {...questionProps}
             />
           );
@@ -197,6 +200,9 @@ export default function EnhancedQuizComponent({
             correctAnswer={tfQuestion.payload?.correctAnswer}
             onAnswer={(answer, isCorrect) => handleAnswer(answer, isCorrect)}
             selectedAnswer={selectedAnswer as boolean}
+            hints={tfQuestion.hints || []}
+            currentQuestionData={tfQuestion}
+            image={tfQuestion.image} // เพิ่ม image prop
             {...questionProps}
           />
         );
