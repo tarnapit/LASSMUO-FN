@@ -1970,19 +1970,32 @@ class ProgressManager {
         }
         
         if (progressData && progressData.length > 0) {
-          // นับจาก API data
-          apiStartedCount = progressData.length;
-          apiCompletedCount = progressData.filter((p: any) => 
+          // กรองเฉพาะข้อมูลของ user ปัจจุบัน
+          const userProgressData = progressData.filter((p: any) => 
+            !p.userId || p.userId === user.id
+          );
+          
+          console.log('🔍 Filtered learning stats:', {
+            totalData: progressData.length,
+            userProgressData: userProgressData.length,
+            currentUserId: user.id,
+            allUserIds: progressData.map((p: any) => p.userId)
+          });
+          
+          // นับจาก API data ที่ถูกต้อง
+          apiStartedCount = userProgressData.length;
+          apiCompletedCount = userProgressData.filter((p: any) => 
             p.progressPercent === 100 || p.completed
           ).length;
           
           console.log('📊 Learning stats from API:', {
             started: apiStartedCount,
             completed: apiCompletedCount,
-            progressData: progressData.map((p: any) => ({
+            progressData: userProgressData.map((p: any) => ({
               courseId: p.courseId,
               progressPercent: p.progressPercent,
-              completed: p.completed
+              completed: p.completed,
+              userId: p.userId
             }))
           });
           

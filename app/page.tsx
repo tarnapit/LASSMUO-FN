@@ -217,9 +217,19 @@ export default function HomePage() {
         </div>
 
         {/* Progress Display */}
-        {progress && (progress.totalStars > 0 || progress.completedStages.length > 0 || 
-                     progress.totalPoints > 0 || (learningStats && learningStats.totalModulesStarted > 0) ||
-                     (progress.stages && Object.values(progress.stages).some(s => s.stars > 0 || s.isCompleted))) && (
+        {progress && (() => {
+          // คำนวณค่าจริง ๆ เพื่อตรวจสอบว่ามี progress หรือไม่
+          const stagePoints = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0) : 0;
+          const actualStageStars = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0) : 0;
+          const actualCompletedStages = progress.stages ? Object.values(progress.stages).filter(s => s.isCompleted || s.stars > 0).length : 0;
+          // สำหรับ user ใหม่ที่ยังไม่มี progress จริง ๆ ให้ใช้ 0
+          const actualCoursePoints = 0; // ปิดการใช้ course points ชั่วคราวเพื่อแก้ปัญหา
+          const totalActualPoints = stagePoints + actualCoursePoints;
+          
+          // แสดงเฉพาะเมื่อมี progress จริง ๆ
+          return (totalActualPoints > 0 || actualStageStars > 0 || actualCompletedStages > 0 || 
+                  (learningStats && learningStats.totalModulesStarted > 0));
+        })() && (
           <div className="relative z-20 mt-8 sm:mt-12 bg-black/30 backdrop-blur-md rounded-2xl p-4 sm:p-6 lg:p-8 border border-white/20 shadow-2xl max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row items-center justify-center mb-4 sm:mb-6">
               <div className="p-2 sm:p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full mr-0 sm:mr-3 mb-2 sm:mb-0">
@@ -232,15 +242,27 @@ export default function HomePage() {
             
             {/* Progress Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-              {/* Learning Score Card - แสดงเสมอเมื่อมีคะแนน */}
+              {/* Learning Score Card - แสดงเฉพาะเมื่อมีคะแนนจริง */}
               {(() => {
                 // คำนวณคะแนนจาก stage progress + course progress
-                const stagePoints = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.bestScore || 0), 0) : 0;
-                // ใช้คะแนน course (200) + stage (101) = 301 ตามที่ API คำนวณ
-                const coursePoints = learningStats && learningStats.totalModulesCompleted ? learningStats.totalModulesCompleted * 100 : 0;
+                const stagePoints = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => {
+                  // ตรวจสอบให้แน่ใจว่า stage มี progress จริง ๆ (ไม่ใช่แค่ isUnlocked)
+                  return sum + ((stage.isCompleted || stage.stars > 0) ? (stage.bestScore || 0) : 0);
+                }, 0) : 0;
+                // ใช้คะแนน course จาก API (ปิดชั่วคราวเพื่อแก้ปัญหา user ใหม่)
+                const coursePoints = 0; // learningStats && learningStats.totalModulesCompleted > 0 ? learningStats.totalModulesCompleted * 100 : 0;
                 const displayPoints = coursePoints + stagePoints;
                 
-                return (displayPoints > 0 || stagePoints > 0) && (
+                console.log('🏠 Score calculation:', {
+                  stagePoints,
+                  coursePoints,
+                  displayPoints,
+                  totalModulesCompleted: learningStats?.totalModulesCompleted,
+                  progressTotalPoints: progress.totalPoints,
+                  learningStatsRaw: learningStats
+                });
+                
+                return displayPoints > 0 && (
                   <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-xl p-4 sm:p-6 text-center">
                     <div className="flex items-center justify-center mb-2 sm:mb-3">
                       <div className="p-1.5 sm:p-2 bg-blue-400/20 rounded-full">
@@ -261,18 +283,27 @@ export default function HomePage() {
 
               {/* Stage Stars Card - คำนวณดาวจาก stage progress ที่มีอยู่ */}
               {(() => {
-                // คำนวณดาวจาก stage progress
-                const stageStars = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => sum + (stage.stars || 0), 0) : 0;
-                const displayStars = Math.max(progress.totalStars, stageStars);
+                // คำนวณดาวจาก stage progress เฉพาะที่มีจริง ๆ (ไม่รวม default stage ที่แค่ unlock)
+                const stageStars = progress.stages ? Object.values(progress.stages).reduce((sum, stage) => {
+                  // เฉพาะ stage ที่จบแล้วหรือได้ดาวจริง ๆ เท่านั้น
+                  return sum + ((stage.isCompleted || stage.attempts > 0) ? (stage.stars || 0) : 0);
+                }, 0) : 0;
+                const displayStars = stageStars; // ใช้เฉพาะดาวจาก stage จริง ๆ
                 
-                return (displayStars > 0 || stageStars > 0) && (
+                console.log('🏠 Stars calculation:', {
+                  stageStars,
+                  progressTotalStars: progress.totalStars,
+                  displayStars
+                });
+                
+                return displayStars > 0 && (
                   <div className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-xl p-4 sm:p-6 text-center">
                     <div className="flex items-center justify-center mb-2 sm:mb-3">
                       <div className="p-1.5 sm:p-2 bg-yellow-400/20 rounded-full">
                         <Star className="text-yellow-400 w-6 h-6 sm:w-8 sm:h-8" />
                       </div>
                     </div>
-                    <span className="text-2xl sm:text-3xl font-bold text-white block">{Math.max(displayStars, 1)}</span>
+                    <span className="text-2xl sm:text-3xl font-bold text-white block">{displayStars}</span>
                     <p className="text-yellow-300 text-xs sm:text-sm font-medium mt-1">ดาวจากด่าน</p>
                     {progress.stages && Object.keys(progress.stages).length > 1 && (
                       <p className="text-yellow-200 text-xs mt-1">
@@ -285,12 +316,22 @@ export default function HomePage() {
 
               {/* Completed Stages Card - แสดงด่านที่ผ่านแล้ว */}
               {(() => {
-                // คำนวณจำนวนด่านที่ผ่านจาก stage progress (ใช้ logic เดียวกับ Force card)
-                const completedFromStages = progress.stages ? Object.values(progress.stages).filter(stage => stage.isCompleted || stage.stars > 0).length : 0;
-                // ใช้ completedFromStages เป็นหลัก แล้วค่อย fallback ไปที่ array
-                const displayCompleted = completedFromStages > 0 ? completedFromStages : progress.completedStages.length;
+                // คำนวณจำนวนด่านที่ผ่านจาก stage progress เฉพาะที่มีจริง ๆ (ไม่รวม default stage)
+                const completedFromStages = progress.stages ? Object.values(progress.stages).filter(stage => 
+                  // ต้องจบจริง ๆ หรือได้ดาว หรือมี attempts (เล่นจริง)
+                  stage.isCompleted || stage.stars > 0 || stage.attempts > 0
+                ).length : 0;
                 
-                return (
+                console.log('🏠 Completed stages calculation:', {
+                  completedFromStages,
+                  progressCompletedStages: progress.completedStages.length,
+                  stagesData: progress.stages ? Object.values(progress.stages).map(s => ({ 
+                    isCompleted: s.isCompleted, 
+                    stars: s.stars 
+                  })) : []
+                });
+                
+                return completedFromStages > 0 && (
                   <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-xl p-4 sm:p-6 text-center">
                     <div className="flex items-center justify-center mb-2 sm:mb-3">
                       <div className="p-1.5 sm:p-2 bg-green-400/20 rounded-full">
@@ -298,7 +339,7 @@ export default function HomePage() {
                       </div>
                     </div>
                     <span className="text-2xl sm:text-3xl font-bold text-white block">
-                      {completedFromStages > 0 ? completedFromStages : (displayCompleted || 1)}
+                      {completedFromStages}
                     </span>
                     <p className="text-green-300 text-xs sm:text-sm font-medium mt-1">ด่านที่ผ่าน</p>
                     {progress.stages && Object.keys(progress.stages).length > 1 && (
