@@ -13,6 +13,7 @@ export interface BaseQuestion {
   timeLimit: number;
   explanation?: string;
   funFact?: string;
+  image?: string; // เพิ่มฟิลด์สำหรับรูปภาพประกอบ
   createdAt: string;
   updatedAt: string;
 }

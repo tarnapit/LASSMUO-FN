@@ -11,6 +11,7 @@ interface TrueFalseQuestionProps {
   disabled?: boolean;
   hints?: string[];
   currentQuestionData?: any;
+  image?: string; // เพิ่มฟิลด์สำหรับรูปภาพ
 }
 
 export default function TrueFalseQuestion({
@@ -21,7 +22,8 @@ export default function TrueFalseQuestion({
   selectedAnswer,
   disabled = false,
   hints = [],
-  currentQuestionData
+  currentQuestionData,
+  image // เพิ่มพารามิเตอร์ image
 }: TrueFalseQuestionProps) {
   const [hoveredAnswer, setHoveredAnswer] = useState<boolean | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -74,12 +76,39 @@ export default function TrueFalseQuestion({
 
         {/* Visual Content Placeholder */}
         <div className="mb-8">
-          <div className="w-full h-48 bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-2xl flex items-center justify-center border-2 border-purple-500/30">
-            <div className="text-center text-white">
-              <div className="text-4xl mb-2">❓</div>
-              <p className="text-lg">ภาพประกอบคำถาม</p>
+          {image ? (
+            // แสดงรูปภาพจริงถ้ามี
+            <div className="w-full h-64 md:h-80 bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-2xl overflow-hidden border-2 border-purple-500/30 relative">
+              <img 
+                src={image} 
+                alt="คำถามประกอบ"
+                className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                onError={(e) => {
+                  // Fallback ถ้าไม่สามารถโหลดรูปได้
+                  const img = e.target as HTMLImageElement;
+                  const container = img.parentElement;
+                  if (container) {
+                    container.innerHTML = `
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="text-center text-white">
+                          <div class="text-4xl mb-2">❓</div>
+                          <p class="text-lg">ไม่สามารถโหลดรูปภาพได้</p>
+                        </div>
+                      </div>
+                    `;
+                  }
+                }}
+              />
             </div>
-          </div>
+          ) : (
+            // Placeholder ถ้าไม่มีรูปภาพ
+            <div className="w-full h-48 bg-gradient-to-br from-indigo-900/50 to-purple-900/50 rounded-2xl flex items-center justify-center border-2 border-purple-500/30">
+              <div className="text-center text-white">
+                <div className="text-4xl mb-2">❓</div>
+                <p className="text-lg">ภาพประกอบคำถาม</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

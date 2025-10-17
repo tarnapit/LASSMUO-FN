@@ -184,6 +184,7 @@ export default function EnhancedQuizComponent({
               selectedAnswer={selectedAnswer as number}
               hints={mcQuestion.hints || []}
               currentQuestionData={mcQuestion}
+              image={mcQuestion.image} // เพิ่ม image prop
               {...questionProps}
             />
           );
@@ -201,6 +202,7 @@ export default function EnhancedQuizComponent({
             selectedAnswer={selectedAnswer as boolean}
             hints={tfQuestion.hints || []}
             currentQuestionData={tfQuestion}
+            image={tfQuestion.image} // เพิ่ม image prop
             {...questionProps}
           />
         );

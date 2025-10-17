@@ -11,6 +11,7 @@ import EnhancedResultsComponent from "../../components/quiz/ResultsComponent";
 import { useStageById } from "../../lib/hooks/useStageData";
 import { useStageProgressManager } from "../../lib/hooks/useStageProgressManager";
 import { authManager } from "../../lib/auth";
+import { addImagesToQuestions } from "../../lib/image-mapper";
 
 // Character Introduction Component
 const CharacterIntro = ({ 
@@ -174,7 +175,10 @@ export default function StageDetailPage() {
       const stageAny = stage as any;
       if (stageAny.questions && Array.isArray(stageAny.questions)) {
         console.log('📝 Using questions from API:', stageAny.questions);
-        setQuestions(stageAny.questions);
+        // เพิ่มรูปภาพ mock เข้าไปในคำถามจาก API
+        const questionsWithImages = addImagesToQuestions(stageAny.questions, stageId);
+        console.log('🖼️ Questions with mock images:', questionsWithImages);
+        setQuestions(questionsWithImages);
         return;
       }
       
@@ -187,7 +191,9 @@ export default function StageDetailPage() {
         
         if (stageInfo?.questions) {
           console.log('📝 Using questions from mock data:', stageInfo.questions);
-          setQuestions(stageInfo.questions);
+          // Mock data อาจมีรูปภาพอยู่แล้ว แต่เพิ่มให้แน่ใจ
+          const questionsWithImages = addImagesToQuestions(stageInfo.questions, stageId);
+          setQuestions(questionsWithImages);
         } else {
           console.warn('⚠️ No questions found for stage:', stageId);
           setQuestions([]);
