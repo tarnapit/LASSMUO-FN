@@ -1,5 +1,6 @@
-/** @type {import('tailwindcss').Config} */
-module.exports = {
+import type { Config } from "tailwindcss";
+
+const config: Config = {
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -17,6 +18,7 @@ module.exports = {
           yellow: "#fbbf24",
           white: "#f8fafc",
         },
+        // Custom colors for astronomy theme
         cosmic: {
           50: "#f0f9ff",
           100: "#e0f2fe",
@@ -65,3 +67,5 @@ module.exports = {
     },
   },
 };
+
+export default config;
