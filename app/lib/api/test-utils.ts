@@ -2,7 +2,8 @@
 // These functions help test API integration and can be used in development
 
 import { api } from './index';
-import { CreateCourseRequest, CreateStageRequest } from './types';
+import { CreateCourseRequest } from './types';
+import { CreateStageRequest } from './services/stageService';
 
 /**
  * Test API connection and basic functionality
@@ -65,25 +66,43 @@ export async function createSampleData(): Promise<{
     // Create sample stages
     const sampleStages: CreateStageRequest[] = [
       {
-        courseId,
-        name: "Getting Started with Astronomy",
+        title: "Getting Started with Astronomy",
         description: "Introduction to astronomy basics",
-        order: 1,
-        unlockCondition: true
+        difficulty: "Easy",
+        estimatedTime: "30 minutes",
+        totalStars: 3,
+        xpReward: 100,
+        streakBonus: true,
+        healthSystem: true,
+        rewards: { badge: "Astronomy Beginner" },
+        maxStars: 3,
+        requiredStarsToUnlockNext: 2
       },
       {
-        courseId,
-        name: "Understanding Planets",
+        title: "Understanding Planets",
         description: "Learn about planets in our solar system",
-        order: 2,
-        unlockCondition: false
+        difficulty: "Medium",
+        estimatedTime: "45 minutes",
+        totalStars: 4,
+        xpReward: 150,
+        streakBonus: true,
+        healthSystem: true,
+        rewards: { badge: "Planet Explorer" },
+        maxStars: 4,
+        requiredStarsToUnlockNext: 3
       },
       {
-        courseId,
-        name: "Moons and Satellites",
+        title: "Moons and Satellites",
         description: "Explore moons and artificial satellites",
-        order: 3,
-        unlockCondition: false
+        difficulty: "Hard",
+        estimatedTime: "60 minutes",
+        totalStars: 5,
+        xpReward: 200,
+        streakBonus: true,
+        healthSystem: true,
+        rewards: { badge: "Satellite Master" },
+        maxStars: 5,
+        requiredStarsToUnlockNext: 4
       }
     ];
 
@@ -136,8 +155,8 @@ export async function testLearningFlow(): Promise<{
 
     const firstCourse = coursesResponse.data[0];
 
-    // 2. Get stages for the first course
-    const stagesResponse = await api.stage.getStagesByCourseId(firstCourse.id);
+    // 2. Get all stages (since there's no getStagesByCourseId method)
+    const stagesResponse = await api.stage.getAllStages();
     console.log('📖 Found stages:', stagesResponse.data?.length || 0);
 
     return {

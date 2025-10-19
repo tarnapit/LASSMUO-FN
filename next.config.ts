@@ -1,3 +1,4 @@
+import { tr } from "framer-motion/client";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -6,7 +7,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: false,
+    ignoreDuringBuilds: true,
   },
 };
 

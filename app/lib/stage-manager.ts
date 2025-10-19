@@ -1,5 +1,5 @@
 // Stage mechanics inspired by Duolingo
-import { Question, StageData, StageProgress } from '../types/stage';
+import { Question, StageData, StageProgress, Stage } from '../types/stage';
 import { calculateXpReward, HEARTS_CONFIG } from '../data/gamification';
 
 export interface StageSession {
@@ -48,10 +48,10 @@ export class StageManager {
 
   private initializeSession(): StageSession {
     return {
-      stageId: this.stageData.id,
+      stageId: this.stageData.stage.id,
       questions: this.shuffleQuestions(this.stageData.questions),
       currentQuestionIndex: 0,
-      hearts: this.stageData.healthSystem ? HEARTS_CONFIG.MAX_HEARTS : -1,
+      hearts: this.stageData.stage.healthSystem ? HEARTS_CONFIG.MAX_HEARTS : -1,
       score: 0,
       xp: 0,
       startTime: Date.now(),
@@ -128,22 +128,22 @@ export class StageManager {
 
   private checkAnswer(question: Question, answer: any): boolean {
     switch (question.type) {
-      case 'multiple-choice':
-        return question.answers.some(a => a.id === answer && a.isCorrect);
+      case 'MULTIPLE_CHOICE':
+        return question.payload.options.some((option: any) => option.id === answer && option.isCorrect);
       
-      case 'true-false':
-        return question.correctAnswer === answer;
+      case 'TRUE_FALSE':
+        return question.payload.correctAnswer === answer;
       
-      case 'fill-blank':
+      case 'FILL_BLANK':
         const userAnswer = answer.toLowerCase().trim();
-        const correctAnswer = question.correctAnswer.toLowerCase().trim();
+        const correctAnswer = question.payload.correctAnswer.toLowerCase().trim();
         return userAnswer === correctAnswer || 
-               (question.alternatives?.some(alt => alt.toLowerCase().trim() === userAnswer) || false);
+               (question.payload.alternatives?.some((alt: string) => alt.toLowerCase().trim() === userAnswer) || false);
       
-      case 'drag-drop':
+      case 'DRAG_DROP':
         return this.checkDragDropAnswer(question, answer);
       
-      case 'match-pairs':
+      case 'MATCHING':
         return this.checkMatchPairsAnswer(question, answer);
       
       default:
@@ -152,17 +152,17 @@ export class StageManager {
   }
 
   private checkDragDropAnswer(question: Question, answer: any): boolean {
-    if (question.type !== 'drag-drop') return false;
+    if (question.type !== 'DRAG_DROP') return false;
     
-    return question.dragItems.every(item => 
+    return question.payload.dragItems.every((item: any) => 
       answer[item.id] === item.correctPosition
     );
   }
 
   private checkMatchPairsAnswer(question: Question, answer: any): boolean {
-    if (question.type !== 'match-pairs') return false;
+    if (question.type !== 'MATCHING') return false;
     
-    return question.pairs.every(pair => 
+    return question.payload.pairs.every((pair: any) => 
       answer[pair.left.id] === pair.right.id
     );
   }
@@ -176,7 +176,7 @@ export class StageManager {
     this.session.xp += xpEarned;
 
     // Get random encouragement
-    const encouragements = this.stageData.character.encouragements || ['เยี่ยม!', 'ถูกต้อง!', 'ดีมาก!'];
+    const encouragements = this.stageData.character?.encouragements || ['เยี่ยม!', 'ถูกต้อง!', 'ดีมาก!'];
     const encouragement = encouragements[Math.floor(Math.random() * encouragements.length)];
 
     return {
@@ -215,15 +215,15 @@ export class StageManager {
 
   private getCorrectAnswerText(question: Question): string {
     switch (question.type) {
-      case 'multiple-choice':
-        const correctAnswer = question.answers.find(a => a.isCorrect);
+      case 'MULTIPLE_CHOICE':
+        const correctAnswer = question.payload.options.find((option: any) => option.isCorrect);
         return correctAnswer ? correctAnswer.text : '';
       
-      case 'true-false':
-        return question.correctAnswer ? 'จริง' : 'เท็จ';
+      case 'TRUE_FALSE':
+        return question.payload.correctAnswer ? 'จริง' : 'เท็จ';
       
-      case 'fill-blank':
-        return question.correctAnswer;
+      case 'FILL_BLANK':
+        return question.payload.correctAnswer;
       
       default:
         return '';
@@ -237,17 +237,28 @@ export class StageManager {
     
     // Calculate final XP with bonuses
     if (this.session.isPerfect) {
-      this.session.xp += this.stageData.xpReward || 0;
+      this.session.xp += this.stageData.stage.xpReward || 0;
     }
   }
 
   useHint(): string | null {
     const currentQuestion = this.getCurrentQuestion();
-    if (!currentQuestion || !currentQuestion.hints) {
+    if (!currentQuestion) {
       return null;
     }
 
-    const hints = currentQuestion.hints;
+    // Check if hints are available based on question type
+    let hints: string[] | undefined;
+    if (currentQuestion.type === 'FILL_BLANK') {
+      hints = currentQuestion.payload.hints;
+    } else if (this.stageData.character?.hints) {
+      hints = this.stageData.character.hints;
+    }
+
+    if (!hints || hints.length === 0) {
+      return null;
+    }
+
     const hintIndex = Math.min(this.session.hintsUsed, hints.length - 1);
     this.session.hintsUsed++;
     
@@ -355,20 +366,20 @@ export const getStageStatusIcon = (progress: StageProgress): string => {
 // Question type specific utilities
 export const getQuestionTypeIcon = (type: string): string => {
   switch (type) {
-    case 'multiple-choice': return '📝';
-    case 'true-false': return '✅';
-    case 'fill-blank': return '📝';
-    case 'drag-drop': return '🎯';
-    case 'match-pairs': return '🔗';
+    case 'MULTIPLE_CHOICE': return '📝';
+    case 'TRUE_FALSE': return '✅';
+    case 'FILL_BLANK': return '📝';
+    case 'DRAG_DROP': return '🎯';
+    case 'MATCHING': return '🔗';
     default: return '❓';
   }
 };
 
 export const getQuestionDifficultyColor = (difficulty: string): string => {
   switch (difficulty) {
-    case 'easy': return '#10b981'; // green
-    case 'medium': return '#f59e0b'; // yellow
-    case 'hard': return '#ef4444'; // red
+    case 'Easy': return '#10b981'; // green
+    case 'Medium': return '#f59e0b'; // yellow
+    case 'Hard': return '#ef4444'; // red
     default: return '#6b7280'; // gray
   }
 };
