@@ -32,7 +32,7 @@ export const learningModules: LearningModule[] = [
               title: 'ทดสอบความรู้เบื้องต้น',
               type: 'multiple-choice',
               instruction: 'เลือกคำตอบที่ถูกต้องที่สุด',
-              difficulty: 'easy',
+              difficulty: 'Easy',
               maxAttempts: 3,
               passingScore: 10,
               data: {
