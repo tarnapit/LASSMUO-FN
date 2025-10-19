@@ -580,16 +580,16 @@ export default function LearningPage() {
 
             return (
               <div key={module.id} className="group h-full">
-                <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm rounded-2xl p-4 sm:p-6 hover:border-purple-500/50 transition-all duration-300 transform hover:scale-105 border border-slate-700/50 h-full flex flex-col min-h-[450px] sm:min-h-[500px] shadow-xl">
+                <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/90 backdrop-blur-sm rounded-2xl p-4 sm:p-6 hover:shadow-2xl hover:shadow-purple-500/20 transition-all duration-300 transform hover:scale-105 border-2 border-slate-600/70 hover:border-purple-400/70 h-full flex flex-col min-h-[450px] sm:min-h-[500px] shadow-2xl shadow-black/50">
                   {/* Header with Status */}
-                  <div className="flex items-center justify-between mb-4 sm:mb-6">
+                  <div className="flex items-center justify-between mb-4 sm:mb-6 bg-gradient-to-r from-slate-700/30 to-slate-800/30 -m-2 p-4 rounded-xl border border-slate-600/30">
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       {getModuleStatusIcon(module.id)}
                       <div className="flex flex-col">
-                        <span className={`text-xs sm:text-sm font-semibold ${getModuleStatusColor(module.id)}`}>
+                        <span className={`text-xs sm:text-sm font-bold ${getModuleStatusColor(module.id)} drop-shadow-sm`}>
                           {getModuleStatusText(module.id)}
                         </span>
-                        <span className={`text-xs ${getLevelColor(module.level)}`}>
+                        <span className={`text-xs font-semibold ${getLevelColor(module.level)} drop-shadow-sm`}>
                           {getLevelText(module.level)}
                         </span>
                       </div>
@@ -612,7 +612,7 @@ export default function LearningPage() {
                     href={`/learning/${module.id}`}
                     className="flex-1 flex flex-col"
                   >
-                    <h3 className="text-2xl font-bold text-white mb-4 group-hover:text-purple-400 transition-colors leading-tight">
+                    <h3 className="text-2xl font-bold mb-4 group-hover:text-purple-300 transition-colors leading-tight drop-shadow-lg bg-gradient-to-r from-white to-gray-100 bg-clip-text text-transparent">
                       {module.title}
                     </h3>
 
@@ -625,24 +625,24 @@ export default function LearningPage() {
                     </div>
 
                     {/* Activity Types */}
-                    <div className="mb-6">
-                      <h4 className="text-white text-sm font-semibold mb-3">กิจกรรมการเรียนรู้:</h4>
+                    <div className="mb-6 bg-gradient-to-br from-slate-700/20 to-slate-800/20 p-4 rounded-xl border border-slate-600/40">
+                      <h4 className="text-white text-sm font-bold mb-3 drop-shadow-sm">กิจกรรมการเรียนรู้:</h4>
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="flex items-center space-x-2 bg-blue-500/10 border border-blue-500/30 rounded-lg p-2">
-                          <BookOpen className="w-4 h-4 text-blue-400" />
-                          <span className="text-xs text-blue-300">เนื้อหาหลัก</span>
+                        <div className="flex items-center space-x-2 bg-blue-500/20 border border-blue-400/50 rounded-lg p-2 shadow-md">
+                          <BookOpen className="w-4 h-4 text-blue-300" />
+                          <span className="text-xs text-blue-200 font-medium">เนื้อหาหลัก</span>
                         </div>
-                        <div className="flex items-center space-x-2 bg-green-500/10 border border-green-500/30 rounded-lg p-2">
-                          <Brain className="w-4 h-4 text-green-400" />
-                          <span className="text-xs text-green-300">ทดสอบความเข้าใจ</span>
+                        <div className="flex items-center space-x-2 bg-green-500/20 border border-green-400/50 rounded-lg p-2 shadow-md">
+                          <Brain className="w-4 h-4 text-green-300" />
+                          <span className="text-xs text-green-200 font-medium">ทดสอบความเข้าใจ</span>
                         </div>
-                        <div className="flex items-center space-x-2 bg-purple-500/10 border border-purple-500/30 rounded-lg p-2">
-                          <PlayCircle className="w-4 h-4 text-purple-400" />
-                          <span className="text-xs text-purple-300">แบบฝึกหัด</span>
+                        <div className="flex items-center space-x-2 bg-purple-500/20 border border-purple-400/50 rounded-lg p-2 shadow-md">
+                          <PlayCircle className="w-4 h-4 text-purple-300" />
+                          <span className="text-xs text-purple-200 font-medium">แบบฝึกหัด</span>
                         </div>
-                        <div className="flex items-center space-x-2 bg-orange-500/10 border border-orange-500/30 rounded-lg p-2">
-                          <BarChart3 className="w-4 h-4 text-orange-400" />
-                          <span className="text-xs text-orange-300">ประเมินผล</span>
+                        <div className="flex items-center space-x-2 bg-orange-500/20 border border-orange-400/50 rounded-lg p-2 shadow-md">
+                          <BarChart3 className="w-4 h-4 text-orange-300" />
+                          <span className="text-xs text-orange-200 font-medium">ประเมินผล</span>
                         </div>
                       </div>
                     </div>
@@ -714,21 +714,21 @@ export default function LearningPage() {
                       </div>
                     </div>
 
-                    <div className="mt-auto pt-4 border-t border-white/10">
+                    <div className="mt-auto pt-4 border-t border-white/20 bg-gradient-to-r from-slate-700/20 to-slate-800/20 -mx-2 px-4 pb-2 rounded-b-xl">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="text-sm text-gray-400">
+                          <span className="text-sm text-gray-300 font-medium">
                             {getActualChapterCount(module.id)} บท
                           </span>
                           <span
-                            className={`text-sm font-semibold ${getModuleStatusColor(
+                            className={`text-sm font-bold ${getModuleStatusColor(
                               module.id
-                            )}`}
+                            )} drop-shadow-sm`}
                           >
                             {getModuleStatusText(module.id)}
                           </span>
                         </div>
-                        <div className="text-yellow-400 group-hover:translate-x-1 transition-transform">
+                        <div className="text-yellow-300 group-hover:translate-x-1 group-hover:text-yellow-200 transition-all duration-300 text-xl font-bold drop-shadow-sm">
                           →
                         </div>
                       </div>

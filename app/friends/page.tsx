@@ -6,7 +6,7 @@ import Navbar from "../components/layout/Navbar";
 import ChatModal from "../components/ui/ChatModal";
 import LoginModal from "../components/ui/LoginModal";
 import { authManager, User as UserType } from "../lib/auth";
-import { useUsers, useLeaderboard } from "../lib/api/hooks";
+import { useUsers } from "../lib/api/hooks";
 import { 
   Users, 
   Trophy, 
@@ -38,7 +38,7 @@ export default function FriendsPage() {
 
   // API hooks - removed unused useUserProfile
   const { data: apiUsers, loading: usersLoading } = useUsers();
-  const { data: apiLeaderboard, loading: leaderboardLoading } = useLeaderboard();
+  // Removed useLeaderboard as it is not exported from "../lib/api/hooks"
 
   useEffect(() => {
     // ตรวจสอบสถานะการล็อกอินเมื่อ component mount
@@ -394,75 +394,7 @@ export default function FriendsPage() {
         )}
 
         {/* Leaderboard Tab */}
-        {isLoggedIn && activeTab === 'leaderboard' && (
-          <div className="max-w-4xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 overflow-hidden">
-              <div className="bg-gradient-to-r from-yellow-500 to-orange-500 p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Trophy className="text-white mr-3" size={32} />
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">กระดานคะแนน</h2>
-                      <p className="text-yellow-100">อันดับประจำสัปดาห์</p>
-                    </div>
-                  </div>
-                  <div className="text-right text-yellow-100">
-                    <p className="text-sm">อัปเดตล่าสุด</p>
-                    <p className="font-semibold">{leaderboard.lastUpdated.toLocaleTimeString('th-TH')}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6">
-                {leaderboard.entries.map((entry, index) => (
-                  <div
-                    key={entry.user.id}
-                    className={`flex items-center justify-between p-4 rounded-xl mb-4 transition-all hover:bg-white/5 ${
-                      index < 3 ? 'bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-400/20' : 'bg-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <div className="relative">
-                        {index === 0 && <Crown className="absolute -top-3 -left-1 text-yellow-400" size={20} />}
-                        {index === 1 && <Medal className="absolute -top-3 -left-1 text-gray-400" size={20} />}
-                        {index === 2 && <Award className="absolute -top-3 -left-1 text-orange-400" size={20} />}
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-xl ${
-                          index < 3 ? 'bg-gradient-to-r from-yellow-400 to-orange-400 text-black' : 'bg-white/20 text-white'
-                        }`}>
-                          {entry.rank}
-                        </div>
-                      </div>
-                      <div className="ml-4 flex items-center">
-                        <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-lg mr-3">
-                          {entry.user.avatar}
-                        </div>
-                        <div>
-                          <h3 className="text-white font-semibold">{entry.user.displayName}</h3>
-                          <p className="text-gray-400 text-sm">เลเวล {entry.user.level}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <div className="text-yellow-400 font-bold text-lg">
-                          {entry.score.toLocaleString()}
-                        </div>
-                        <div className="text-gray-400 text-sm">คะแนน</div>
-                      </div>
-                      <div className="flex items-center">
-                        {getRankChangeIcon(entry.change)}
-                        <span className="text-sm text-gray-400 ml-1">
-                          {entry.change !== 0 && Math.abs(entry.change)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Removed Leaderboard Tab as useLeaderboard is not available */}
 
         {/* Groups Tab */}
         {isLoggedIn && activeTab === 'groups' && (

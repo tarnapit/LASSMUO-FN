@@ -4,7 +4,6 @@ import { Trophy, Star, Target, Medal, Crown, Users } from "lucide-react";
 import Navbar from "../components/layout/Navbar";
 import { progressManager } from "../lib/progress";
 import { authManager } from "../lib/auth";
-import { useLeaderboard } from "../lib/api/hooks";
 
 interface LeaderboardEntry {
   username: string;
@@ -18,9 +17,6 @@ export default function LeaderboardPage() {
   const [userProgress, setUserProgress] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  // API hooks - removed unused useUserProfile
-  const { data: apiLeaderboard, loading: leaderboardLoading } = useLeaderboard();
 
   useEffect(() => {
     const progress = progressManager.getProgress();
@@ -40,8 +36,8 @@ export default function LeaderboardPage() {
     { username: "UniverseSeeker", totalStars: 9, totalPoints: 900, completedStages: 3, rank: 5 },
   ];
 
-  // ใช้ API leaderboard หากมี หรือใช้ mock data
-  const leaderboardData = apiLeaderboard?.data || mockLeaderboard;
+  // ใช้ mock data เท่านั้น
+  const leaderboardData = mockLeaderboard;
 
   const getRankIcon = (rank: number) => {
     switch(rank) {
@@ -124,15 +120,9 @@ export default function LeaderboardPage() {
           </h2>
           
           <div className="space-y-4">
-            {leaderboardData.map((entry, index) => {
-              // แปลง API data structure ให้เข้ากับ local structure
-              const displayEntry = apiLeaderboard?.data ? {
-                username: (entry as any).userName || (entry as any).username,
-                totalStars: (entry as any).totalScore || (entry as any).totalStars || 0,
-                totalPoints: (entry as any).totalScore || (entry as any).totalPoints || 0,
-                completedStages: (entry as any).totalAnswers || (entry as any).completedStages || 0,
-                rank: (entry as any).rank || index + 1
-              } : entry as LeaderboardEntry;
+            {leaderboardData.map((entry: LeaderboardEntry, index: number) => {
+              // ใช้ mock data โดยตรง
+              const displayEntry = entry;
               
               return (
               <div

@@ -99,11 +99,22 @@ export default function EnhancedQuizComponent({
       setShowResult(false);
       
       // Clear user answer for the next question to ensure clean state
-      // This is especially important for drag-drop and other interactive questions
+      // This is especially important for drag-drop and matching questions
       const nextQuestionIndex = currentQuestionIndex + 1;
       setUserAnswers(prev => {
         const newAnswers = { ...prev };
+        // Clear any existing answer for the next question
         delete newAnswers[nextQuestionIndex];
+        
+        // Also clear any potential state that might affect rendering
+        // This helps with match pairs and other interactive questions
+        console.log('🧹 Clearing state for next question:', {
+          currentIndex: currentQuestionIndex,
+          nextIndex: nextQuestionIndex,
+          clearedAnswer: newAnswers[nextQuestionIndex],
+          remainingAnswers: Object.keys(newAnswers)
+        });
+        
         return newAnswers;
       });
     }
@@ -321,6 +332,8 @@ export default function EnhancedQuizComponent({
               showResult={showResult}
               userAnswer={userAnswers[currentQuestionIndex]}
               question={matchQuestion.question}
+              key={`match-${currentQuestionIndex}`} // Add key to force re-render on question change
+              questionIndex={currentQuestionIndex} // Add question index for better state management
             />
           );
         } else {

@@ -19,6 +19,7 @@ interface EnhancedMatchPairsQuestionProps {
   showResult: boolean;
   userAnswer?: Record<string, string>;
   question?: string;
+  questionIndex?: number; // Add question index for better state tracking
 }
 
 export default function EnhancedMatchPairsQuestion({
@@ -26,7 +27,8 @@ export default function EnhancedMatchPairsQuestion({
   onAnswer,
   showResult,
   userAnswer,
-  question = "จับคู่รายการให้ถูกต้อง"
+  question = "จับคู่รายการให้ถูกต้อง",
+  questionIndex = 0
 }: EnhancedMatchPairsQuestionProps) {
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
   const [selectedRight, setSelectedRight] = useState<string | null>(null);
@@ -38,51 +40,75 @@ export default function EnhancedMatchPairsQuestion({
   const rightRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Shuffle items
+  // Shuffle items - use key to force re-shuffle on question change
   const [rightItems] = useState(() => 
     [...pairs.map(p => p.right)].sort(() => Math.random() - 0.5)
   );
   const leftItems = pairs.map(p => p.left);
 
+  // Effect to initialize/reset component state
+  useEffect(() => {
+    console.log('🔄 MatchPairs: Initializing component for question:', questionIndex);
+    
+    // Initialize with clean state
+    setSelectedLeft(null);
+    setSelectedRight(null);
+    setMatches({});
+    setConnections([]);
+    setAnimatingPair(null);
+    setHoveredConnection(null);
+    
+    return () => {
+      // Cleanup on unmount
+      console.log('🧹 MatchPairs: Cleaning up component for question:', questionIndex);
+    };
+  }, []); // Run only on mount
+
   // Effect to clear state when question/pairs change
   useEffect(() => {
+    console.log('🔄 MatchPairs: Resetting state for new question/pairs:', {
+      questionIndex: questionIndex,
+      pairsLength: pairs.length,
+      pairsData: pairs,
+      userAnswer: userAnswer
+    });
+    
     // Reset all states first to ensure clean start for new question
     setSelectedLeft(null);
     setSelectedRight(null);
     setMatches({});
     setConnections([]);
     setAnimatingPair(null);
+    setHoveredConnection(null);
     
-    // Then restore user answer if exists
-    if (userAnswer) {
-      setMatches(userAnswer);
-      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
-        const correctPair = pairs.find(p => p.left.id === leftId);
-        return {
-          from: leftId,
-          to: rightId,
-          isCorrect: correctPair?.right.id === rightId
-        };
+    // Then restore user answer if exists and is valid for current pairs
+    if (userAnswer && Object.keys(userAnswer).length > 0) {
+      // Validate userAnswer against current pairs
+      const validAnswers: Record<string, string> = {};
+      const pairIds = pairs.map(p => p.left.id);
+      
+      Object.entries(userAnswer).forEach(([leftId, rightId]) => {
+        if (pairIds.includes(leftId)) {
+          validAnswers[leftId] = rightId;
+        }
       });
-      setConnections(newConnections);
+      
+      console.log('🔄 Restoring valid user answers:', validAnswers);
+      
+      if (Object.keys(validAnswers).length > 0) {
+        setMatches(validAnswers);
+        const newConnections = Object.entries(validAnswers).map(([leftId, rightId]) => {
+          const correctPair = pairs.find(p => p.left.id === leftId);
+          return {
+            from: leftId,
+            to: rightId,
+            isCorrect: correctPair?.right.id === rightId
+          };
+        });
+        setConnections(newConnections);
+      }
     }
-  }, [pairs]); // Trigger when pairs prop changes
-
-  // Separate effect for handling userAnswer updates
-  useEffect(() => {
-    if (userAnswer) {
-      setMatches(userAnswer);
-      const newConnections = Object.entries(userAnswer).map(([leftId, rightId]) => {
-        const correctPair = pairs.find(p => p.left.id === leftId);
-        return {
-          from: leftId,
-          to: rightId,
-          isCorrect: correctPair?.right.id === rightId
-        };
-      });
-      setConnections(newConnections);
-    }
-  }, [userAnswer, pairs]);
+  }, [pairs, question, questionIndex]); // Add questionIndex as dependency to ensure reset on question change
 
   const handleLeftClick = (leftId: string) => {
     if (showResult || matches[leftId]) return;
