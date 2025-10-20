@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { CheckCircle, XCircle, RotateCcw, Zap, MousePointer, Trash2 } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, Zap, MousePointer, Trash2, Link2, Sparkles, Target } from "lucide-react";
+import "../../styles/quiz-enhanced.css";
 
 interface PairItem {
   id: string;
@@ -217,25 +218,25 @@ export default function EnhancedMatchPairsQuestion({
       );
       
       return `
-        relative p-4 rounded-xl font-semibold text-center cursor-pointer
-        transition-all duration-300 border-2 group
+        match-item relative p-6 rounded-xl font-bold text-center cursor-pointer
+        transition-all duration-500 border-2 shadow-xl transform
         ${connection?.isCorrect 
-          ? 'bg-green-500/20 text-green-300 border-green-500 shadow-lg shadow-green-500/25' 
-          : 'bg-red-500/20 text-red-300 border-red-500 shadow-lg shadow-red-500/25'
+          ? 'bg-gradient-to-br from-green-500/30 to-emerald-500/30 text-green-800 border-green-400 shadow-green-500/40 scale-105' 
+          : 'bg-gradient-to-br from-red-500/30 to-pink-500/30 text-red-800 border-red-400 shadow-red-500/40'
         }
       `;
     }
     
     return `
-      relative p-4 rounded-xl font-semibold text-center cursor-pointer
-      transition-all duration-300 border-2 group
+      match-item relative p-6 rounded-xl font-bold text-center cursor-pointer
+      transition-all duration-500 border-2 shadow-xl transform hover:scale-105
       ${isMatched 
-        ? 'bg-blue-500/20 text-blue-300 border-blue-500 shadow-lg shadow-blue-500/25' 
+        ? 'bg-gradient-to-br from-blue-500/30 to-purple-500/30 text-blue-800 border-blue-400 shadow-blue-500/40 scale-105' 
         : isSelected 
-          ? 'bg-yellow-400/20 text-yellow-300 border-yellow-400 shadow-lg shadow-yellow-400/25 scale-105' 
-          : 'bg-white/10 text-white border-gray-300/30 hover:border-blue-400 hover:bg-blue-500/10 shadow-md hover:shadow-lg'
+          ? 'bg-gradient-to-br from-yellow-400/30 to-orange-400/30 text-yellow-200 border-yellow-400 shadow-yellow-400/40 scale-110' 
+          : 'bg-gradient-to-br from-white/10 to-gray-200/10 text-white border-gray-300/50 hover:border-blue-400 hover:from-blue-500/20 hover:to-purple-500/20 shadow-md hover:shadow-xl'
       }
-      ${isAnimating ? 'animate-pulse scale-105' : ''}
+      ${isAnimating ? 'animate-pulse scale-110 shadow-2xl' : ''}
     `;
   };
 
@@ -330,36 +331,55 @@ export default function EnhancedMatchPairsQuestion({
 
   return (
     <div className="w-full max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-white">
+      {/* Enhanced Header */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center space-x-3 mb-4">
+          <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-lg match-pair-icon">
+            <Link2 className="w-6 h-6 text-white" />
+          </div>
+          <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg match-pair-icon">
+            <Target className="w-6 h-6 text-white" />
+          </div>
+          <div className="p-3 bg-gradient-to-r from-pink-500 to-red-500 rounded-xl shadow-lg match-pair-icon">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <h1 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
           {question}
         </h1>
-        
-        <div className="flex items-center justify-end space-x-4">          
-          {!showResult && (
-            <button
-              onClick={handleReset}
-              className="p-3 bg-gray-500 hover:bg-gray-600 rounded-full transition-colors"
-              title="รีเซ็ตการจับคู่"
-              aria-label="รีเซ็ตการจับคู่"
-            >
-              <RotateCcw className="w-6 h-6 text-white" />
-            </button>
-          )}
-        </div>
+        <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full mx-auto mb-6"></div>
       </div>
 
-      {/* Instructions */}
+      {/* Controls */}
+      <div className="flex items-center justify-center mb-8">
+        {!showResult && (
+          <button
+            onClick={handleReset}
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105"
+            title="รีเซ็ตการจับคู่"
+            aria-label="รีเซ็ตการจับคู่"
+          >
+            <RotateCcw className="w-5 h-5" />
+            <span>รีเซ็ต</span>
+          </button>
+        )}
+      </div>
+
+      {/* Enhanced Instructions */}
       <div className="mb-8 text-center">
-        <p className="text-gray-300 text-lg">
-          คลิกที่รายการฝั่งซ้าย แล้วคลิกที่รายการฝั่งขวาที่ตรงกัน
-        </p>
+        <div className="inline-flex items-center space-x-3 px-6 py-3 bg-gradient-to-r from-blue-900/40 to-purple-900/40 border border-blue-500/50 rounded-xl shadow-lg">
+          <MousePointer className="w-5 h-5 text-blue-400" />
+          <p className="text-white text-lg font-medium">
+            คลิกที่รายการฝั่งซ้าย แล้วคลิกที่รายการฝั่งขวาที่ตรงกัน
+          </p>
+          <Zap className="w-5 h-5 text-purple-400" />
+        </div>
         {selectedLeft && (
-          <div className="mt-4 p-3 bg-yellow-900/30 rounded-lg inline-block">
-            <p className="text-yellow-400">
-              <Zap className="inline w-4 h-4 mr-1" />
-              เลือกคู่ที่ตรงกับรายการที่เลือกไว้
+          <div className="mt-4 p-4 bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border border-yellow-500/70 rounded-xl inline-block shadow-lg">
+            <p className="text-yellow-400 font-semibold flex items-center space-x-2">
+              <Zap className="w-5 h-5" />
+              <span>เลือกคู่ที่ตรงกับรายการที่เลือกไว้</span>
+              <Target className="w-5 h-5" />
             </p>
           </div>
         )}
@@ -370,12 +390,15 @@ export default function EnhancedMatchPairsQuestion({
         {renderConnections()}
         
         <div className="grid grid-cols-2 gap-12">
-          {/* Left Column */}
+          {/* Enhanced Left Column */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2">
-              <MousePointer className="w-5 h-5" />
-              คลิกเลือก
-            </h3>
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center space-x-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl shadow-lg">
+                <MousePointer className="w-5 h-5 text-white" />
+                <h3 className="text-xl font-bold text-white">คลิกเลือก</h3>
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              </div>
+            </div>
             {leftItems.map((item) => {
               const isMatched = !!matches[item.id];
               const matchedRight = matches[item.id];
@@ -388,7 +411,7 @@ export default function EnhancedMatchPairsQuestion({
                     className={getItemStyle(item.id, 'left', isMatched)}
                   >
                     {item.emoji && <span className="text-2xl mb-2 block">{item.emoji}</span>}
-                    <div className="font-medium">{item.text}</div>
+                    <div className="font-medium text-gray-900">{item.text}</div>
                     
                     {/* Show matched item */}
                     {isMatched && matchedRight && (
@@ -400,17 +423,17 @@ export default function EnhancedMatchPairsQuestion({
                       </div>
                     )}
                     
-                    {/* Remove button */}
+                    {/* Enhanced Remove button */}
                     {isMatched && !showResult && (
                       <button
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110"
+                        className="absolute -top-3 -right-3 w-8 h-8 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 shadow-lg hover:shadow-xl"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemoveMatch(item.id);
                         }}
                         title="ลบการจับคู่"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -419,12 +442,15 @@ export default function EnhancedMatchPairsQuestion({
             })}
           </div>
 
-          {/* Right Column */}
+          {/* Enhanced Right Column */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-white mb-4 text-center flex items-center justify-center gap-2">
-              <Zap className="w-5 h-5" />
-              จับคู่กับ
-            </h3>
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center space-x-3 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl shadow-lg">
+                <Zap className="w-5 h-5 text-white" />
+                <h3 className="text-xl font-bold text-white">จับคู่กับ</h3>
+                <Target className="w-5 h-5 text-white" />
+              </div>
+            </div>
             {rightItems.map((item) => {
               const isMatched = Object.values(matches).includes(item.id);
               return (
@@ -435,11 +461,13 @@ export default function EnhancedMatchPairsQuestion({
                   className={getItemStyle(item.id, 'right', isMatched)}
                 >
                   {item.emoji && <span className="text-2xl mb-2 block">{item.emoji}</span>}
-                  <div className="font-medium">{item.text}</div>
+                  <div className="font-medium text-gray-900">{item.text}</div>
                   
-                  {/* Availability indicator */}
+                  {/* Enhanced Availability indicator */}
                   {!isMatched && selectedLeft && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <div className="absolute -top-2 -right-2 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse shadow-lg">
+                      <div className="w-2 h-2 bg-white rounded-full absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-ping"></div>
+                    </div>
                   )}
                 </div>
               );

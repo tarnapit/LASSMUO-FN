@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
-import { CheckCircle, XCircle, RotateCcw } from "lucide-react";
+import { CheckCircle, XCircle, RotateCcw, Sparkles, Target, Move } from "lucide-react";
+import "../../styles/quiz-enhanced.css";
 
 interface DragItem {
   id: string;
@@ -190,7 +191,7 @@ export default function EnhancedDragDropQuestion({
         ? 'border-blue-400 bg-blue-500/20 text-white' 
         : isHovered 
           ? 'border-yellow-400 bg-yellow-500/20 text-yellow-300'
-          : 'border-gray-500 bg-gray-700/50 text-gray-300'
+          : 'border-gray-500 bg-gray-700/50 text-gray-900'
       }
     `;
   };
@@ -223,44 +224,47 @@ export default function EnhancedDragDropQuestion({
   const allItemsPlaced = Object.keys(droppedItems).length === dragItems.length;
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl lg:text-4xl font-bold text-white mb-6">
-          {question}
-        </h1>
+    <div className="w-full max-w-6xl mx-auto question-container">
+      {/* Enhanced Header */}
+      <div className="text-center mb-12">
+        <div className="inline-flex items-center gap-4 mb-6">
+          <Move className="w-8 h-8 text-blue-400 icon-bounce" />
+          <h1 className="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            {question}
+          </h1>
+          <Target className="w-8 h-8 text-pink-400 icon-bounce" />
+        </div>
+        <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl p-4 border border-blue-400/30 max-w-2xl mx-auto mb-8">
+          <p className="text-white text-lg font-medium">
+            🎯 ลากรายการจากด้านซ้ายไปยังพื้นที่ที่ถูกต้องด้านขวา
+          </p>
+        </div>
         
-        <div className="flex items-center justify-end space-x-4">          
+        <div className="flex items-center justify-center space-x-4">          
           {!showResult && (
             <button
               onClick={handleReset}
-              className="p-3 bg-gray-500 hover:bg-gray-600 rounded-full transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-500 hover:to-gray-600 text-white rounded-xl transition-all duration-300 transform hover:scale-105 font-semibold"
               title="รีเซ็ตการจัดเรียง"
               aria-label="รีเซ็ตการจัดเรียง"
             >
-              <RotateCcw className="w-6 h-6 text-white" />
+              <RotateCcw className="w-5 h-5" />
+              <span>รีเซ็ต</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="mb-8 text-center">
-        <p className="text-gray-300 text-lg">
-          ลากรายการจากด้านล่างไปวางในตำแหน่งที่ถูกต้อง
-        </p>
-      </div>
-
-      {/* Drop Zones */}
+      {/* Enhanced Drop Zones */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-        {dropZones.map((zone) => (
+        {dropZones.map((zone, index) => (
           <div
             key={zone.id}
             onDragOver={handleDragOver}
             onDragEnter={(e) => handleDragEnter(e, zone.id)}
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, zone.id)}
-            className={getZoneStyle(zone.id)}
+            className={`drop-zone ${getZoneStyle(zone.id)} ${hoveredZone === zone.id ? 'drag-over' : ''} ${droppedItems[zone.id] ? 'filled' : ''}`}
           >
             {droppedItems[zone.id] ? (
               <div

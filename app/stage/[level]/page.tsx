@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Star, Clock, Trophy, X, ArrowLeft } from "lucide-react";
+import { Star, Clock, Trophy, X, ArrowLeft, Sparkles, Target, Award, Rocket, Play, BookOpen, Zap } from "lucide-react";
 import Navbar from "../../components/layout/Navbar";
 import { progressManager } from "../../lib/progress";
 import { Question } from "../../types/stage";
@@ -12,61 +12,153 @@ import { useStageById } from "../../lib/hooks/useStageData";
 import { useStageProgressManager } from "../../lib/hooks/useStageProgressManager";
 import { authManager } from "../../lib/auth";
 import { addImagesToQuestions } from "../../lib/image-mapper";
+import "../../styles/stage-presentation.css";
 
 // Character Introduction Component
 const CharacterIntro = ({ 
   stage, 
   character,
-  onContinue 
+  onContinue,
+  currentUser,
+  stageId 
 }: { 
   stage: any;
   character?: any;
   onContinue: () => void;
+  currentUser?: any;
+  stageId: number;
 }) => {
+  const [animationClass, setAnimationClass] = useState("opacity-0 translate-y-10");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAnimationClass("opacity-100 translate-y-0");
+    }, 200);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex flex-col overflow-hidden relative">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute top-1/3 -right-32 w-96 h-96 bg-purple-500/20 rounded-full blur-xl animate-pulse delay-1000"></div>
+        <div className="absolute -bottom-32 left-1/3 w-64 h-64 bg-pink-500/20 rounded-full blur-xl animate-pulse delay-2000"></div>
+        
+        {/* Floating stars */}
+        {[...Array(20)].map((_, i) => (
+          <div
+            key={i}
+            className={`absolute text-yellow-300 floating-star`}
+          >
+            ✨
+          </div>
+        ))}
+      </div>
+
       <Navbar />
-      <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <div className="text-center space-y-8 max-w-3xl">
-          {/* Character Avatar */}
-          <div className="text-8xl mb-6">{character?.avatar || "🚀"}</div>
+      <div className={`flex-1 flex flex-col items-center justify-center px-8 transition-all duration-1000 ease-out ${animationClass}`}>
+        <div className="text-center space-y-8 max-w-4xl relative z-10">
+          {/* Character Avatar with Animation */}
+          <div className="relative">
+            <div className="text-9xl mb-6 animate-bounce filter drop-shadow-2xl">
+              {character?.avatar || "🚀"}
+            </div>
+            <div className="absolute -top-4 -right-4">
+              <Sparkles className="w-8 h-8 text-yellow-300 animate-spin" />
+            </div>
+          </div>
           
-          {/* Character Name */}
-          <h1 className="text-4xl font-bold text-white">พบกับ {character?.name || "ผู้นำทาง"}</h1>
+          {/* Stage Title with Glow Effect */}
+          <div className="relative">
+            <h1 className="gradient-text text-5xl md:text-6xl font-bold mb-4 drop-shadow-lg">
+              {stage.title}
+            </h1>
+          </div>
           
-          {/* Character Introduction */}
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-8 shadow-xl">
-            <p className="text-white text-lg leading-relaxed">
-              {character?.introduction || `ยินดีต้อนรับสู่ ${stage.title}! ฉันจะเป็นผู้นำทางของคุณในการเรียนรู้เกี่ยวกับดาราศาสตร์`}
-            </p>
+          {/* Character Name & Progress */}
+          <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+            <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2 mb-4">
+              <Rocket className="w-6 h-6 text-blue-400" />
+              พบกับ {character?.name || "ผู้นำทาง"}
+              <Rocket className="w-6 h-6 text-purple-400 scale-x-[-1]" />
+            </h2>
+            
+            {/* User Progress Summary */}
+            {currentUser && (
+              <div className="flex justify-center gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-yellow-400" />
+                  <span className="text-gray-300">ระดับ {currentUser.level}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-blue-400" />
+                  <span className="text-gray-300">{currentUser.experience} XP</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Award className="w-4 h-4 text-purple-400" />
+                  <span className="text-gray-300">ด่าน {stageId}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Character Introduction with Enhanced Design */}
+          <div className="bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-md rounded-2xl p-8 shadow-2xl border border-white/20 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400"></div>
+            <div className="flex items-start gap-4">
+              <div className="text-4xl">{character?.avatar || "🚀"}</div>
+              <div className="flex-1">
+                <p className="text-white text-lg leading-relaxed text-left">
+                  {character?.introduction || `ยินดีต้อนรับสู่ ${stage.title}! ฉันจะเป็นผู้นำทางของคุณในการเรียนรู้เกี่ยวกับดาราศาสตร์`}
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Stage Info */}
-          <div className="flex justify-center space-x-8 text-center">
-            <div>
-              <p className="text-gray-400">ระดับความยาก</p>
-              <p className="text-white font-semibold">
-                {stage.difficulty === 'Easy' ? 'ง่าย' :
-                 stage.difficulty === 'Medium' ? 'ปานกลาง' : 'ยาก'}
+          {/* Enhanced Stage Info Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="interactive-card stagger-animation info-card bg-gradient-to-br from-emerald-500/20 to-teal-500/20 backdrop-blur-sm rounded-xl p-6 border border-emerald-400/30">
+              <div className="flex items-center justify-center mb-3">
+                <Target className="w-8 h-8 text-emerald-400 bounce-icon" />
+              </div>
+              <p className="text-emerald-300 text-sm mb-1">ระดับความยาก</p>
+              <p className="text-white font-bold text-lg">
+                {stage.difficulty === 'Easy' ? '🟢 ง่าย' :
+                 stage.difficulty === 'Medium' ? '🟡 ปานกลาง' : '🔴 ยาก'}
               </p>
             </div>
-            <div>
-              <p className="text-gray-400">เวลาโดยประมาณ</p>
-              <p className="text-white">{stage.estimatedTime || '5-10 นาที'}</p>
+            
+            <div className="interactive-card stagger-animation info-card bg-gradient-to-br from-blue-500/20 to-cyan-500/20 backdrop-blur-sm rounded-xl p-6 border border-blue-400/30">
+              <div className="flex items-center justify-center mb-3">
+                <Clock className="w-8 h-8 text-blue-400 bounce-icon" />
+              </div>
+              <p className="text-blue-300 text-sm mb-1">เวลาโดยประมาณ</p>
+              <p className="text-white font-bold text-lg">⏱️ {stage.estimatedTime || '5-10 นาที'}</p>
             </div>
-            <div>
-              <p className="text-gray-400">รางวัล XP</p>
-              <p className="text-white">{stage.xpReward || 100} XP</p>
+            
+            <div className="interactive-card stagger-animation info-card bg-gradient-to-br from-yellow-500/20 to-orange-500/20 backdrop-blur-sm rounded-xl p-6 border border-yellow-400/30 glow-border">
+              <div className="flex items-center justify-center mb-3">
+                <Award className="w-8 h-8 text-yellow-400 achievement-badge" />
+              </div>
+              <p className="text-yellow-300 text-sm mb-1">รางวัล XP</p>
+              <p className="text-white font-bold text-lg">💎 {stage.xpReward || 100} XP</p>
             </div>
           </div>
 
-          {/* Continue Button */}
-          <button
-            onClick={onContinue}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
-          >
-            เริ่มการเรียนรู้
-          </button>
+          {/* Enhanced Continue Button */}
+          <div className="pt-4">
+            <button
+              onClick={onContinue}
+              className="button-glow group relative bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 hover:from-cyan-400 hover:via-blue-400 hover:to-purple-400 text-white px-12 py-4 rounded-2xl text-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-cyan-500/25 border border-white/20"
+            >
+              <div className="flex items-center gap-3">
+                <Play className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                <span>เริ่มการเรียนรู้</span>
+                <Zap className="w-6 h-6 group-hover:scale-110 transition-transform" />
+              </div>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -77,57 +169,179 @@ const CharacterIntro = ({
 const LearningContent = ({ 
   stage, 
   character,
-  onStartQuiz 
+  onStartQuiz,
+  questions 
 }: { 
   stage: any;
   character?: any;
   onStartQuiz: () => void;
+  questions: Question[];
 }) => {
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-neutral-900 to-zinc-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-white/5 to-transparent"></div>
+        <div className="absolute inset-0 opacity-10 grid-pattern"></div>
+      </div>
+
       <Navbar />
-      <div className="flex-1 container mx-auto px-8 py-16 max-w-6xl">
-        {/* Header */}
-        <div className="text-center mb-16">
-          <h1 className="text-4xl font-bold text-white mb-4">{stage.title}</h1>
-          <p className="text-xl text-gray-300">{stage.description}</p>
-        </div>
-
-        {/* Learning Content */}
-        <div className="grid md:grid-cols-2 gap-12 mb-16">
-          {/* Character Section */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10">
-            <div className="flex items-start space-x-6">
-              <div className="text-6xl">{character?.avatar || "🚀"}</div>
-              <div>
-                <h3 className="text-xl font-semibold text-white mb-4">
-                  {character?.name || "ผู้นำทาง"} บอกว่า:
-                </h3>
-                <p className="text-white text-lg leading-relaxed">
-                  {character?.learningContent || `ในด่าน ${stage.title} นี้ เราจะได้เรียนรู้เกี่ยวกับความมหัศจรรย์ของดาราศาสตร์ที่น่าตื่นเต้น!`}
-                </p>
-              </div>
-            </div>
+      <div className={`flex-1 container mx-auto px-8 py-16 max-w-7xl relative z-10 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        {/* Enhanced Header */}
+        <div className="text-center mb-16 relative">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-32 h-32 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-full blur-2xl"></div>
           </div>
-
-          {/* Visual Content */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-xl p-8 border border-white/10 text-center">
-            <div className="text-6xl mb-6">{stage.thumbnail || "🌌"}</div>
-            <h3 className="text-xl font-semibold text-white mb-4">เนื้อหาการเรียนรู้</h3>
-            <p className="text-gray-300">
-              ที่นี่จะมีภาพประกอบ วิดีโอ หรือแอนิเมชั่นเกี่ยวกับ{stage.title}
+          <div className="relative">
+            <h1 className="gradient-text text-5xl md:text-6xl font-bold mb-6 drop-shadow-lg">
+              {stage.title}
+            </h1>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              {stage.description}
             </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="text-center">
-          <button
-            onClick={onStartQuiz}
-            className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-400 hover:to-blue-500 text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-300 transform hover:scale-105 shadow-lg"
-          >
-            เริ่มทำแบบทดสอบ
-          </button>
+        {/* Enhanced Learning Content Grid */}
+        <div className="grid lg:grid-cols-2 gap-12 mb-16">
+          {/* Enhanced Character Section */}
+          <div className="group relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
+            <div className="relative info-card hover-lift bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl">
+              
+              <div className="flex items-start space-x-6">
+                <div className="status-indicator relative">
+                  <div className="text-7xl filter drop-shadow-lg custom-pulse">
+                    {character?.avatar || "🚀"}
+                  </div>
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-4">
+                    <BookOpen className="w-6 h-6 text-blue-400" />
+                    <h3 className="text-2xl font-bold text-white">
+                      {character?.name || "ผู้นำทาง"} บอกว่า:
+                    </h3>
+                  </div>
+                  
+                  <div className="bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl p-4 border border-blue-400/30">
+                    <p className="text-white text-lg leading-relaxed">
+                      {character?.learningContent || `ในด่าน ${stage.title} นี้ เราจะได้เรียนรู้เกี่ยวกับความมหัศจรรย์ของดาราศาสตร์ที่น่าตื่นเต้น!`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Visual Content */}
+          <div className="group relative">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl group-hover:blur-2xl transition-all"></div>
+            <div className="relative info-card hover-lift bg-gradient-to-br from-white/10 via-white/5 to-transparent backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl text-center">
+              
+              {/* Enhanced Visual Element */}
+              <div className="relative mb-6">
+                <div className="text-8xl mb-4 filter drop-shadow-2xl custom-pulse">
+                  {stage.thumbnail || "🌌"}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-24 h-24 bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-full blur-xl animate-pulse"></div>
+                </div>
+              </div>
+              
+              <h3 className="text-2xl font-bold text-white mb-4 flex items-center justify-center gap-2">
+                <Sparkles className="w-6 h-6 text-purple-400" />
+                เนื้อหาการเรียนรู้
+                <Sparkles className="w-6 h-6 text-pink-400" />
+              </h3>
+              
+              <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl p-6 border border-purple-400/30">
+                <p className="text-gray-300 text-lg leading-relaxed">
+                  เตรียมพบกับการผจญภัยครั้งใหม่ในการเรียนรู้เกี่ยวกับ <span className="text-white font-semibold">{stage.title}</span> 
+                  ผ่านเนื้อหาที่น่าตื่นเต้นและกิจกรรมที่ท้าทาย! 🚀
+                </p>
+              </div>
+
+              {/* Learning Features */}
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="info-card bg-white/5 rounded-lg p-3 border border-purple-400/20 hover-lift">
+                  <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-300">รับคะแนนสูงสุด</p>
+                  <p className="text-xs text-yellow-300">{stage.xpReward || 100} XP</p>
+                </div>
+                <div className="info-card bg-white/5 rounded-lg p-3 border border-purple-400/20 hover-lift">
+                  <Star className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-300">ได้ดาวสูงสุด</p>
+                  <p className="text-xs text-blue-300">{stage.maxStars || 3} ดาว</p>
+                </div>
+              </div>
+
+              {/* Special Achievements */}
+              <div className="mt-4 p-3 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-lg border border-yellow-400/30">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <Award className="w-5 h-5 text-yellow-400" />
+                  <span className="text-yellow-300 text-sm font-semibold">เป้าหมายพิเศษ</span>
+                </div>
+                <p className="text-xs text-gray-300 text-center">
+                  ทำคะแนนเต็มเพื่อปลดล็อกเนื้อหาพิเศษ! ✨
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Action Section */}
+        <div className="text-center relative">
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="w-64 h-64 bg-gradient-to-r from-green-500/10 to-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          </div>
+          
+          <div className="relative">
+            <div className="mb-6">
+              <p className="text-gray-300 text-lg mb-2">🎯 พร้อมที่จะทดสอบความรู้แล้วหรือยัง?</p>
+              <p className="text-sm text-gray-400">แบบทดสอบมี {stage.totalQuestions || 'หลาย'} ข้อ ใช้เวลาประมาณ {stage.estimatedTime || '5-10 นาที'}</p>
+            </div>
+            
+            <button
+              onClick={onStartQuiz}
+              className="button-glow group relative bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 hover:from-green-400 hover:via-blue-400 hover:to-purple-400 text-white px-12 py-5 rounded-2xl text-xl font-bold transition-all duration-300 transform hover:scale-105 shadow-2xl hover:shadow-green-500/25 border border-white/20"
+            >
+              <div className="flex items-center gap-3">
+                <Target className="w-7 h-7 group-hover:scale-110 transition-transform" />
+                <span>เริ่มทำแบบทดสอบ</span>
+                <Zap className="w-7 h-7 group-hover:scale-110 transition-transform" />
+              </div>
+            </button>
+            
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+              <div className="bg-white/5 rounded-lg p-4 border border-gray-500/30">
+                <Clock className="w-6 h-6 text-blue-400 mx-auto mb-2" />
+                <p className="text-xs text-gray-400 mb-1">เวลาทำแบบทดสอบ</p>
+                <p className="text-sm text-white font-semibold">ไม่จำกัด</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-4 border border-gray-500/30">
+                <Target className="w-6 h-6 text-green-400 mx-auto mb-2" />
+                <p className="text-xs text-gray-400 mb-1">จำนวนข้อ</p>
+                <p className="text-sm text-white font-semibold">{questions.length || '5'} ข้อ</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-4 border border-gray-500/30">
+                <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+                <p className="text-xs text-gray-400 mb-1">รางวัล XP</p>
+                <p className="text-sm text-white font-semibold">{stage.xpReward || 100} XP</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -301,17 +515,57 @@ export default function StageDetailPage() {
     router.push('/stage');
   };
 
-  // Character data (mock for now, can be loaded from API later)
+  // Get character data based on stage - different characters for different topics
+  const getCharacterForStage = (stageTitle: string) => {
+    const title = stageTitle.toLowerCase();
+    
+    if (title.includes('ดวงอาทิตย์') || title.includes('ดาว')) {
+      return {
+        name: "ดาล่า",
+        avatar: "☀️",
+        introduction: `สวัสดี! ฉันคือดาล่า ผู้พิทักษ์ดวงอาทิตย์ 🌟 ฉันจะพาคุณไปเรียนรู้เกี่ยวกับ ${stageTitle} ที่เป็นแหล่งพลังงานของระบบสุริยะ!`,
+        learningContent: `ดวงอาทิตย์คือดาวฤกษ์ที่ใกล้โลกที่สุด มีอุณหภูมิผิวประมาณ 5,500 องศาเซลเซียส และใช้เวลาแสงเดินทาง 8 นาทีจึงจะมาถึงโลก ✨`,
+      };
+    } else if (title.includes('ดาวเคราะห์') || title.includes('โลก')) {
+      return {
+        name: "อาเทมิส",
+        avatar: "🌍",
+        introduction: `ยินดีต้อนรับ! ฉันคืออาเทมิส นักสำรวจดาวเคราะห์ 🚀 มาร่วมเดินทางไปสำรวจ ${stageTitle} และความลับของจักรวาลกัน!`,
+        learningContent: `ในระบบสุริยะมีดาวเคราะห์ 8 ดวง แต่ละดวงมีลักษณะที่แตกต่างกัน จากเมอร์คิวรีที่ร้อนที่สุด ไปจนถึงเนปจูนที่เย็นที่สุด 🪐`,
+      };
+    } else if (title.includes('ดวงจันทร์') || title.includes('ดาวเทียม')) {
+      return {
+        name: "ลูน่า",
+        avatar: "🌙",
+        introduction: `สวัสดีค่ะ! ฉันคือลูน่า ผู้คุ้มครองดวงจันทร์ 🌙 ฉันจะเล่าให้ฟังเกี่ยวกับ ${stageTitle} และความมหัศจรรย์ของดาวเทียมธรรมชาติ!`,
+        learningContent: `ดวงจันทร์อยู่ห่างจากโลก 384,400 กิโลเมตร ใช้เวลาโคจรรอบโลก 27.3 วัน และมีผลต่อกระแสน้ำขึ้นน้ำลง 🌊`,
+      };
+    } else if (title.includes('ระบบสุริยะ') || title.includes('จักรวาล')) {
+      return {
+        name: "คอสมอส",
+        avatar: "⭐",
+        introduction: `สวัสดี! ฉันคือคอสมอส ผู้พิทักษ์จักรวาล ✨ มาสำรวจความกว้างใหญ่ของ ${stageTitle} และค้นหาความลับของเอกภพกัน!`,
+        learningContent: `จักรวาลมีอายุประมาณ 13.8 พันล้านปี ประกอบด้วยกาแลคซีนับล้านล้าน และดาวฤกษ์มากมายมหาศาล 🌟`,
+      };
+    } else {
+      return {
+        name: "อาสา",
+        avatar: "👩‍🚀",
+        introduction: `ยินดีต้อนรับสู่ ${stageTitle}! ฉันคืออาสา นักบินอวกาศ ฉันจะเป็นผู้นำทางของคุณในการเรียนรู้เกี่ยวกับดาราศาสตร์ 🚀`,
+        learningContent: `ในด่าน ${stageTitle} นี้ เราจะได้เรียนรู้เกี่ยวกับความมหัศจรรย์ของดาราศาสตร์ที่น่าตื่นเต้น!`,
+      };
+    }
+  };
+
   const character = {
-    name: "อาสา",
-    avatar: "👩‍🚀",
-    introduction: `ยินดีต้อนรับสู่ ${stage.title}! ฉันจะเป็นผู้นำทางของคุณในการเรียนรู้เกี่ยวกับดาราศาสตร์`,
-    learningContent: `ในด่าน ${stage.title} นี้ เราจะได้เรียนรู้เกี่ยวกับความมหัศจรรย์ของดาราศาสตร์ที่น่าตื่นเต้น!`,
-    completionMessage: "ยอดเยี่ยม! คุณผ่านด่านนี้ได้เป็นอย่างดี!",
+    ...getCharacterForStage(stage?.title || ''),
+    completionMessage: "ยอดเยี่ยม! คุณผ่านด่านนี้ได้เป็นอย่างดี! 🎉",
     encouragements: [
-      "เยี่ยมมาก! คุณกำลังเรียนรู้ได้ดี",
-      "ไม่เป็นไร ลองใหม่อีกครั้ง!",
-      "เก่งมาก! คุณเข้าใจแล้ว"
+      "เยี่ยมมาก! คุณกำลังเรียนรู้ได้ดี ⭐",
+      "ไม่เป็นไร ลองใหม่อีกครั้ง! 💪",
+      "เก่งมาก! คุณเข้าใจแล้ว 🧠",
+      "ดีใจที่ได้เรียนรู้ไปด้วยกัน! 😊",
+      "คุณกำลังก้าวหน้าไปอย่างดี! 🚀"
     ]
   };
 
@@ -322,7 +576,9 @@ export default function StageDetailPage() {
         <CharacterIntro 
           stage={stage}
           character={character}
-          onContinue={handleContinueFromIntro} 
+          onContinue={handleContinueFromIntro}
+          currentUser={currentUser}
+          stageId={stageId}
         />
       );
     
@@ -331,7 +587,8 @@ export default function StageDetailPage() {
         <LearningContent 
           stage={stage}
           character={character}
-          onStartQuiz={handleStartQuiz} 
+          onStartQuiz={handleStartQuiz}
+          questions={questions}
         />
       );
 

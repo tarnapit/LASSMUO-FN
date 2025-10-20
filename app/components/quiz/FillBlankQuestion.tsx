@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Lightbulb, CheckCircle, XCircle, Send } from "lucide-react";
+import { Lightbulb, CheckCircle, XCircle, Send, PenTool, Target, Sparkles } from "lucide-react";
+import "../../styles/quiz-enhanced.css";
 
 interface FillBlankQuestionProps {
   question: string;
@@ -117,12 +118,12 @@ export default function FillBlankQuestion({
                 placeholder={placeholder}
                 disabled={showResult}
                 className={`
-                  px-4 py-3 text-xl font-semibold rounded-xl border-2 
+                  fill-blank-input px-6 py-4 text-xl font-semibold rounded-xl border-2 
                   bg-white text-gray-900 placeholder-gray-400
-                  min-w-[200px] text-center
-                  focus:outline-none focus:ring-4 focus:ring-blue-500/50
-                  transition-all duration-200
-                  disabled:cursor-not-allowed
+                  min-w-[200px] text-center shadow-lg
+                  focus:outline-none focus:ring-4 focus:ring-purple-500/50
+                  transition-all duration-300 transform hover:scale-105
+                  disabled:cursor-not-allowed disabled:hover:scale-100
                   ${getInputStyle()}
                 `}
               />
@@ -157,12 +158,12 @@ export default function FillBlankQuestion({
             placeholder={placeholder}
             disabled={showResult}
             className={`
-              px-4 py-3 text-xl font-semibold rounded-xl border-2 
+              fill-blank-input px-6 py-4 text-xl font-semibold rounded-xl border-2 
               bg-white text-gray-900 placeholder-gray-400
-              min-w-[250px] text-center
-              focus:outline-none focus:ring-4 focus:ring-blue-500/50
-              transition-all duration-200
-              disabled:cursor-not-allowed
+              min-w-[250px] text-center shadow-lg
+              focus:outline-none focus:ring-4 focus:ring-purple-500/50
+              transition-all duration-300 transform hover:scale-105
+              disabled:cursor-not-allowed disabled:hover:scale-100
               ${getInputStyle()}
             `}
           />
@@ -182,6 +183,25 @@ export default function FillBlankQuestion({
 
   return (
     <div className="w-full max-w-4xl mx-auto">
+      {/* Enhanced Header */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center space-x-3 mb-4">
+          <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg fill-blank-icon">
+            <PenTool className="w-6 h-6 text-white" />
+          </div>
+          <div className="p-3 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-xl shadow-lg fill-blank-icon">
+            <Target className="w-6 h-6 text-white" />
+          </div>
+          <div className="p-3 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-xl shadow-lg fill-blank-icon">
+            <Sparkles className="w-6 h-6 text-white" />
+          </div>
+        </div>
+        <h2 className="text-2xl lg:text-3xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 bg-clip-text text-transparent mb-2">
+          กรอกคำตอบให้ถูกต้อง
+        </h2>
+        <div className="w-24 h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full mx-auto"></div>
+      </div>
+
       {/* Question with Input */}
       {renderQuestion()}
 
@@ -191,7 +211,7 @@ export default function FillBlankQuestion({
           <button
             onClick={handleSubmit}
             disabled={answer.trim() === ""}
-            className="inline-flex items-center space-x-2 px-8 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white font-semibold rounded-xl transition-all duration-200 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed"
+            className="inline-flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 disabled:scale-100 disabled:cursor-not-allowed fill-blank-submit"
           >
             <Send className="w-5 h-5" />
             <span>ส่งคำตอบ</span>
@@ -205,24 +225,26 @@ export default function FillBlankQuestion({
           {!showHint ? (
             <button
               onClick={getNextHint}
-              className="inline-flex items-center space-x-2 text-yellow-400 hover:text-yellow-300 transition-colors"
+              className="inline-flex items-center space-x-3 px-6 py-3 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 hint-button"
             >
               <Lightbulb className="w-5 h-5" />
               <span>ต้องการคำใบ้?</span>
             </button>
           ) : (
-            <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-xl p-4 max-w-md mx-auto">
-              <div className="flex items-center space-x-2 mb-2">
-                <Lightbulb className="w-5 h-5 text-yellow-400" />
-                <span className="text-yellow-400 font-semibold">คำใบ้:</span>
+            <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border-2 border-yellow-500/70 rounded-xl p-6 max-w-lg mx-auto shadow-xl hint-display">
+              <div className="flex items-center justify-center space-x-3 mb-4">
+                <div className="p-2 bg-yellow-500 rounded-lg">
+                  <Lightbulb className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-yellow-400 font-bold text-lg">คำใบ้ {currentHintIndex + 1}/{hints.length}</span>
               </div>
-              <p className="text-white">{hints[currentHintIndex]}</p>
+              <p className="text-white text-lg leading-relaxed mb-4">{hints[currentHintIndex]}</p>
               {currentHintIndex < hints.length - 1 && (
                 <button
                   onClick={getNextHint}
-                  className="mt-2 text-yellow-300 hover:text-yellow-200 text-sm underline"
+                  className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white font-semibold rounded-lg transition-all duration-200 transform hover:scale-105"
                 >
-                  คำใบ้ถัดไป
+                  คำใบ้ถัดไป →
                 </button>
               )}
             </div>
@@ -230,20 +252,30 @@ export default function FillBlankQuestion({
         </div>
       )}
 
-      {/* Result Message */}
+      {/* Enhanced Result Message */}
       {showResult && (
         <div className="text-center">
           <div className={`
-            inline-block px-6 py-3 rounded-xl font-semibold
+            inline-flex items-center space-x-3 px-8 py-4 rounded-xl font-bold text-lg shadow-xl transform transition-all duration-500 result-message
             ${isCorrect 
-              ? 'bg-green-500/20 text-green-400 border border-green-500/50' 
-              : 'bg-red-500/20 text-red-400 border border-red-500/50'
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-2 border-green-400' 
+              : 'bg-gradient-to-r from-red-500 to-pink-500 text-white border-2 border-red-400'
             }
           `}>
             {isCorrect ? (
-              <span>✅ ถูกต้อง!</span>
+              <>
+                <CheckCircle className="w-6 h-6" />
+                <span>ถูกต้อง! เยียม!</span>
+                <Sparkles className="w-6 h-6" />
+              </>
             ) : (
-              <span>❌ คำตอบที่ถูกต้อง: {correctAnswer}</span>
+              <>
+                <XCircle className="w-6 h-6" />
+                <div>
+                  <div>คำตอบที่ถูกต้อง:</div>
+                  <div className="font-extrabold text-xl">{correctAnswer}</div>
+                </div>
+              </>
             )}
           </div>
         </div>
