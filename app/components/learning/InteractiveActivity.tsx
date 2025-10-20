@@ -553,11 +553,27 @@ function MultipleChoiceGame({ activity, onAnswer, disabled }: any) {
     <div className="space-y-4">
       {data.image && (
         <div className="bg-white/5 p-4 rounded-lg text-center">
-          <div className="text-gray-400 text-lg">
-            🖼️ {data.image}
-          </div>
-          <div className="text-sm text-gray-500 mt-2">
-            (รูปภาพจะแสดงที่นี่)
+          <div className="relative">
+            <img
+              src={data.image}
+              alt={data.question}
+              className="max-w-full max-h-48 sm:max-h-64 mx-auto rounded-lg shadow-lg object-contain border border-white/20"
+              onError={(e) => {
+                // ถ้าโหลดรูปไม่ได้ให้แสดง fallback
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallbackDiv = target.nextElementSibling as HTMLElement;
+                if (fallbackDiv) {
+                  fallbackDiv.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden text-gray-400 text-lg">
+              🖼️ {data.image}
+              <div className="text-sm text-gray-500 mt-2">
+                (ไม่สามารถโหลดรูปภาพได้)
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -593,13 +609,38 @@ function ImageIdentificationGame({ activity, onAnswer, disabled }: any) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white/5 p-6 rounded-lg text-center">
-        <div className="text-gray-400 text-2xl mb-2">
-          🖼️ {data.image}
-        </div>
-        <div className="text-sm text-gray-500">
-          (รูปภาพจะแสดงที่นี่)
-        </div>
+      <div className="bg-white/5 p-4 sm:p-6 rounded-lg text-center">
+        {data.image ? (
+          <div className="relative">
+            <img
+              src={data.image}
+              alt={data.question}
+              className="max-w-full max-h-64 sm:max-h-80 lg:max-h-96 mx-auto rounded-lg shadow-lg object-contain border border-white/20"
+              onError={(e) => {
+                // ถ้าโหลดรูปไม่ได้ให้แสดง fallback
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallbackDiv = target.nextElementSibling as HTMLElement;
+                if (fallbackDiv) {
+                  fallbackDiv.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden text-gray-400 text-xl sm:text-2xl mb-2">
+              🖼️ {data.image}
+              <div className="text-sm text-gray-500 mt-2">
+                (ไม่สามารถโหลดรูปภาพได้)
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-gray-400 text-xl sm:text-2xl mb-2">
+            🖼️ รูปภาพประกอบ
+            <div className="text-sm text-gray-500 mt-2">
+              (ไม่มีรูปภาพ)
+            </div>
+          </div>
+        )}
       </div>
       
       <h4 className="text-lg font-semibold text-white text-center">{data.question}</h4>
@@ -634,11 +675,27 @@ function TrueFalseGame({ activity, onAnswer, disabled }: any) {
     <div className="space-y-6">
       {data.image && (
         <div className="bg-white/5 p-4 rounded-lg text-center">
-          <div className="text-gray-400 text-lg">
-            🖼️ {data.image}
-          </div>
-          <div className="text-sm text-gray-500 mt-2">
-            (รูปภาพจะแสดงที่นี่)
+          <div className="relative">
+            <img
+              src={data.image}
+              alt={data.statement || data.question}
+              className="max-w-full max-h-48 sm:max-h-64 mx-auto rounded-lg shadow-lg object-contain border border-white/20"
+              onError={(e) => {
+                // ถ้าโหลดรูปไม่ได้ให้แสดง fallback
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                const fallbackDiv = target.nextElementSibling as HTMLElement;
+                if (fallbackDiv) {
+                  fallbackDiv.classList.remove('hidden');
+                }
+              }}
+            />
+            <div className="hidden text-gray-400 text-lg">
+              🖼️ {data.image}
+              <div className="text-sm text-gray-500 mt-2">
+                (ไม่สามารถโหลดรูปภาพได้)
+              </div>
+            </div>
           </div>
         </div>
       )}

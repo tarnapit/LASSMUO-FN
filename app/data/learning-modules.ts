@@ -49,26 +49,26 @@ export const learningModules: LearningModule[] = [
             updatedAt: '2024-01-01T00:00:00Z',
             minimumScore: 10,
             activity: {
-              id: 'solar-intro-mc1',
+              id: 'saturn-identification',
               courseDetailId: 'content-3',
-              title: 'ทดสอบความรู้เบื้องต้น',
-              type: 'multiple-choice',
-              instruction: 'เลือกคำตอบที่ถูกต้องที่สุด',
+              title: 'จำแนกดาวเคราะห์จากภาพ',
+              type: 'image-identification',
+              instruction: 'ดูรูปภาพแล้วเลือกคำตอบที่ถูกต้อง',
               difficulty: 'Easy',
               maxAttempts: 3,
               passingScore: 10,
-              timeLimite: 60,
+              timeLimite: 90,
               data: {
-                question: 'ระบบสุริยะประกอบด้วยดาวเคราะห์ทั้งหมดกี่ดวง?',
-                options: ['7 ดวง', '8 ดวง', '9 ดวง', '10 ดวง'],
-                correctAnswer: 1,
-                explanation: 'ระบบสุริยะมีดาวเคราะห์ทั้งหมด 8 ดวง หลังจากที่ดาวพลูโตถูกจัดประเภทเป็นดาวเคราะห์แคระในปี 2006'
+                question: 'ดาวเคราะห์ในภาพนี้คือดาวอะไร?',
+                image: '/images/stage/saturn.jpg',
+                options: ['ดาวพฤหัสบดี', 'ดาวเสาร์', 'ดาวยูเรนัส', 'ดาวเนปจูน'],
+                correctAnswer: 1
               },
-              point: 10,
+              point: 15,
               feedback: {
-                correct: 'เยี่ยม! คุณจำได้ถูกต้องว่าระบบสุริยะมีดาวเคราะห์ 8 ดวง',
-                incorrect: 'ไม่ถูกต้อง ระบบสุริยะมีดาวเคราะห์ 8 ดวง หลังจากที่ดาวพลูโตถูกจัดเป็นดาวเคราะห์แคระ',
-                hint: 'คิดถึงดาวเคราะห์ตั้งแต่ดาวพุธไปจนถึงดาวเนปจูน ลองนับดูสิ'
+                correct: 'ถูกต้อง! นี่คือดาวเสาร์ที่มีวงแหวนสวยงามเป็นเอกลักษณ์',
+                incorrect: 'ไม่ถูกต้อง ลองสังเกตวงแหวนในภาพ ดาวเคราะห์ที่มีวงแหวนสวยงามเด่นชัดคือดาวใด?',
+                hint: 'ดาวเคราะห์ที่มีวงแหวนสวยงามและเห็นได้ชัดเจนที่สุดในระบบสุริยะ'
               },
               createdAt: '2024-01-01T00:00:00Z',
               updatedAt: '2024-01-01T00:00:00Z'
@@ -146,6 +146,42 @@ export const learningModules: LearningModule[] = [
               createdAt: '2024-01-01T00:00:00Z',
               updatedAt: '2024-01-01T00:00:00Z'
             }
+          },
+          {
+            id: 'content-5b',
+            courseLessonId: 'chapter-2',
+            type: 'interactive',
+            content: 'ทดสอบความสามารถในการจำแนกดาวเคราะห์จากรูปลักษณ์',
+            required: true,
+            score: 12,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+            minimumScore: 12,
+            activity: {
+              id: 'mars-identification',
+              courseDetailId: 'content-5b',
+              title: 'จำแนกดาวอังคารจากภาพ',
+              type: 'image-identification',
+              instruction: 'ดูรูปภาพและเลือกคำตอบที่ถูกต้อง',
+              difficulty: 'Easy',
+              maxAttempts: 3,
+              passingScore: 12,
+              timeLimite: 75,
+              data: {
+                question: 'ดาวเคราะห์ในภาพนี้มีลักษณะพิเศษอะไร?',
+                image: '/images/planets/mars.png',
+                options: ['มีวงแหวนสวยงาม', 'มีสีแดงเป็นเอกลักษณ์', 'เป็นดาวเคราะห์ที่ใหญ่ที่สุด', 'มีชีวิตอาศัยอยู่'],
+                correctAnswer: 1
+              },
+              point: 15,
+              feedback: {
+                correct: 'ถูกต้อง! ดาวอังคารมีสีแดงเป็นเอกลักษณ์จากสนิมเหล็กบนพื้นผิว',
+                incorrect: 'ไม่ถูกต้อง ลองสังเกตสีของดาวเคราะห์ในภาพ ทำไมถึงเรียกดาวอังคารว่า "ดาวเคราะห์สีแดง"',
+                hint: 'ดาวอังคารได้ชื่อว่าเป็น "Red Planet" หรือดาวเคราะห์สีแดง'
+              },
+              createdAt: '2024-01-01T00:00:00Z',
+              updatedAt: '2024-01-01T00:00:00Z'
+            }
           }
         ]
       }
@@ -218,6 +254,42 @@ export const learningModules: LearningModule[] = [
                 correct: 'ถูกต้อง! ลำดับชั้นโลกคือ เปลือกโลก เนื้อโลก แกนกลางชั้นนอก แกนกลางชั้นใน',
                 incorrect: 'ไม่ถูกต้อง ลองคิดถึงการเรียงลำดับจากชั้นนอกไปชั้นในอีกครั้ง',
                 hint: 'เริ่มจากชั้นที่เราอยู่ (เปลือกโลก) แล้วลึกลงไปเรื่อยๆ จนถึงใจกลางโลก'
+              },
+              createdAt: '2024-01-01T00:00:00Z',
+              updatedAt: '2024-01-01T00:00:00Z'
+            }
+          },
+          {
+            id: 'content-9',
+            courseLessonId: 'chapter-3',
+            type: 'interactive',
+            content: 'ทดสอบความเข้าใจโครงสร้างโลกจากภาพ',
+            required: true,
+            score: 10,
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z',
+            minimumScore: 10,
+            activity: {
+              id: 'earth-layers-identification',
+              courseDetailId: 'content-9',
+              title: 'จำแนกชั้นของโลกจากภาพ',
+              type: 'image-identification',
+              instruction: 'ดูภาพตัดขวางของโลกและตอบคำถาม',
+              difficulty: 'Medium',
+              maxAttempts: 3,
+              passingScore: 10,
+              timeLimite: 60,
+              data: {
+                question: 'ชั้นนอกสุดของโลกที่เห็นในภาพคือชั้นอะไร?',
+                image: '/images/planets/earth-layers.jpg',
+                options: ['แกนกลางชั้นใน', 'เนื้อโลก', 'เปลือกโลก', 'แกนกลางชั้นนอก'],
+                correctAnswer: 2
+              },
+              point: 12,
+              feedback: {
+                correct: 'ถูกต้อง! เปลือกโลกคือชั้นนอกสุดที่เราอาศัยอยู่',
+                incorrect: 'ไม่ถูกต้อง ชั้นนอกสุดของโลกที่เราอาศัยอยู่คือชั้นไหน?',
+                hint: 'คิดถึงชั้นที่เรายืนอยู่ตอนนี้ มันคือชั้นใดของโลก?'
               },
               createdAt: '2024-01-01T00:00:00Z',
               updatedAt: '2024-01-01T00:00:00Z'
