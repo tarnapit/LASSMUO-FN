@@ -130,9 +130,40 @@ export default function LearningTopicPage() {
               const postestResponse = await coursePostestService.getCoursePostestsByCourseId(foundModule.id);
               
               if (postestResponse.success && postestResponse.data && postestResponse.data.length > 0) {
-                // ใช้ PostTest แรกที่มี
-                foundQuiz = postestResponse.data[0];
-                console.log('Found PostTest quiz for course:', foundQuiz.title || foundQuiz.id);
+                // ค้นหา PostTest ที่ตรงกับ courseId ของ module นี้
+                const matchingPostest = postestResponse.data.find(postest => 
+                  postest.courseId === foundModule.id
+                );
+                
+                if (matchingPostest) {
+                  // สร้าง quiz object ที่มี ID ในรูปแบบที่ถูกต้อง
+                  foundQuiz = {
+                    ...matchingPostest,
+                    // ใช้ ID จริงจากฐานข้อมูล แต่เก็บ original ID ไว้ด้วย
+                    originalId: matchingPostest.id,
+                    // อาจจะต้องใช้ title-based ID สำหรับ compatibility
+                    legacyId: matchingPostest.title?.includes('โครงสร้างโลก') 
+                      ? 'earth-structure-posttest' 
+                      : matchingPostest.title?.includes('ระบบสุริยะ')
+                      ? 'solar-system-posttest'
+                      : matchingPostest.id
+                  };
+                  
+                  console.log('Found matching PostTest quiz for course:', {
+                    courseId: foundModule.id,
+                    title: foundQuiz.title,
+                    originalId: foundQuiz.originalId,
+                    legacyId: foundQuiz.legacyId,
+                    postestCourseId: foundQuiz.courseId
+                  });
+                } else {
+                  console.log('No PostTest found matching courseId:', foundModule.id);
+                  console.log('Available postests:', postestResponse.data.map(p => ({
+                    id: p.id, 
+                    title: p.title, 
+                    courseId: p.courseId
+                  })));
+                }
               } else {
                 console.log('No PostTest found for course:', foundModule.id);
                 
@@ -143,14 +174,36 @@ export default function LearningTopicPage() {
             }
             
             // ถ้ายังไม่ได้ quiz จาก PostTest ให้ลองดูจาก CourseQuiz API
-            if (!foundQuiz) {
-              console.log('No PostTest found, trying CourseQuiz API as fallback');
-              const quizResponse = await courseQuizService.getAllCourseQuizzes();
+            if (!foundQuiz && foundModule && foundModule.id) {
+              console.log('No PostTest found, trying CourseQuiz API as fallback for course:', foundModule.id);
               
-              if (quizResponse && Array.isArray(quizResponse) && quizResponse.length > 0) {
-                // หาข้อมูล quiz แรกเป็น fallback (อาจต้องปรับให้จับคู่กับ course)
-                foundQuiz = quizResponse[0];
-                console.log('Using fallback quiz from CourseQuiz API:', foundQuiz.title || foundQuiz.id);
+              // ลองดึง quiz ตาม courseId เฉพาะ
+              try {
+                const courseQuizResponse = await courseQuizService.getCourseQuizzesByCourseId(foundModule.id);
+                
+                if (courseQuizResponse.success && courseQuizResponse.data && courseQuizResponse.data.length > 0) {
+                  // ใช้ quiz แรกที่ตรงกับ course นี้
+                  foundQuiz = courseQuizResponse.data[0];
+                  console.log('Found matching quiz for course from CourseQuiz API:', foundQuiz.title || foundQuiz.id);
+                } else {
+                  // ถ้าไม่มีข้อมูลใน CourseQuiz API ให้ลองดูจาก API ทั่วไป
+                  console.log('No specific CourseQuiz found, trying general CourseQuiz API as last resort');
+                  const allQuizResponse = await courseQuizService.getAllCourseQuizzes();
+                  
+                  if (allQuizResponse.success && allQuizResponse.data && allQuizResponse.data.length > 0) {
+                    // หา quiz ที่ courseId ตรงกัน
+                    const matchingQuiz = allQuizResponse.data.find(quiz => quiz.courseId === foundModule.id);
+                    
+                    if (matchingQuiz) {
+                      foundQuiz = matchingQuiz;
+                      console.log('Found matching quiz by courseId from general API:', foundQuiz.title || foundQuiz.id);
+                    } else {
+                      console.log('No matching quiz found for course:', foundModule.id);
+                    }
+                  }
+                }
+              } catch (courseQuizError) {
+                console.log('Error fetching CourseQuiz by courseId:', courseQuizError);
               }
             }
           } catch (quizError) {
@@ -167,6 +220,19 @@ export default function LearningTopicPage() {
               moduleOrder: getModuleOrder(foundModule.id),
               chaptersCount: foundModule.chapters.length
             });
+            
+            // Debug quiz information
+            if (foundQuiz) {
+              console.log(`🎯 Quiz loaded for module ${foundModule.id}:`, {
+                quizId: foundQuiz.id,
+                originalId: (foundQuiz as any).originalId,
+                legacyId: (foundQuiz as any).legacyId,
+                quizTitle: foundQuiz.title,
+                courseId: foundQuiz.courseId
+              });
+            } else {
+              console.log(`❌ No quiz found for module ${foundModule.id}`);
+            }
             
             // รีเซ็ต states เมื่อเปลี่ยน module
             setCompletedActivities(new Set());
@@ -874,7 +940,7 @@ export default function LearningTopicPage() {
 
                     <div className="text-center">
                       <Link
-                        href={`/quiz/${quiz.id}`}
+                        href={`/quiz/${(quiz as any).originalId || quiz.id}`}
                         className="px-6 sm:px-8 py-3 sm:py-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-lg transition-all transform hover:scale-105 font-bold text-base sm:text-lg inline-flex items-center shadow-lg"
                       >
                         <Brain size={20} className="mr-2 sm:mr-3 flex-shrink-0" />
