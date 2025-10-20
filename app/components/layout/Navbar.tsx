@@ -49,7 +49,7 @@ const navigation: NavigationItem[] = [
       level: game.difficulty
     })),
   },
-  { name: "บอร์ดผู้นำ", href: "/leaderboard" },
+  // { name: "บอร์ดผู้นำ", href: "/leaderboard" },
   // เพิ่มในโหมด development
   // ...(process.env.NODE_ENV === 'development' ? [{ name: "API Test", href: "/api-test" }] : []),
 ];
