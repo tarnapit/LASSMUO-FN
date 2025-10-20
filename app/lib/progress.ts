@@ -1156,13 +1156,33 @@ class ProgressManager {
 
   // ฟังก์ชันช่วยเพื่อรับ module id จาก quiz id
   private getModuleIdByQuizId(quizId: string): string | null {
-    // ข้อมูลการแมป quiz กับ module (ควรมาจาก quizzes.ts แต่เพื่อความง่ายเราจะ hardcode)
+    // ข้อมูลการแมป quiz กับ module รองรับทั้ง old format และ new API format
     const quizModuleMapping: Record<string, string> = {
+      // Old format (mock data)
       'solar-system-quiz': 'solar-system',
       'earth-structure-quiz': 'earth-structure',
       'stellar-evolution-quiz': 'stellar-evolution',
-      'galaxies-universe-quiz': 'galaxies-universe'
+      'galaxies-universe-quiz': 'galaxies-universe',
+      
+      // New API format (posttest)
+      'solar-system-posttest': 'solar-system',
+      'earth-structure-posttest': 'earth-structure',
+      'stellar-evolution-posttest': 'stellar-evolution',
+      'galaxies-universe-posttest': 'galaxies-universe'
     };
+    
+    // ถ้าไม่เจอจาก direct mapping ลองแยกคำจาก title
+    if (!quizModuleMapping[quizId]) {
+      if (quizId.includes('solar-system') || quizId.includes('ระบบสุริยะ')) {
+        return 'solar-system';
+      } else if (quizId.includes('earth-structure') || quizId.includes('โครงสร้างโลก')) {
+        return 'earth-structure';
+      } else if (quizId.includes('stellar-evolution') || quizId.includes('การเกิดดาว')) {
+        return 'stellar-evolution';
+      } else if (quizId.includes('galaxies-universe') || quizId.includes('กาแลคซี่')) {
+        return 'galaxies-universe';
+      }
+    }
     
     return quizModuleMapping[quizId] || null;
   }
